@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/propose.json",
+  "title": "propose",
+  "description": "A login for the app to save (browser host). Endpoint: client; direction: c2s; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "url",
+    "userName",
+    "password"
+  ],
+  "properties": {
+    "op": {
+      "const": "propose"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "userName": {
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "c2s",
+    "phase": "B"
+  }
+}

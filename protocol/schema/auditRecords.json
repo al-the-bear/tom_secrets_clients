@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/auditRecords.json",
+  "title": "auditRecords",
+  "description": "The answer to audit.query. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "records"
+  ],
+  "properties": {
+    "op": {
+      "const": "auditRecords"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "time",
+          "host",
+          "identity",
+          "refs",
+          "outcome"
+        ],
+        "properties": {
+          "time": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "host": {
+            "type": "string"
+          },
+          "identity": {
+            "$ref": "common.json#/$defs/identity"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "$ref": "common.json#/$defs/reference"
+            }
+          },
+          "outcome": {
+            "enum": [
+              "allowed",
+              "denied",
+              "not_found",
+              "ambiguous",
+              "locked",
+              "timeout",
+              "abandoned",
+              "rate_limited",
+              "unavailable",
+              "malformed"
+            ]
+          },
+          "grantId": {
+            "type": "string"
+          },
+          "approver": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

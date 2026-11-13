@@ -14,15 +14,25 @@ In the workspace this repository is the submodule `tom_ai/secrets_clients`
 
 | Package | Phase | What it holds |
 | --- | --- | --- |
-| the protocol document | A | framing, messages, the reference grammar and the test vectors |
+| [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning; a JSON Schema per message, the test vectors and the tools that write and check them |
 | the conformance suite | A | the harness and its fake service (Dart) |
 | `tom_secrets_client` | A | the Dart client: frames, messages, the reference grammar |
 | `tsm` | A | the command line (`get`, `run`, the admin commands), on `tom_build_base` |
 | the TypeScript client | A | the npm package |
 | the other seven libraries | B | C, C++, Go, Java, JavaScript, Python, Rust |
 
-They are created by the quest's todos of their phase; until then the
-repository holds only its frame.
+The protocol document exists (its second part, the signed objects and the
+approval link, is still to come); the other packages are created by the
+quest's todos of their phase.
+
+## Checking the protocol
+
+```text
+python3 protocol/tool/check_protocol.py
+```
+
+checks that the document, the schemas and the vectors agree (Python 3.9 or
+later with `jsonschema`).
 
 ## Licence and boundaries
 

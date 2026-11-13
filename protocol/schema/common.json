@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/common.json",
+  "title": "common",
+  "description": "Definitions shared by the message schemas.",
+  "$defs": {
+    "id": {
+      "description": "A request id, chosen by the client, unique among its open requests.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "base64": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+    },
+    "base64_32": {
+      "description": "32 bytes, standard base64 with padding.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{43}=$"
+    },
+    "timestamp": {
+      "description": "RFC 3339 date-time in UTC with a Z.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?Z$"
+    },
+    "epochMs": {
+      "description": "Milliseconds since the Unix epoch.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "storeName": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "maxLength": 64
+    },
+    "dimensionName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "maxLength": 64
+    },
+    "uuid": {
+      "description": "A KDBX entry UUID, 32 lower-case hex digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "reference": {
+      "description": "A reference (section 4), at most 1 KiB of UTF-8.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "dimensions": {
+      "description": "Dimension values passed beside a reference.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/dimensionName"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "platform": {
+      "enum": [
+        "macos",
+        "linux",
+        "windows",
+        "ios",
+        "android"
+      ]
+    },
+    "clientInfo": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "language"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 32
+        }
+      }
+    },
+    "errorKind": {
+      "enum": [
+        "locked",
+        "denied",
+        "not_found",
+        "ambiguous",
+        "needs_unlock",
+        "unavailable",
+        "offline",
+        "token_expired",
+        "malformed",
+        "timeout",
+        "rate_limited",
+        "unsupported",
+        "internal"
+      ]
+    },
+    "entryLocation": {
+      "type": "object",
+      "required": [
+        "store",
+        "path",
+        "uuid"
+      ],
+      "properties": {
+        "store": {
+          "$ref": "#/$defs/storeName"
+        },
+        "path": {
+          "type": "string"
+        },
+        "uuid": {
+          "$ref": "#/$defs/uuid"
+        }
+      }
+    },
+    "storeState": {
+      "enum": [
+        "current",
+        "offline",
+        "token_expired",
+        "needs_unlock",
+        "unavailable"
+      ]
+    },
+    "source": {
+      "enum": [
+        "github",
+        "cache"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "once",
+        "always",
+        "folder",
+        "never"
+      ]
+    },
+    "secretScope": {
+      "description": "What a decision covers: the reference, its store, or all.",
+      "enum": [
+        "ref",
+        "store",
+        "all"
+      ]
+    },
+    "pin": {
+      "description": "hash: pinned; off: by path; relaxed: accept changes until relaxedUntil.",
+      "oneOf": [
+        {
+          "enum": [
+            "hash",
+            "off"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "relaxedUntil"
+          ],
+          "properties": {
+            "relaxedUntil": {
+              "$ref": "#/$defs/timestamp"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "identity": {
+      "description": "The measured identity of a peer process (section 7.1).",
+      "type": "object",
+      "required": [
+        "kind",
+        "exe",
+        "args",
+        "cwd",
+        "uid"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "exe",
+            "script",
+            "interpreter"
+          ]
+        },
+        "exe": {
+          "type": "string"
+        },
+        "exeHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "interpreter": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        },
+        "scriptHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "packageRoot": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "object",
+          "required": [
+            "exe"
+          ],
+          "properties": {
+            "exe": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "uid": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        }
+      }
+    },
+    "signature": {
+      "description": "One item of a signature list; the signed bytes are section 9.",
+      "type": "object",
+      "required": [
+        "alg",
+        "keyId",
+        "sig"
+      ],
+      "properties": {
+        "alg": {
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "sig": {
+          "$ref": "#/$defs/base64"
+        }
+      }
+    },
+    "grant": {
+      "description": "A grant of the allow list (section 7.3).",
+      "type": "object",
+      "required": [
+        "id",
+        "host",
+        "subject",
+        "secret",
+        "decision",
+        "created",
+        "pin",
+        "approver",
+        "signatures"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "secret": {
+          "description": "A canonical reference, \"store <name>\" or \"all\".",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "never"
+          ]
+        },
+        "created": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "lastUsed": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "pin": {
+          "$ref": "#/$defs/pin"
+        },
+        "approver": {
+          "type": "string"
+        },
+        "signatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/signature"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approval_needed.json",
+  "title": "approval_needed",
+  "description": "A request needs an approval. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "approvalId",
+    "host",
+    "identity",
+    "refs",
+    "resolved"
+  ],
+  "properties": {
+    "op": {
+      "const": "approval_needed"
+    },
+    "approvalId": {
+      "type": "string"
+    },
+    "host": {
+      "type": "string"
+    },
+    "identity": {
+      "$ref": "common.json#/$defs/identity"
+    },
+    "refs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.json#/$defs/reference"
+      }
+    },
+    "resolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "store",
+          "path",
+          "kind"
+        ],
+        "properties": {
+          "store": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hostHint": {
+      "type": "string"
+    },
+    "approvalCode": {
+      "type": "string",
+      "pattern": "^[A-Z2-7]{10}$"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

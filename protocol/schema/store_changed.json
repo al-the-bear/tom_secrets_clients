@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/store_changed.json",
+  "title": "store_changed",
+  "description": "A store was reopened with new content. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "store"
+  ],
+  "properties": {
+    "op": {
+      "const": "store_changed"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "revision": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

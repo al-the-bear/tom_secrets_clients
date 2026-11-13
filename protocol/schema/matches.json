@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/matches.json",
+  "title": "matches",
+  "description": "The answer to match: candidates, never a value. Endpoint: client; direction: s2c; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "candidates"
+  ],
+  "properties": {
+    "op": {
+      "const": "matches"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "entryId",
+          "title",
+          "userName",
+          "matchedUrl",
+          "hasTotp"
+        ],
+        "properties": {
+          "entryId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "matchedUrl": {
+            "type": "string"
+          },
+          "hasTotp": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "B"
+  }
+}

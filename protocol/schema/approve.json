@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approve.json",
+  "title": "approve",
+  "description": "The answer to an approval prompt. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "approvalId",
+    "decision",
+    "secret"
+  ],
+  "properties": {
+    "op": {
+      "const": "approve"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "approvalId": {
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "common.json#/$defs/decision"
+    },
+    "secret": {
+      "$ref": "common.json#/$defs/secretScope"
+    },
+    "folder": {
+      "type": "string"
+    },
+    "pin": {
+      "$ref": "common.json#/$defs/pin"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

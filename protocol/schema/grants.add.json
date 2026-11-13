@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/grants.add.json",
+  "title": "grants.add",
+  "description": "Add a grant (a pre-approval for another host). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "grant"
+  ],
+  "properties": {
+    "op": {
+      "const": "grants.add"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "grant": {
+      "description": "The grant without id, created, approver and signatures, which the service fills in and signs.",
+      "type": "object",
+      "required": [
+        "host",
+        "subject",
+        "secret",
+        "decision"
+      ],
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "never"
+          ]
+        },
+        "pin": {
+          "$ref": "common.json#/$defs/pin"
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

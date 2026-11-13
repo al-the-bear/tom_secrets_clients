@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/value.json",
+  "title": "value",
+  "description": "The answer to get: the value and where it came from. Endpoint: client; direction: s2c; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "value",
+    "encoding",
+    "entry",
+    "bound",
+    "version"
+  ],
+  "properties": {
+    "op": {
+      "const": "value"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "value": {
+      "type": "string"
+    },
+    "encoding": {
+      "enum": [
+        "utf8",
+        "base64"
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "store",
+        "uuid",
+        "source",
+        "fetchedAt"
+      ],
+      "properties": {
+        "store": {
+          "$ref": "common.json#/$defs/storeName"
+        },
+        "uuid": {
+          "$ref": "common.json#/$defs/uuid"
+        },
+        "source": {
+          "$ref": "common.json#/$defs/source"
+        },
+        "fetchedAt": {
+          "$ref": "common.json#/$defs/timestamp"
+        }
+      }
+    },
+    "bound": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.json#/$defs/dimensionName"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "object",
+      "required": [
+        "modified",
+        "revision"
+      ],
+      "properties": {
+        "modified": {
+          "$ref": "common.json#/$defs/timestamp"
+        },
+        "revision": {
+          "type": "string"
+        }
+      }
+    },
+    "expires": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "clientToken": {
+      "$ref": "common.json#/$defs/base64_32"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "A"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/welcome.json",
+  "title": "welcome",
+  "description": "The answer to hello. Endpoint: client; direction: s2c; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "protocol",
+    "service",
+    "features",
+    "host",
+    "platform"
+  ],
+  "properties": {
+    "op": {
+      "const": "welcome"
+    },
+    "protocol": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "host": {
+      "type": "string"
+    },
+    "platform": {
+      "$ref": "common.json#/$defs/platform"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "A"
+  }
+}

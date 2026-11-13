@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/key_expiry.json",
+  "title": "key_expiry",
+  "description": "A key the product rotates expires soon. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "key",
+    "expiresAt",
+    "daysLeft"
+  ],
+  "properties": {
+    "op": {
+      "const": "key_expiry"
+    },
+    "key": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "daysLeft": {
+      "type": "integer"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

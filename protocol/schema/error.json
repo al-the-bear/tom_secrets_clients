@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/error.json",
+  "title": "error",
+  "description": "A request failed, or a connection is refused. Endpoint: any; direction: s2c; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "kind",
+    "message"
+  ],
+  "properties": {
+    "op": {
+      "const": "error"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "kind": {
+      "$ref": "common.json#/$defs/errorKind"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 1024
+    },
+    "details": {
+      "type": "object"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "any",
+    "direction": "s2c",
+    "phase": "A"
+  }
+}

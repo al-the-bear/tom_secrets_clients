@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/store_state.json",
+  "title": "store_state",
+  "description": "A store changed state. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "store",
+    "state",
+    "source",
+    "notPushed"
+  ],
+  "properties": {
+    "op": {
+      "const": "store_state"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "state": {
+      "$ref": "common.json#/$defs/storeState"
+    },
+    "source": {
+      "$ref": "common.json#/$defs/source"
+    },
+    "fetchedAt": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "notPushed": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

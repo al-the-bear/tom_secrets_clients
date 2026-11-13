@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/vaultKeySet.json",
+  "title": "vaultKeySet",
+  "description": "The answer to vaultKeys. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "stores"
+  ],
+  "properties": {
+    "op": {
+      "const": "vaultKeySet"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "stores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "store",
+          "location",
+          "keys"
+        ],
+        "properties": {
+          "store": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "location": {
+            "type": "string"
+          },
+          "keys": {
+            "description": "The store key material; its members are defined with the store format (section 6.4).",
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

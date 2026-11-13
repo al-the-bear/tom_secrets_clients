@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/accepted.json",
+  "title": "accepted",
+  "description": "The answer to propose. Endpoint: client; direction: s2c; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id"
+  ],
+  "properties": {
+    "op": {
+      "const": "accepted"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "B"
+  }
+}

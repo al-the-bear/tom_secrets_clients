@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/statusReport.json",
+  "title": "statusReport",
+  "description": "The answer to status. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "locked",
+    "lockMode",
+    "protocol",
+    "service",
+    "stores",
+    "admins",
+    "hardening"
+  ],
+  "properties": {
+    "op": {
+      "const": "statusReport"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "locked": {
+      "type": "boolean"
+    },
+    "lockMode": {
+      "enum": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    "protocol": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "version",
+        "start"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "common.json#/$defs/epochMs"
+        }
+      }
+    },
+    "stores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "state",
+          "source",
+          "notPushed"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "state": {
+            "$ref": "common.json#/$defs/storeState"
+          },
+          "source": {
+            "$ref": "common.json#/$defs/source"
+          },
+          "fetchedAt": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "notPushed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "admins": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hardening": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

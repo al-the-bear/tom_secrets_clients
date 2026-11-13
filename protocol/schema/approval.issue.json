@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approval.issue.json",
+  "title": "approval.issue",
+  "description": "Have the approver key make a token for a code. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "code",
+    "decision",
+    "secret"
+  ],
+  "properties": {
+    "op": {
+      "const": "approval.issue"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z2-7]{10}$"
+    },
+    "decision": {
+      "$ref": "common.json#/$defs/decision"
+    },
+    "secret": {
+      "$ref": "common.json#/$defs/secretScope"
+    },
+    "pin": {
+      "$ref": "common.json#/$defs/pin"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

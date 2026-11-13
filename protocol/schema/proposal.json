@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/proposal.json",
+  "title": "proposal",
+  "description": "A login the browser host proposed. Endpoint: admin; direction: s2a; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "url",
+    "userName",
+    "password"
+  ],
+  "properties": {
+    "op": {
+      "const": "proposal"
+    },
+    "url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "userName": {
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "B"
+  }
+}

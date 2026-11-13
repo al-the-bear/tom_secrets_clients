@@ -8,7 +8,14 @@ document, the conformance suite, the client libraries and `tsm`).
 - No package here depends on `tom_secrets_core`, `tom_kdbx_store` or anything
   else that reaches KDBX; the clients and the fake service are written from
   the protocol document.
-- Every client library passes the conformance suite against the fake service.
+- **The protocol document is the authority** (`protocol/protocol.md`). A
+  change to a message, the grammar or a vector starts there; then
+  `protocol/tool/gen_schemas.py` and `gen_vectors.py` regenerate the schemas
+  and vectors, and `check_protocol.py` must pass. The wire formats are fixed
+  in phase A: a later change is a new protocol version or a feature
+  (section 8), never an edit of a version-1 message.
+- Every client library passes the conformance suite against the fake service,
+  and agrees with every case of `protocol/vectors/`.
 - The published packages (`tom_secrets_client`, `tsm`, the TypeScript client)
   name no private repository as their `repository:`.
 

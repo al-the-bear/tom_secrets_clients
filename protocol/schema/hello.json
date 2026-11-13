@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/hello.json",
+  "title": "hello",
+  "description": "The first frame of a client connection. Endpoint: client; direction: c2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "protocol",
+    "client"
+  ],
+  "properties": {
+    "op": {
+      "const": "hello"
+    },
+    "protocol": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "client": {
+      "$ref": "common.json#/$defs/clientInfo"
+    },
+    "token": {
+      "description": "Windows: the text of client.token.",
+      "$ref": "common.json#/$defs/base64_32"
+    },
+    "clientToken": {
+      "$ref": "common.json#/$defs/base64_32"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "c2s",
+    "phase": "A"
+  }
+}

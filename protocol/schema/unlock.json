@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/unlock.json",
+  "title": "unlock",
+  "description": "Open the primary file and the stores (phase A), or a vault with a sealed key bundle (phase B). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id"
+  ],
+  "properties": {
+    "op": {
+      "const": "unlock"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "password": {
+      "type": "string"
+    },
+    "keyFile": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "vault": {
+      "type": "string"
+    },
+    "bundle": {
+      "type": "object",
+      "required": [
+        "nonce",
+        "ciphertext"
+      ],
+      "properties": {
+        "nonce": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "ciphertext": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

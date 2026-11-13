@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/get.json",
+  "title": "get",
+  "description": "Read one secret. Endpoint: client; direction: c2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "ref"
+  ],
+  "properties": {
+    "op": {
+      "const": "get"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "ref": {
+      "$ref": "common.json#/$defs/reference"
+    },
+    "dimensions": {
+      "$ref": "common.json#/$defs/dimensions"
+    },
+    "field": {
+      "type": "string",
+      "minLength": 1
+    },
+    "wait": {
+      "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "wantClientToken": {
+      "type": "boolean"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "c2s",
+    "phase": "A"
+  }
+}

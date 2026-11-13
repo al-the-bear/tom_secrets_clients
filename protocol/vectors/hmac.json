@@ -1,0 +1,54 @@
+{
+ "note": "The admin challenge of section 6.1: mac = HMAC-SHA256(adminKey, \"tsm-admin-v1\" || serviceNonce || adminNonce || serviceStart as 8 bytes big-endian), mac2 the same under \"tsm-service-v1\". Keys and nonces are demo values derived from labels.",
+ "cases": [
+  {
+   "name": "the challenge of frames.json",
+   "adminKey": "okWhYIwkX6Fawa1gtPbrLKphM8WsLMhMU1ceOQ1JBSw=",
+   "serviceNonce": "PGAeHLIQ6ZIDzkr/QLASU+/20TxrlWb2q76QFoDUIho=",
+   "adminNonce": "A5Tye47vNW9pfrm/MRcwrzxsnlTt7rJ7s1v0c/BXmq4=",
+   "serviceStart": 1794560400000,
+   "mac": "FwQtUiZ1rgKg+cWYbp/uu26TIDh7ePL7fwz7AL/6N+U=",
+   "mac2": "p3Pguu0JEljxH6UZpRe6uARG6BHUpFQu+seUPxd6Pq0="
+  },
+  {
+   "name": "case 0",
+   "adminKey": "cPNf3mYiw5BqQAILqtkVv6zQ4tjCXEqPvERVHAXojmA=",
+   "serviceNonce": "kRhxGi4E3lXnkma6U1xYALorEwRG5uJGm92lEmOtCxM=",
+   "adminNonce": "PQKL/3RussSC/ue8hHescsEBsKhPKkOP+M03tQ+bchE=",
+   "serviceStart": 0,
+   "macInputHex": "74736d2d61646d696e2d76319118711a2e04de55e79266ba535c5800ba2b130446e6e2469bdda51263ad0b133d028bff746eb2c482fee7bc8477ac72c101b0a84f2a438ff8cd37b50f9b72110000000000000000",
+   "mac": "vfdQdf3ct3nhiU8/H475Oi/gHAIMyuUVAq/rIsPbakY=",
+   "mac2": "Pii7/jrp8brDVp4y+uYCBVbyho9jfflZv0PM9NY7pw0="
+  },
+  {
+   "name": "case 1",
+   "adminKey": "dAntnnUsNWD0G+jRi7ILEynq8/Fp+uy+bhaeCdCV0xs=",
+   "serviceNonce": "ntxeI2of/lOVY6fJ4iDNkA9BoBOofPy5lmrKRB8xg0s=",
+   "adminNonce": "kwFyGRJlPTRglkZrIO8OuJPs2PrOOP33FJq7jfT+F0Q=",
+   "serviceStart": 1,
+   "macInputHex": "74736d2d61646d696e2d76319edc5e236a1ffe539563a7c9e220cd900f41a013a87cfcb9966aca441f31834b9301721912653d346096466b20ef0eb893ecd8face38fdf7149abb8df4fe17440000000000000001",
+   "mac": "F6dBZ+tFakpdH0he2Rsaosq4v3akQanRK+5vCfKrCik=",
+   "mac2": "MbfmIREyQWBCyZmfoltbFM2h8JTMZzAYEtq9GoIK4oU="
+  },
+  {
+   "name": "case 2",
+   "adminKey": "ztATKUeS4FLEoc8wLKdJWGj9BUERtaCTFwWZaKkD6Vg=",
+   "serviceNonce": "IZo1B9NK9WInoBjWEBOiT2xyvZOvtGXVLRuzU3LqR1s=",
+   "adminNonce": "9w2ecxyZiASEFwfl8W1Oyt2i7PIzTJ7XWQLbTauRm4M=",
+   "serviceStart": 9007199254740991,
+   "macInputHex": "74736d2d61646d696e2d7631219a3507d34af56227a018d61013a24f6c72bd93afb465d52d1bb35372ea475bf70d9e731c998804841707e5f16d4ecadda2ecf2334c9ed75902db4dab919b83001fffffffffffff",
+   "mac": "x64EEnGJrTGphY+9tVj0DCWOydZZmI+ajEzQgreoev0=",
+   "mac2": "YzeSLGU/P3RDfuDV4cXbEzCscjVVcTg7g/uki9q2UYM="
+  },
+  {
+   "name": "case 3",
+   "adminKey": "uYm8bemLRIqmk9KGVtZ2vC0YbbatN4NXVyJHaZsmL7k=",
+   "serviceNonce": "t1BzUnQE9jWXu/jGlCrS2SXWBTfFBy3Mi/+BCcNQp9A=",
+   "adminNonce": "zNBG4oAdSOj7EQimkjXcHUgEMvmJ4VtiBrCxvTITTF4=",
+   "serviceStart": 1794560400123,
+   "macInputHex": "74736d2d61646d696e2d7631b75073527404f63597bbf8c6942ad2d925d60537c5072dcc8bff8109c350a7d0ccd046e2801d48e8fb1108a69235dc1d480432f989e15b6206b0b1bd32134c5e000001a1d4229afb",
+   "mac": "5ncRBpUZxdiLVA0MQbEfLqnjglZemjTzILln7e/Bq6A=",
+   "mac2": "y9havGnukt/Lu+16D8FNCJbwjcu46MvQGONH5ZauuiQ="
+  }
+ ]
+}

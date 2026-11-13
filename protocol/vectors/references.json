@@ -1,0 +1,1286 @@
+{
+ "note": "Each valid input with its parse result and canonical form (section 4.5); each invalid input with its malformed reason (section 4.6); and formatting cases from a parse result. A library must agree on all three.",
+ "maxReferenceBytes": 1024,
+ "valid": [
+  {
+   "input": "telegram.bot_token",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "telegram.bot_token"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "telegram.bot_token"
+  },
+  {
+   "input": "db.main",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "db.main"
+  },
+  {
+   "input": "a",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "a"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "a"
+  },
+  {
+   "input": "a1.b_2.c-3",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "a1.b_2.c-3"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "a1.b_2.c-3"
+  },
+  {
+   "input": "[env:prod]db.main#UserName",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "prod"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "UserName",
+    "fieldGiven": true
+   },
+   "canonical": "[env:prod]db.main#UserName"
+  },
+  {
+   "input": "[env:prod,host:bomber]fleet/Cloud/AWS/root",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "prod"
+     },
+     {
+      "dimension": "host",
+      "value": "bomber"
+     }
+    ],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "[env:prod,host:bomber]fleet/Cloud/AWS/root"
+  },
+  {
+   "input": "[host:bomber,env:prod]fleet/Cloud/AWS/root",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "host",
+      "value": "bomber"
+     },
+     {
+      "dimension": "env",
+      "value": "prod"
+     }
+    ],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "[env:prod,host:bomber]fleet/Cloud/AWS/root"
+  },
+  {
+   "input": "[env:default]db.main",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "default"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "[env:default]db.main"
+  },
+  {
+   "input": "fleet/Cloud/AWS/root",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/Cloud/AWS/root"
+  },
+  {
+   "input": "fleet/Cloud/AWS/root#Password",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": true
+   },
+   "canonical": "fleet/Cloud/AWS/root"
+  },
+  {
+   "input": "fleet/Cloud/AWS/root#URL",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "URL",
+    "fieldGiven": true
+   },
+   "canonical": "fleet/Cloud/AWS/root#URL"
+  },
+  {
+   "input": "fleet/Mail/a%2Fb%23c",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Mail",
+      "a/b#c"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/Mail/a%2Fb%23c"
+  },
+  {
+   "input": "fleet/Mail/a%2fb",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Mail",
+      "a/b"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/Mail/a%2Fb"
+  },
+  {
+   "input": "fleet/%40host%3Abomber",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "@host:bomber"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/%40host%3Abomber"
+  },
+  {
+   "input": "fleet/%7Etilde",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "~tilde"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/%7Etilde"
+  },
+  {
+   "input": "fleet/a~b/c@d",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "a~b",
+      "c@d"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/a~b/c@d"
+  },
+  {
+   "input": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "uuid",
+     "store": "fleet",
+     "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8"
+  },
+  {
+   "input": "fleet/~0F3C2A1B4D5E6F708192A3B4C5D6E7F8#totp",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "uuid",
+     "store": "fleet",
+     "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8"
+    },
+    "field": "totp",
+    "fieldGiven": true
+   },
+   "canonical": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8#totp"
+  },
+  {
+   "input": "0store/x",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "0store",
+     "segments": [
+      "x"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "0store/x"
+  },
+  {
+   "input": "fleet/Ssh/k#attachment%3Aid_ed25519",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Ssh",
+      "k"
+     ]
+    },
+    "field": "attachment:id_ed25519",
+    "fieldGiven": true
+   },
+   "canonical": "fleet/Ssh/k#attachment%3Aid_ed25519"
+  },
+  {
+   "input": "fleet/Grüße/Café",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Grüße",
+      "Café"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/Grüße/Café"
+  },
+  {
+   "input": "fleet/Gr%C3%BC%C3%9Fe",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Grüße"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/Grüße"
+  },
+  {
+   "input": "fleet/with space/and tab%09",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "with space",
+      "and tab\t"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/with space/and tab%09"
+  },
+  {
+   "input": "fleet/%25",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "%"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/%25"
+  },
+  {
+   "input": "[env:pr%2Cod]db.main",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "pr,od"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "[env:pr%2Cod]db.main"
+  },
+  {
+   "input": "[region:eu-west_1,env:prod]x.y",
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "region",
+      "value": "eu-west_1"
+     },
+     {
+      "dimension": "env",
+      "value": "prod"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "x.y"
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "[env:prod,region:eu-west_1]x.y"
+  },
+  {
+   "input": "fleet/Mail/a.b.c#Notes",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Mail",
+      "a.b.c"
+     ]
+    },
+    "field": "Notes",
+    "fieldGiven": true
+   },
+   "canonical": "fleet/Mail/a.b.c#Notes"
+  },
+  {
+   "input": "fleet/a%5Bb%5D%2Cc",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "a[b],c"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/a%5Bb%5D%2Cc"
+  },
+  {
+   "input": "k#Password",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "k"
+    },
+    "field": "Password",
+    "fieldGiven": true
+   },
+   "canonical": "k"
+  },
+  {
+   "input": "k#password",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "key",
+     "key": "k"
+    },
+    "field": "password",
+    "fieldGiven": true
+   },
+   "canonical": "k#password"
+  },
+  {
+   "input": "fleet/😀/x",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "😀",
+      "x"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "fleet/😀/x"
+  },
+  {
+   "input": "store-1/A/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b",
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "store-1",
+     "segments": [
+      "A",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b",
+      "b"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   },
+   "canonical": "store-1/A/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b/b"
+  }
+ ],
+ "invalid": [
+  {
+   "input": "",
+   "reason": "empty"
+  },
+  {
+   "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "reason": "too_long"
+  },
+  {
+   "input": "fleet/éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+   "reason": "too_long"
+  },
+  {
+   "input": "fleet//X",
+   "reason": "empty_segment"
+  },
+  {
+   "input": "fleet/",
+   "reason": "empty_segment"
+  },
+  {
+   "input": "[env:]x",
+   "reason": "empty_segment"
+  },
+  {
+   "input": "[]x",
+   "reason": "empty_segment"
+  },
+  {
+   "input": "x#",
+   "reason": "empty_segment"
+  },
+  {
+   "input": "[env:prod",
+   "reason": "unclosed_qualifiers"
+  },
+  {
+   "input": "[env:prod]",
+   "reason": "empty_target"
+  },
+  {
+   "input": "#UserName",
+   "reason": "empty_target"
+  },
+  {
+   "input": "[env]x",
+   "reason": "bad_binding"
+  },
+  {
+   "input": "[env:a:b]x",
+   "reason": "bad_binding"
+  },
+  {
+   "input": "[Env:prod]x",
+   "reason": "bad_dimension"
+  },
+  {
+   "input": "[1env:prod]x",
+   "reason": "bad_dimension"
+  },
+  {
+   "input": "[env:a,env:b]x",
+   "reason": "duplicate_dimension"
+  },
+  {
+   "input": "Db.main",
+   "reason": "bad_key"
+  },
+  {
+   "input": "db..main",
+   "reason": "bad_key"
+  },
+  {
+   "input": "db.main.",
+   "reason": "bad_key"
+  },
+  {
+   "input": "-db",
+   "reason": "bad_key"
+  },
+  {
+   "input": "db main",
+   "reason": "bad_key"
+  },
+  {
+   "input": "db%2Emain",
+   "reason": "bad_key"
+  },
+  {
+   "input": "Fleet/x",
+   "reason": "bad_store"
+  },
+  {
+   "input": "_fleet/x",
+   "reason": "bad_store"
+  },
+  {
+   "input": "fleet/~abc",
+   "reason": "bad_uuid"
+  },
+  {
+   "input": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7fz",
+   "reason": "bad_uuid"
+  },
+  {
+   "input": "fleet/@host:bomber/x",
+   "reason": "reserved_prefix"
+  },
+  {
+   "input": "fleet/@x",
+   "reason": "reserved_prefix"
+  },
+  {
+   "input": "fleet/a/~b",
+   "reason": "reserved_prefix"
+  },
+  {
+   "input": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8/x",
+   "reason": "reserved_prefix"
+  },
+  {
+   "input": "a.b#c#d",
+   "reason": "reserved_character"
+  },
+  {
+   "input": "fleet/a:b",
+   "reason": "reserved_character"
+  },
+  {
+   "input": "fleet/a,b",
+   "reason": "reserved_character"
+  },
+  {
+   "input": "fleet/a[b",
+   "reason": "reserved_character"
+  },
+  {
+   "input": "fleet/a]b",
+   "reason": "reserved_character"
+  },
+  {
+   "input": "[env:prod]x]",
+   "reason": "bad_key"
+  },
+  {
+   "input": "fleet/a%zz",
+   "reason": "bad_escape"
+  },
+  {
+   "input": "fleet/a%2",
+   "reason": "bad_escape"
+  },
+  {
+   "input": "fleet/a%",
+   "reason": "bad_escape"
+  },
+  {
+   "input": "fleet/a%C3",
+   "reason": "bad_utf8"
+  },
+  {
+   "input": "fleet/%C0%AF",
+   "reason": "bad_utf8"
+  },
+  {
+   "input": "fleet/%ED%A0%80",
+   "reason": "bad_utf8"
+  },
+  {
+   "input": "fleet/a\tb",
+   "reason": "control_character"
+  },
+  {
+   "input": "fleet/ab",
+   "reason": "control_character"
+  }
+ ],
+ "format": [
+  {
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "host",
+      "value": "bomber"
+     },
+     {
+      "dimension": "env",
+      "value": "prod"
+     }
+    ],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password"
+   },
+   "formatted": "[env:prod,host:bomber]fleet/Cloud/AWS/root",
+   "reparsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "prod"
+     },
+     {
+      "dimension": "host",
+      "value": "bomber"
+     }
+    ],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "Cloud",
+      "AWS",
+      "root"
+     ]
+    },
+    "field": "Password",
+    "fieldGiven": false
+   }
+  },
+  {
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "@host:bomber",
+      "Telegram/Bot",
+      "a#b",
+      "~x",
+      "100%"
+     ]
+    },
+    "field": "attachment:id_ed25519"
+   },
+   "formatted": "fleet/%40host%3Abomber/Telegram%2FBot/a%23b/%7Ex/100%25#attachment%3Aid_ed25519",
+   "reparsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "@host:bomber",
+      "Telegram/Bot",
+      "a#b",
+      "~x",
+      "100%"
+     ]
+    },
+    "field": "attachment:id_ed25519",
+    "fieldGiven": true
+   }
+  },
+  {
+   "parsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "a,b:c"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "UserName"
+   },
+   "formatted": "[env:a%2Cb%3Ac]db.main#UserName",
+   "reparsed": {
+    "qualifiers": [
+     {
+      "dimension": "env",
+      "value": "a,b:c"
+     }
+    ],
+    "target": {
+     "kind": "key",
+     "key": "db.main"
+    },
+    "field": "UserName",
+    "fieldGiven": true
+   }
+  },
+  {
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "uuid",
+     "store": "fleet",
+     "uuid": "0F3C2A1B4D5E6F708192A3B4C5D6E7F8"
+    },
+    "field": "totp"
+   },
+   "formatted": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8#totp",
+   "reparsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "uuid",
+     "store": "fleet",
+     "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8"
+    },
+    "field": "totp",
+    "fieldGiven": true
+   }
+  },
+  {
+   "parsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "tab\there",
+      "ok @ mid"
+     ]
+    },
+    "field": "Notes"
+   },
+   "formatted": "fleet/tab%09here/ok @ mid#Notes",
+   "reparsed": {
+    "qualifiers": [],
+    "target": {
+     "kind": "path",
+     "store": "fleet",
+     "segments": [
+      "tab\there",
+      "ok @ mid"
+     ]
+    },
+    "field": "Notes",
+    "fieldGiven": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,1146 @@
+{
+ "note": "Every frame as hex with its decoded payload. The JSON in the hex is compact, keys in the order shown; a reader accepts any valid JSON. Invalid frames name what the receiver does (protocol.md section 2.4).",
+ "protocol": 1,
+ "frames": [
+  {
+   "name": "hello",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "hello",
+    "protocol": 1,
+    "client": {
+     "name": "deploy.sh",
+     "version": "0.1.0",
+     "language": "dart"
+    }
+   },
+   "hex": "0000005d007b226f70223a2268656c6c6f222c2270726f746f636f6c223a312c22636c69656e74223a7b226e616d65223a226465706c6f792e7368222c2276657273696f6e223a22302e312e30222c226c616e6775616765223a2264617274227d7d"
+  },
+  {
+   "name": "hello on Windows, with the token and a client token",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "hello",
+    "protocol": 1,
+    "client": {
+     "name": "deploy.sh",
+     "version": "0.1.0",
+     "language": "dart"
+    },
+    "token": "hhmRHaZlJ026BF/D8bHSNl5wiIk3UW4FT5MwTxq1Rig=",
+    "clientToken": "38jTFNV4UTRBtesG18UmNvLmrdd0T4Enmb4+n6RCGzU="
+   },
+   "hex": "000000d1007b226f70223a2268656c6c6f222c2270726f746f636f6c223a312c22636c69656e74223a7b226e616d65223a226465706c6f792e7368222c2276657273696f6e223a22302e312e30222c226c616e6775616765223a2264617274227d2c22746f6b656e223a2268686d5248615a6c4a30323642462f44386248534e6c357769496b335557344654354d77547871315269673d222c22636c69656e74546f6b656e223a2233386a54464e563455545242746573473138556d4e764c6d726464305434456e6d62342b6e365243477a553d227d"
+  },
+  {
+   "name": "welcome",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "welcome",
+    "protocol": 1,
+    "service": {
+     "version": "0.1.0"
+    },
+    "features": [],
+    "host": "bigbeast",
+    "platform": "linux"
+   },
+   "hex": "0000006e007b226f70223a2277656c636f6d65222c2270726f746f636f6c223a312c2273657276696365223a7b2276657273696f6e223a22302e312e30227d2c226665617475726573223a5b5d2c22686f7374223a226269676265617374222c22706c6174666f726d223a226c696e7578227d"
+  },
+  {
+   "name": "get with qualifiers and a field",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "get",
+    "id": 1,
+    "ref": "[env:prod]db.main#UserName"
+   },
+   "hex": "00000036007b226f70223a22676574222c226964223a312c22726566223a225b656e763a70726f645d64622e6d61696e23557365724e616d65227d"
+  },
+  {
+   "name": "get with dimensions beside the reference, no wait",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "get",
+    "id": 2,
+    "ref": "db.main",
+    "dimensions": {
+     "env": "prod"
+    },
+    "field": "UserName",
+    "wait": false
+   },
+   "hex": "0000005f007b226f70223a22676574222c226964223a322c22726566223a2264622e6d61696e222c2264696d656e73696f6e73223a7b22656e76223a2270726f64227d2c226669656c64223a22557365724e616d65222c2277616974223a66616c73657d"
+  },
+  {
+   "name": "get with a timeout, asking for a client token",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "get",
+    "id": 3,
+    "ref": "telegram.bot_token",
+    "timeoutMs": 30000,
+    "wantClientToken": true
+   },
+   "hex": "00000057007b226f70223a22676574222c226964223a332c22726566223a2274656c656772616d2e626f745f746f6b656e222c2274696d656f75744d73223a33303030302c2277616e74436c69656e74546f6b656e223a747275657d"
+  },
+  {
+   "name": "value",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "value",
+    "id": 1,
+    "value": "demo-password-1",
+    "encoding": "utf8",
+    "entry": {
+     "store": "prod",
+     "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+     "source": "github",
+     "fetchedAt": "2026-11-13T08:59:30Z"
+    },
+    "bound": {
+     "env": "prod"
+    },
+    "version": {
+     "modified": "2026-11-01T12:00:00Z",
+     "revision": "b1946ac92492d2347c62"
+    }
+   },
+   "hex": "00000120007b226f70223a2276616c7565222c226964223a312c2276616c7565223a2264656d6f2d70617373776f72642d31222c22656e636f64696e67223a2275746638222c22656e747279223a7b2273746f7265223a2270726f64222c2275756964223a223066336332613162346435653666373038313932613362346335643665376638222c22736f75726365223a22676974687562222c22666574636865644174223a22323032362d31312d31335430383a35393a33305a227d2c22626f756e64223a7b22656e76223a2270726f64227d2c2276657273696f6e223a7b226d6f646966696564223a22323032362d31312d30315431323a30303a30305a222c227265766973696f6e223a226231393436616339323439326432333437633632227d7d"
+  },
+  {
+   "name": "value from the offline cache, binary, with an expiry and a client token",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "value",
+    "id": 3,
+    "value": "AAFkZW1v/w==",
+    "encoding": "base64",
+    "entry": {
+     "store": "fleet",
+     "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+     "source": "cache",
+     "fetchedAt": "2026-11-12T22:10:00Z"
+    },
+    "bound": {},
+    "version": {
+     "modified": "2026-10-01T00:00:00Z",
+     "revision": "9e107d9d372bb682"
+    },
+    "expires": "2027-01-01T00:00:00Z",
+    "clientToken": "38jTFNV4UTRBtesG18UmNvLmrdd0T4Enmb4+n6RCGzU="
+   },
+   "hex": "0000016d007b226f70223a2276616c7565222c226964223a332c2276616c7565223a224141466b5a5731762f773d3d222c22656e636f64696e67223a22626173653634222c22656e747279223a7b2273746f7265223a22666c656574222c2275756964223a223066336332613162346435653666373038313932613362346335643665376638222c22736f75726365223a226361636865222c22666574636865644174223a22323032362d31312d31325432323a31303a30305a227d2c22626f756e64223a7b7d2c2276657273696f6e223a7b226d6f646966696564223a22323032362d31302d30315430303a30303a30305a222c227265766973696f6e223a2239653130376439643337326262363832227d2c2265787069726573223a22323032372d30312d30315430303a30303a30305a222c22636c69656e74546f6b656e223a2233386a54464e563455545242746573473138556d4e764c6d726464305434456e6d62342b6e365243477a553d227d"
+  },
+  {
+   "name": "getMany",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "getMany",
+    "id": 4,
+    "refs": [
+     {
+      "ref": "db.main"
+     },
+     {
+      "ref": "db.main",
+      "field": "UserName"
+     },
+     {
+      "ref": "telegram.bot_token"
+     }
+    ],
+    "wait": true,
+    "timeoutMs": 60000
+   },
+   "hex": "00000092007b226f70223a226765744d616e79222c226964223a342c2272656673223a5b7b22726566223a2264622e6d61696e227d2c7b22726566223a2264622e6d61696e222c226669656c64223a22557365724e616d65227d2c7b22726566223a2274656c656772616d2e626f745f746f6b656e227d5d2c2277616974223a747275652c2274696d656f75744d73223a36303030307d"
+  },
+  {
+   "name": "values: a value and an error in request order",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "values",
+    "id": 4,
+    "results": [
+     {
+      "op": "value",
+      "value": "demo-password-1",
+      "encoding": "utf8",
+      "entry": {
+       "store": "prod",
+       "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+       "source": "github",
+       "fetchedAt": "2026-11-13T08:59:30Z"
+      },
+      "bound": {
+       "env": "prod"
+      },
+      "version": {
+       "modified": "2026-11-01T12:00:00Z",
+       "revision": "b1946ac92492d2347c62"
+      }
+     },
+     {
+      "op": "error",
+      "kind": "not_found",
+      "message": "no entry for telegram.bot_token",
+      "details": {
+       "dimensions": {
+        "env": "prod",
+        "host": "bigbeast"
+       }
+      }
+     }
+    ]
+   },
+   "hex": "000001c4007b226f70223a2276616c756573222c226964223a342c22726573756c7473223a5b7b226f70223a2276616c7565222c2276616c7565223a2264656d6f2d70617373776f72642d31222c22656e636f64696e67223a2275746638222c22656e747279223a7b2273746f7265223a2270726f64222c2275756964223a223066336332613162346435653666373038313932613362346335643665376638222c22736f75726365223a22676974687562222c22666574636865644174223a22323032362d31312d31335430383a35393a33305a227d2c22626f756e64223a7b22656e76223a2270726f64227d2c2276657273696f6e223a7b226d6f646966696564223a22323032362d31312d30315431323a30303a30305a222c227265766973696f6e223a226231393436616339323439326432333437633632227d7d2c7b226f70223a226572726f72222c226b696e64223a226e6f745f666f756e64222c226d657373616765223a226e6f20656e74727920666f722074656c656772616d2e626f745f746f6b656e222c2264657461696c73223a7b2264696d656e73696f6e73223a7b22656e76223a2270726f64222c22686f7374223a226269676265617374227d7d7d5d7d"
+  },
+  {
+   "name": "progress: waiting for an unlock",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "progress",
+    "id": 1,
+    "pending": "unlock"
+   },
+   "hex": "0000002b007b226f70223a2270726f6772657373222c226964223a312c2270656e64696e67223a22756e6c6f636b227d"
+  },
+  {
+   "name": "progress: waiting for approval, with an approval code",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "progress",
+    "id": 4,
+    "pending": "approval",
+    "approvalCode": "K7Q2MZ4XWA"
+   },
+   "hex": "00000049007b226f70223a2270726f6772657373222c226964223a342c2270656e64696e67223a22617070726f76616c222c22617070726f76616c436f6465223a224b3751324d5a34585741227d"
+  },
+  {
+   "name": "error: not_found naming the dimensions",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 1,
+    "kind": "not_found",
+    "message": "no candidate for db.main",
+    "details": {
+     "dimensions": {
+      "env": "staging"
+     }
+    }
+   },
+   "hex": "00000078007b226f70223a226572726f72222c226964223a312c226b696e64223a226e6f745f666f756e64222c226d657373616765223a226e6f2063616e64696461746520666f722064622e6d61696e222c2264657461696c73223a7b2264696d656e73696f6e73223a7b22656e76223a2273746167696e67227d7d7d"
+  },
+  {
+   "name": "error: ambiguous naming the candidates",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 2,
+    "kind": "ambiguous",
+    "message": "two candidates rank equal",
+    "details": {
+     "candidates": [
+      {
+       "store": "dev",
+       "path": "Db/Main",
+       "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8"
+      },
+      {
+       "store": "dev",
+       "path": "Legacy/Db",
+       "uuid": "11111111111111111111111111111111"
+      }
+     ]
+    }
+   },
+   "hex": "00000101007b226f70223a226572726f72222c226964223a322c226b696e64223a22616d626967756f7573222c226d657373616765223a2274776f2063616e646964617465732072616e6b20657175616c222c2264657461696c73223a7b2263616e64696461746573223a5b7b2273746f7265223a22646576222c2270617468223a2244622f4d61696e222c2275756964223a223066336332613162346435653666373038313932613362346335643665376638227d2c7b2273746f7265223a22646576222c2270617468223a224c65676163792f4462222c2275756964223a223131313131313131313131313131313131313131313131313131313131313131227d5d7d7d"
+  },
+  {
+   "name": "error: denied, no approver",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 3,
+    "kind": "denied",
+    "message": "no approver answered",
+    "details": {
+     "reason": "no_approver"
+    }
+   },
+   "hex": "00000069007b226f70223a226572726f72222c226964223a332c226b696e64223a2264656e696564222c226d657373616765223a226e6f20617070726f76657220616e737765726564222c2264657461696c73223a7b22726561736f6e223a226e6f5f617070726f766572227d7d"
+  },
+  {
+   "name": "error: rate_limited",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 5,
+    "kind": "rate_limited",
+    "message": "slow down",
+    "details": {
+     "retryAfterMs": 10000
+    }
+   },
+   "hex": "00000062007b226f70223a226572726f72222c226964223a352c226b696e64223a22726174655f6c696d69746564222c226d657373616765223a22736c6f7720646f776e222c2264657461696c73223a7b22726574727941667465724d73223a31303030307d7d"
+  },
+  {
+   "name": "error: malformed reference",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 6,
+    "kind": "malformed",
+    "message": "empty segment",
+    "details": {
+     "reason": "empty_segment"
+    }
+   },
+   "hex": "00000067007b226f70223a226572726f72222c226964223a362c226b696e64223a226d616c666f726d6564222c226d657373616765223a22656d707479207365676d656e74222c2264657461696c73223a7b22726561736f6e223a22656d7074795f7365676d656e74227d7d"
+  },
+  {
+   "name": "error without an id: unsupported protocol, then the connection closes",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "kind": "unsupported",
+    "message": "protocol 2 is not spoken here",
+    "details": {
+     "protocols": [
+      1
+     ]
+    }
+   },
+   "hex": "00000069007b226f70223a226572726f72222c226b696e64223a22756e737570706f72746564222c226d657373616765223a2270726f746f636f6c2032206973206e6f742073706f6b656e2068657265222c2264657461696c73223a7b2270726f746f636f6c73223a5b315d7d7d"
+  },
+  {
+   "name": "error: unknown op, the connection stays open",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 7,
+    "kind": "unsupported",
+    "message": "unknown op",
+    "details": {
+     "op": "getEverything"
+    }
+   },
+   "hex": "00000062007b226f70223a226572726f72222c226964223a372c226b696e64223a22756e737570706f72746564222c226d657373616765223a22756e6b6e6f776e206f70222c2264657461696c73223a7b226f70223a2267657445766572797468696e67227d7d"
+  },
+  {
+   "name": "getFile (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "getFile",
+    "id": 8,
+    "ref": "fleet/Ssh/bigbeast#attachment%3Aid_ed25519"
+   },
+   "hex": "0000004a007b226f70223a2267657446696c65222c226964223a382c22726566223a22666c6565742f5373682f6269676265617374236174746163686d656e7425334169645f65643235353139227d"
+  },
+  {
+   "name": "file (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "file",
+    "id": 8,
+    "name": "id_ed25519",
+    "size": 6
+   },
+   "hex": "00000031007b226f70223a2266696c65222c226964223a382c226e616d65223a2269645f65643235353139222c2273697a65223a367d"
+  },
+  {
+   "name": "end (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "end",
+    "id": 8,
+    "sha256": "715c93604905fba1acb70324ea0032d5bb4f1c97f5c4af337b76fdf1c448ffa1"
+   },
+   "hex": "0000005f007b226f70223a22656e64222c226964223a382c22736861323536223a2237313563393336303439303566626131616362373033323465613030333264356262346631633937663563346166333337623736666466316334343866666131227d"
+  },
+  {
+   "name": "match (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "match",
+    "id": 9,
+    "url": "https://example.org/login"
+   },
+   "hex": "00000037007b226f70223a226d61746368222c226964223a392c2275726c223a2268747470733a2f2f6578616d706c652e6f72672f6c6f67696e227d"
+  },
+  {
+   "name": "matches (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "matches",
+    "id": 9,
+    "candidates": [
+     {
+      "entryId": "fleet/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+      "title": "Example",
+      "userName": "demo",
+      "matchedUrl": "https://example.org",
+      "hasTotp": true
+     }
+    ]
+   },
+   "hex": "000000b2007b226f70223a226d617463686573222c226964223a392c2263616e64696461746573223a5b7b22656e7472794964223a22666c6565742f7e3066336332613162346435653666373038313932613362346335643665376638222c227469746c65223a224578616d706c65222c22757365724e616d65223a2264656d6f222c226d61746368656455726c223a2268747470733a2f2f6578616d706c652e6f7267222c22686173546f7470223a747275657d5d7d"
+  },
+  {
+   "name": "propose (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "propose",
+    "id": 10,
+    "url": "https://example.org",
+    "userName": "demo",
+    "password": "demo-password-2"
+   },
+   "hex": "00000063007b226f70223a2270726f706f7365222c226964223a31302c2275726c223a2268747470733a2f2f6578616d706c652e6f7267222c22757365724e616d65223a2264656d6f222c2270617373776f7264223a2264656d6f2d70617373776f72642d32227d"
+  },
+  {
+   "name": "accepted (phase B)",
+   "endpoint": "client",
+   "type": 0,
+   "json": {
+    "op": "accepted",
+    "id": 10
+   },
+   "hex": "00000019007b226f70223a226163636570746564222c226964223a31307d"
+  },
+  {
+   "name": "challenge",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "challenge",
+    "serviceNonce": "PGAeHLIQ6ZIDzkr/QLASU+/20TxrlWb2q76QFoDUIho=",
+    "serviceStart": 1794560400000,
+    "protocol": 1,
+    "service": {
+     "version": "0.1.0"
+    }
+   },
+   "hex": "00000098007b226f70223a226368616c6c656e6765222c22736572766963654e6f6e6365223a2250474165484c4951365a49447a6b722f514c4153552b2f32305478726c57623271373651466f445549686f3d222c22736572766963655374617274223a313739343536303430303030302c2270726f746f636f6c223a312c2273657276696365223a7b2276657273696f6e223a22302e312e30227d7d"
+  },
+  {
+   "name": "auth",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "auth",
+    "adminNonce": "A5Tye47vNW9pfrm/MRcwrzxsnlTt7rJ7s1v0c/BXmq4=",
+    "mac": "FwQtUiZ1rgKg+cWYbp/uu26TIDh7ePL7fwz7AL/6N+U=",
+    "client": {
+     "name": "tom_secrets_app",
+     "version": "0.1.0",
+     "language": "dart"
+    }
+   },
+   "hex": "000000c6007b226f70223a2261757468222c2261646d696e4e6f6e6365223a2241355479653437764e57397066726d2f4d526377727a78736e6c547437724a3773317630632f42586d71343d222c226d6163223a224677517455695a3172674b672b63575962702f75753236544944683765504c3766777a37414c2f364e2b553d222c22636c69656e74223a7b226e616d65223a22746f6d5f736563726574735f617070222c2276657273696f6e223a22302e312e30222c226c616e6775616765223a2264617274227d7d"
+  },
+  {
+   "name": "authed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "authed",
+    "mac2": "p3Pguu0JEljxH6UZpRe6uARG6BHUpFQu+seUPxd6Pq0="
+   },
+   "hex": "00000045007b226f70223a22617574686564222c226d616332223a22703350677575304a456c6a784836555a705265367541524736424855704651752b736555507864365071303d227d"
+  },
+  {
+   "name": "claim",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "claim",
+    "password": "demo master password",
+    "client": {
+     "name": "tsm",
+     "version": "0.1.0",
+     "language": "dart"
+    }
+   },
+   "hex": "0000006c007b226f70223a22636c61696d222c2270617373776f7264223a2264656d6f206d61737465722070617373776f7264222c22636c69656e74223a7b226e616d65223a2274736d222c2276657273696f6e223a22302e312e30222c226c616e6775616765223a2264617274227d7d"
+  },
+  {
+   "name": "claimed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "claimed",
+    "adminKey": "D8iVWP6TOkRke8Vhe34PkMmdV9ykUPfFSMBZ8x8+lXo="
+   },
+   "hex": "0000004a007b226f70223a22636c61696d6564222c2261646d696e4b6579223a2244386956575036544f6b526b65385668653334506b4d6d645639796b55506646534d425a3878382b6c586f3d227d"
+  },
+  {
+   "name": "unlock",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "unlock",
+    "id": 1,
+    "password": "demo master password",
+    "keyFile": "FDjRK03hR2UR/NtK4oKSeq059vuxebH7jeNjgEJm95N/lrCzfL2dvZIGr0HNzfnjay1ouAHgSq/0PE5e5lD3Zw=="
+   },
+   "hex": "0000009d007b226f70223a22756e6c6f636b222c226964223a312c2270617373776f7264223a2264656d6f206d61737465722070617373776f7264222c226b657946696c65223a2246446a524b303368523255522f4e744b346f4b536571303539767578656248376a654e6a67454a6d39354e2f6c72437a664c3264765a49477230484e7a666e6a6179316f7541486753712f3050453565356c44335a773d3d227d"
+  },
+  {
+   "name": "unlock with a sealed bundle (phase B)",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "unlock",
+    "id": 2,
+    "vault": "primary",
+    "bundle": {
+     "nonce": "APVUOQBU/81GonmI",
+     "ciphertext": "cm5xoBHDTThPOYJbzioLbcxOSdw3uxzs4cpsyjaEZQ15Igzr4pbdic/dk2/SdZpBD7PJIXzeCdZ24xGfdRjmqM5Yj8IAkcRWPtFEOx6tJjE="
+    }
+   },
+   "hex": "000000ca007b226f70223a22756e6c6f636b222c226964223a322c227661756c74223a227072696d617279222c2262756e646c65223a7b226e6f6e6365223a22415056554f5142552f3831476f6e6d49222c2263697068657274657874223a22636d35786f424844545468504f594a627a696f4c6263784f5364773375787a7334637073796a61455a51313549677a723470626469632f646b322f53645a70424437504a49587a6543645a323478476664526a6d714d35596a3849416b635257507446454f7836744a6a453d227d7d"
+  },
+  {
+   "name": "unlockStore",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "unlockStore",
+    "id": 3,
+    "store": "prod",
+    "password": "demo store password"
+   },
+   "hex": "0000004b007b226f70223a22756e6c6f636b53746f7265222c226964223a332c2273746f7265223a2270726f64222c2270617373776f7264223a2264656d6f2073746f72652070617373776f7264227d"
+  },
+  {
+   "name": "ok",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "ok",
+    "id": 1
+   },
+   "hex": "00000012007b226f70223a226f6b222c226964223a317d"
+  },
+  {
+   "name": "lock",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "lock",
+    "id": 4
+   },
+   "hex": "00000014007b226f70223a226c6f636b222c226964223a347d"
+  },
+  {
+   "name": "shutdown",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "shutdown",
+    "id": 5
+   },
+   "hex": "00000018007b226f70223a2273687574646f776e222c226964223a357d"
+  },
+  {
+   "name": "status",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "status",
+    "id": 6
+   },
+   "hex": "00000016007b226f70223a22737461747573222c226964223a367d"
+  },
+  {
+   "name": "statusReport",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "statusReport",
+    "id": 6,
+    "locked": false,
+    "lockMode": "a",
+    "protocol": 1,
+    "service": {
+     "version": "0.1.0",
+     "start": 1794560400000
+    },
+    "stores": [
+     {
+      "name": "fleet",
+      "state": "current",
+      "source": "github",
+      "fetchedAt": "2026-11-13T08:59:30Z",
+      "notPushed": 0
+     },
+     {
+      "name": "prod",
+      "state": "offline",
+      "source": "cache",
+      "fetchedAt": "2026-11-12T22:10:00Z",
+      "notPushed": 1
+     }
+    ],
+    "admins": 1,
+    "hardening": {
+     "mlock": true,
+     "noCoreDumps": true
+    }
+   },
+   "hex": "00000189007b226f70223a227374617475735265706f7274222c226964223a362c226c6f636b6564223a66616c73652c226c6f636b4d6f6465223a2261222c2270726f746f636f6c223a312c2273657276696365223a7b2276657273696f6e223a22302e312e30222c227374617274223a313739343536303430303030307d2c2273746f726573223a5b7b226e616d65223a22666c656574222c227374617465223a2263757272656e74222c22736f75726365223a22676974687562222c22666574636865644174223a22323032362d31312d31335430383a35393a33305a222c226e6f74507573686564223a307d2c7b226e616d65223a2270726f64222c227374617465223a226f66666c696e65222c22736f75726365223a226361636865222c22666574636865644174223a22323032362d31312d31325432323a31303a30305a222c226e6f74507573686564223a317d5d2c2261646d696e73223a312c2268617264656e696e67223a7b226d6c6f636b223a747275652c226e6f436f726544756d7073223a747275657d7d"
+  },
+  {
+   "name": "reload",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "reload",
+    "id": 7
+   },
+   "hex": "00000016007b226f70223a2272656c6f6164222c226964223a377d"
+  },
+  {
+   "name": "error: reload offline",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "error",
+    "id": 7,
+    "kind": "offline",
+    "message": "GitHub unreachable",
+    "details": {
+     "stores": [
+      "fleet",
+      "prod"
+     ]
+    }
+   },
+   "hex": "0000006b007b226f70223a226572726f72222c226964223a372c226b696e64223a226f66666c696e65222c226d657373616765223a2247697448756220756e726561636861626c65222c2264657461696c73223a7b2273746f726573223a5b22666c656574222c2270726f64225d7d7d"
+  },
+  {
+   "name": "vaultKeys",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "vaultKeys",
+    "id": 8
+   },
+   "hex": "00000019007b226f70223a227661756c744b657973222c226964223a387d"
+  },
+  {
+   "name": "vaultKeySet",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "vaultKeySet",
+    "id": 8,
+    "stores": [
+     {
+      "store": "fleet",
+      "location": "github:al-the-bear/demo-vault/fleet.tsmx",
+      "keys": {}
+     }
+    ]
+   },
+   "hex": "00000078007b226f70223a227661756c744b6579536574222c226964223a382c2273746f726573223a5b7b2273746f7265223a22666c656574222c226c6f636174696f6e223a226769746875623a616c2d7468652d626561722f64656d6f2d7661756c742f666c6565742e74736d78222c226b657973223a7b7d7d5d7d"
+  },
+  {
+   "name": "save",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "save",
+    "id": 9,
+    "store": "fleet",
+    "bytes": "NtNsy0eDS4qlDCF2zcg5WH2j+YVSAT2YeAseQ2EZmsK6++D0evR2MH6hVIYkCr07QZ8nWTY3XCI3gKHasSOOZ09T77Vn0nHwV37K6DJvSEjd8CDQJuu8lspsyB8PJN6/",
+    "baseRevision": "b1946ac92492d2347c62"
+   },
+   "hex": "000000d5007b226f70223a2273617665222c226964223a392c2273746f7265223a22666c656574222c226279746573223a224e744e73793065445334716c444346327a6367355748326a2b59565341543259654173655132455a6d734b362b2b4430657652324d4836685649596b43723037515a386e5754593358434933674b486173534f4f5a3039543737566e306e48775633374b36444a7653456a64384344514a7575386c737073794238504a4e362f222c22626173655265766973696f6e223a226231393436616339323439326432333437633632227d"
+  },
+  {
+   "name": "subscribe",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "subscribe",
+    "id": 10
+   },
+   "hex": "0000001a007b226f70223a22737562736372696265222c226964223a31307d"
+  },
+  {
+   "name": "approve",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approve",
+    "id": 11,
+    "approvalId": "a-17",
+    "decision": "always",
+    "secret": "ref",
+    "pin": "hash"
+   },
+   "hex": "0000005c007b226f70223a22617070726f7665222c226964223a31312c22617070726f76616c4964223a22612d3137222c226465636973696f6e223a22616c77617973222c22736563726574223a22726566222c2270696e223a2268617368227d"
+  },
+  {
+   "name": "approve a folder, pin relaxed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approve",
+    "id": 12,
+    "approvalId": "a-18",
+    "decision": "folder",
+    "secret": "store",
+    "folder": "/home/demo/Code",
+    "pin": {
+     "relaxedUntil": "2026-11-20T00:00:00Z"
+    }
+   },
+   "hex": "0000009a007b226f70223a22617070726f7665222c226964223a31322c22617070726f76616c4964223a22612d3138222c226465636973696f6e223a22666f6c646572222c22736563726574223a2273746f7265222c22666f6c646572223a222f686f6d652f64656d6f2f436f6465222c2270696e223a7b2272656c61786564556e74696c223a22323032362d31312d32305430303a30303a30305a227d7d"
+  },
+  {
+   "name": "approval.redeem",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approval.redeem",
+    "id": 13,
+    "token": "MZXW6YTBOJRGC4TCMFZGKYLSMQ"
+   },
+   "hex": "00000045007b226f70223a22617070726f76616c2e72656465656d222c226964223a31332c22746f6b656e223a224d5a5857365954424f4a5247433454434d465a474b594c534d51227d"
+  },
+  {
+   "name": "approval.issue",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approval.issue",
+    "id": 14,
+    "code": "K7Q2MZ4XWA",
+    "decision": "once",
+    "secret": "ref"
+   },
+   "hex": "00000054007b226f70223a22617070726f76616c2e6973737565222c226964223a31342c22636f6465223a224b3751324d5a34585741222c226465636973696f6e223a226f6e6365222c22736563726574223a22726566227d"
+  },
+  {
+   "name": "approvalToken",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approvalToken",
+    "id": 14,
+    "token": "MZXW6YTBOJRGC4TCMFZGKYLSMQ"
+   },
+   "hex": "00000043007b226f70223a22617070726f76616c546f6b656e222c226964223a31342c22746f6b656e223a224d5a5857365954424f4a5247433454434d465a474b594c534d51227d"
+  },
+  {
+   "name": "grants.list",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "grants.list",
+    "id": 15,
+    "host": "bigbeast"
+   },
+   "hex": "0000002e007b226f70223a226772616e74732e6c697374222c226964223a31352c22686f7374223a226269676265617374227d"
+  },
+  {
+   "name": "grantList",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "grantList",
+    "id": 15,
+    "grants": [
+     {
+      "id": "g-0001",
+      "host": "bigbeast",
+      "subject": "script /usr/bin/bash /home/demo/deploy.sh",
+      "secret": "[env:prod]db.main",
+      "decision": "allow",
+      "created": "2026-11-13T09:00:00Z",
+      "pin": "hash",
+      "approver": "mbp",
+      "signatures": [
+       {
+        "alg": "ed25519",
+        "keyId": "mbp-approver-1",
+        "sig": "WyEPrlFcu6//5SM7fZWiwQ+rbkMbO6toHSjg73r5Ye1T/xp4awemPI1Lsvf1sE55g5+4ZOTHOdegGsqp/1QT4w=="
+       }
+      ]
+     }
+    ]
+   },
+   "hex": "00000187007b226f70223a226772616e744c697374222c226964223a31352c226772616e7473223a5b7b226964223a22672d30303031222c22686f7374223a226269676265617374222c227375626a656374223a22736372697074202f7573722f62696e2f62617368202f686f6d652f64656d6f2f6465706c6f792e7368222c22736563726574223a225b656e763a70726f645d64622e6d61696e222c226465636973696f6e223a22616c6c6f77222c2263726561746564223a22323032362d31312d31335430393a30303a30305a222c2270696e223a2268617368222c22617070726f766572223a226d6270222c227369676e617475726573223a5b7b22616c67223a2265643235353139222c226b65794964223a226d62702d617070726f7665722d31222c22736967223a2257794550726c466375362f2f35534d37665a576977512b72626b4d624f36746f48536a6737337235596531542f7870346177656d5049314c737666317345353567352b345a4f54484f646567477371702f31515434773d3d227d5d7d5d7d"
+  },
+  {
+   "name": "grants.add",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "grants.add",
+    "id": 16,
+    "grant": {
+     "host": "bigbeast",
+     "subject": "exe /usr/local/bin/backup",
+     "secret": "store fleet",
+     "decision": "allow",
+     "pin": "off"
+    }
+   },
+   "hex": "00000093007b226f70223a226772616e74732e616464222c226964223a31362c226772616e74223a7b22686f7374223a226269676265617374222c227375626a656374223a22657865202f7573722f6c6f63616c2f62696e2f6261636b7570222c22736563726574223a2273746f726520666c656574222c226465636973696f6e223a22616c6c6f77222c2270696e223a226f6666227d7d"
+  },
+  {
+   "name": "grants.revoke",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "grants.revoke",
+    "id": 17,
+    "host": "bigbeast",
+    "grantId": "g-0001"
+   },
+   "hex": "00000043007b226f70223a226772616e74732e7265766f6b65222c226964223a31372c22686f7374223a226269676265617374222c226772616e744964223a22672d30303031227d"
+  },
+  {
+   "name": "approvers.cliSwitch",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approvers.cliSwitch",
+    "id": 18,
+    "on": false
+   },
+   "hex": "0000002f007b226f70223a22617070726f766572732e636c69537769746368222c226964223a31382c226f6e223a66616c73657d"
+  },
+  {
+   "name": "audit.query",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "audit.query",
+    "id": 19,
+    "from": "2026-11-13T00:00:00Z",
+    "to": "2026-11-14T00:00:00Z",
+    "ref": "db.main"
+   },
+   "hex": "00000066007b226f70223a2261756469742e7175657279222c226964223a31392c2266726f6d223a22323032362d31312d31335430303a30303a30305a222c22746f223a22323032362d31312d31345430303a30303a30305a222c22726566223a2264622e6d61696e227d"
+  },
+  {
+   "name": "auditRecords",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "auditRecords",
+    "id": 19,
+    "records": [
+     {
+      "time": "2026-11-13T09:00:01Z",
+      "host": "bigbeast",
+      "identity": {
+       "kind": "script",
+       "exe": "/usr/bin/bash",
+       "interpreter": "/usr/bin/bash",
+       "script": "/home/demo/deploy.sh",
+       "args": [
+        "bash",
+        "deploy.sh"
+       ],
+       "cwd": "/home/demo",
+       "parent": {
+        "exe": "/usr/bin/sshd"
+       },
+       "uid": 1000
+      },
+      "refs": [
+       "[env:prod]db.main"
+      ],
+      "outcome": "allowed",
+      "grantId": "g-0001"
+     }
+    ]
+   },
+   "hex": "0000016b007b226f70223a2261756469745265636f726473222c226964223a31392c227265636f726473223a5b7b2274696d65223a22323032362d31312d31335430393a30303a30315a222c22686f7374223a226269676265617374222c226964656e74697479223a7b226b696e64223a22736372697074222c22657865223a222f7573722f62696e2f62617368222c22696e746572707265746572223a222f7573722f62696e2f62617368222c22736372697074223a222f686f6d652f64656d6f2f6465706c6f792e7368222c2261726773223a5b2262617368222c226465706c6f792e7368225d2c22637764223a222f686f6d652f64656d6f222c22706172656e74223a7b22657865223a222f7573722f62696e2f73736864227d2c22756964223a313030307d2c2272656673223a5b225b656e763a70726f645d64622e6d61696e225d2c226f7574636f6d65223a22616c6c6f776564222c226772616e744964223a22672d30303031227d5d7d"
+  },
+  {
+   "name": "event unlock_needed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "unlock_needed",
+    "identity": {
+     "kind": "script",
+     "exe": "/usr/bin/bash",
+     "interpreter": "/usr/bin/bash",
+     "script": "/home/demo/deploy.sh",
+     "args": [
+      "bash",
+      "deploy.sh"
+     ],
+     "cwd": "/home/demo",
+     "parent": {
+      "exe": "/usr/bin/sshd"
+     },
+     "uid": 1000
+    }
+   },
+   "hex": "000000e2007b226f70223a22756e6c6f636b5f6e6565646564222c226964656e74697479223a7b226b696e64223a22736372697074222c22657865223a222f7573722f62696e2f62617368222c22696e746572707265746572223a222f7573722f62696e2f62617368222c22736372697074223a222f686f6d652f64656d6f2f6465706c6f792e7368222c2261726773223a5b2262617368222c226465706c6f792e7368225d2c22637764223a222f686f6d652f64656d6f222c22706172656e74223a7b22657865223a222f7573722f62696e2f73736864227d2c22756964223a313030307d7d"
+  },
+  {
+   "name": "event approval_needed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approval_needed",
+    "approvalId": "a-17",
+    "host": "bigbeast",
+    "identity": {
+     "kind": "script",
+     "exe": "/usr/bin/bash",
+     "interpreter": "/usr/bin/bash",
+     "script": "/home/demo/deploy.sh",
+     "args": [
+      "bash",
+      "deploy.sh"
+     ],
+     "cwd": "/home/demo",
+     "parent": {
+      "exe": "/usr/bin/sshd"
+     },
+     "uid": 1000
+    },
+    "refs": [
+     "[env:prod]db.main"
+    ],
+    "resolved": [
+     {
+      "store": "prod",
+      "path": "Db/Main",
+      "kind": "login"
+     }
+    ],
+    "hostHint": "bigbeast (Linux, over SSH from mbp)",
+    "approvalCode": "K7Q2MZ4XWA"
+   },
+   "hex": "000001b2007b226f70223a22617070726f76616c5f6e6565646564222c22617070726f76616c4964223a22612d3137222c22686f7374223a226269676265617374222c226964656e74697479223a7b226b696e64223a22736372697074222c22657865223a222f7573722f62696e2f62617368222c22696e746572707265746572223a222f7573722f62696e2f62617368222c22736372697074223a222f686f6d652f64656d6f2f6465706c6f792e7368222c2261726773223a5b2262617368222c226465706c6f792e7368225d2c22637764223a222f686f6d652f64656d6f222c22706172656e74223a7b22657865223a222f7573722f62696e2f73736864227d2c22756964223a313030307d2c2272656673223a5b225b656e763a70726f645d64622e6d61696e225d2c227265736f6c766564223a5b7b2273746f7265223a2270726f64222c2270617468223a2244622f4d61696e222c226b696e64223a226c6f67696e227d5d2c22686f737448696e74223a22626967626561737420284c696e75782c206f766572205353482066726f6d206d627029222c22617070726f76616c436f6465223a224b3751324d5a34585741227d"
+  },
+  {
+   "name": "event approval_closed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approval_closed",
+    "approvalId": "a-17",
+    "outcome": "approved"
+   },
+   "hex": "00000041007b226f70223a22617070726f76616c5f636c6f736564222c22617070726f76616c4964223a22612d3137222c226f7574636f6d65223a22617070726f766564227d"
+  },
+  {
+   "name": "event locked",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "locked"
+   },
+   "hex": "0000000f007b226f70223a226c6f636b6564227d"
+  },
+  {
+   "name": "event unlocked",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "unlocked"
+   },
+   "hex": "00000011007b226f70223a22756e6c6f636b6564227d"
+  },
+  {
+   "name": "event store_changed",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "store_changed",
+    "store": "fleet",
+    "revision": "9e107d9d372bb682"
+   },
+   "hex": "00000044007b226f70223a2273746f72655f6368616e676564222c2273746f7265223a22666c656574222c227265766973696f6e223a2239653130376439643337326262363832227d"
+  },
+  {
+   "name": "event store_state",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "store_state",
+    "store": "prod",
+    "state": "token_expired",
+    "source": "cache",
+    "fetchedAt": "2026-11-12T22:10:00Z",
+    "notPushed": 0
+   },
+   "hex": "0000007d007b226f70223a2273746f72655f7374617465222c2273746f7265223a2270726f64222c227374617465223a22746f6b656e5f65787069726564222c22736f75726365223a226361636865222c22666574636865644174223a22323032362d31312d31325432323a31303a30305a222c226e6f74507573686564223a307d"
+  },
+  {
+   "name": "event key_expiry",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "key_expiry",
+    "key": "github token",
+    "expiresAt": "2026-12-01T00:00:00Z",
+    "daysLeft": 18
+   },
+   "hex": "00000059007b226f70223a226b65795f657870697279222c226b6579223a2267697468756220746f6b656e222c22657870697265734174223a22323032362d31322d30315430303a30303a30305a222c22646179734c656674223a31387d"
+  },
+  {
+   "name": "event rate_limited",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "rate_limited",
+    "identity": {
+     "kind": "script",
+     "exe": "/usr/bin/bash",
+     "interpreter": "/usr/bin/bash",
+     "script": "/home/demo/deploy.sh",
+     "args": [
+      "bash",
+      "deploy.sh"
+     ],
+     "cwd": "/home/demo",
+     "parent": {
+      "exe": "/usr/bin/sshd"
+     },
+     "uid": 1000
+    },
+    "until": "2026-11-13T09:10:00Z"
+   },
+   "hex": "00000100007b226f70223a22726174655f6c696d69746564222c226964656e74697479223a7b226b696e64223a22736372697074222c22657865223a222f7573722f62696e2f62617368222c22696e746572707265746572223a222f7573722f62696e2f62617368222c22736372697074223a222f686f6d652f64656d6f2f6465706c6f792e7368222c2261726773223a5b2262617368222c226465706c6f792e7368225d2c22637764223a222f686f6d652f64656d6f222c22706172656e74223a7b22657865223a222f7573722f62696e2f73736864227d2c22756964223a313030307d2c22756e74696c223a22323032362d31312d31335430393a31303a30305a227d"
+  },
+  {
+   "name": "event proposal (phase B)",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "proposal",
+    "url": "https://example.org",
+    "userName": "demo",
+    "password": "demo-password-2"
+   },
+   "hex": "0000005c007b226f70223a2270726f706f73616c222c2275726c223a2268747470733a2f2f6578616d706c652e6f7267222c22757365724e616d65223a2264656d6f222c2270617373776f7264223a2264656d6f2d70617373776f72642d32227d"
+  },
+  {
+   "name": "binary chunk of getFile 8 (phase B)",
+   "endpoint": "client",
+   "type": 1,
+   "requestId": 8,
+   "chunkHex": "64656d6f2d6b",
+   "hex": "0000000e01000000000000000864656d6f2d6b"
+  }
+ ],
+ "invalid": [
+  {
+   "name": "request over 64 KiB: the header alone closes the connection",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0001000100",
+   "outcome": "close"
+  },
+  {
+   "name": "a request of exactly 64 KiB is allowed by its length",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0001000000",
+   "outcome": "read"
+  },
+  {
+   "name": "answer over 1 MiB: the header alone closes the connection",
+   "endpoint": "client",
+   "direction": "to client",
+   "hex": "0010000100",
+   "outcome": "close"
+  },
+  {
+   "name": "unknown frame type 2",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "00000002027b7d",
+   "outcome": "close"
+  },
+  {
+   "name": "a binary frame where the peer does not speak binary",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0000000901000000000000000178",
+   "outcome": "close"
+  },
+  {
+   "name": "empty payload",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0000000000",
+   "outcome": "malformed_close"
+  },
+  {
+   "name": "payload not UTF-8",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0000001d007b226f70223a22676574222c226964223a312c22726566223a22ff227d",
+   "outcome": "malformed_close"
+  },
+  {
+   "name": "payload is JSON but not an object",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "00000005005b312c325d",
+   "outcome": "malformed_close"
+  },
+  {
+   "name": "object without op",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "00000008007b226964223a317d",
+   "outcome": "malformed_close"
+  },
+  {
+   "name": "duplicate member",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "00000024007b226f70223a22676574222c226964223a312c226964223a322c22726566223a2278227d",
+   "outcome": "malformed_close"
+  },
+  {
+   "name": "a first frame that is not hello",
+   "endpoint": "client",
+   "direction": "to service",
+   "hex": "0000001d007b226f70223a22676574222c226964223a312c22726566223a2278227d",
+   "outcome": "malformed_close"
+  }
+ ]
+}

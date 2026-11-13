@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/audit.query.json",
+  "title": "audit.query",
+  "description": "Read the audit log. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "from",
+    "to"
+  ],
+  "properties": {
+    "op": {
+      "const": "audit.query"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "from": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "to": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "ref": {
+      "$ref": "common.json#/$defs/reference"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

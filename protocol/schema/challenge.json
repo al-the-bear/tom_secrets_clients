@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/challenge.json",
+  "title": "challenge",
+  "description": "The first frame of an admin connection. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "serviceNonce",
+    "serviceStart",
+    "protocol",
+    "service"
+  ],
+  "properties": {
+    "op": {
+      "const": "challenge"
+    },
+    "serviceNonce": {
+      "$ref": "common.json#/$defs/base64_32"
+    },
+    "serviceStart": {
+      "$ref": "common.json#/$defs/epochMs"
+    },
+    "protocol": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

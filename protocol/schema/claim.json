@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/claim.json",
+  "title": "claim",
+  "description": "Sent instead of auth by an admin without the key. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "password",
+    "client"
+  ],
+  "properties": {
+    "op": {
+      "const": "claim"
+    },
+    "password": {
+      "type": "string"
+    },
+    "keyFile": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "client": {
+      "$ref": "common.json#/$defs/clientInfo"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

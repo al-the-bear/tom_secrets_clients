@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/progress.json",
+  "title": "progress",
+  "description": "A request started waiting. Endpoint: client; direction: s2c; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "pending"
+  ],
+  "properties": {
+    "op": {
+      "const": "progress"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "pending": {
+      "enum": [
+        "unlock",
+        "approval"
+      ]
+    },
+    "approvalCode": {
+      "type": "string",
+      "pattern": "^[A-Z2-7]{10}$"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "A"
+  }
+}

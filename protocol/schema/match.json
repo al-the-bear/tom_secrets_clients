@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/match.json",
+  "title": "match",
+  "description": "Logins matching a page (browser host, helpers). Endpoint: client; direction: c2s; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "url"
+  ],
+  "properties": {
+    "op": {
+      "const": "match"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "url": {
+      "type": "string"
+    },
+    "frameUrl": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "c2s",
+    "phase": "B"
+  }
+}

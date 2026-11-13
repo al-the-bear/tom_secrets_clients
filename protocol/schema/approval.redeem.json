@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approval.redeem.json",
+  "title": "approval.redeem",
+  "description": "Redeem a one-time approval token. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "token"
+  ],
+  "properties": {
+    "op": {
+      "const": "approval.redeem"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[A-Z2-7]{26}$"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

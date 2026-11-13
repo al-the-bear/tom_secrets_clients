@@ -1,0 +1,278 @@
+{
+ "note": "Where a library looks for the service (section 3): per OS, environment and uid. A missing socket or port file there is not_running. Port files with the port each yields, or null when the file is unreadable (not_running).",
+ "cases": [
+  {
+   "os": "linux",
+   "env": {
+    "XDG_RUNTIME_DIR": "/run/user/1000"
+   },
+   "uid": 1000,
+   "expect": {
+    "directory": "/run/user/1000/tsm",
+    "client": {
+     "socket": "/run/user/1000/tsm/client.sock"
+    },
+    "admin": {
+     "socket": "/run/user/1000/tsm/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "linux",
+   "env": {
+    "XDG_RUNTIME_DIR": "/run/user/1000/"
+   },
+   "uid": 1000,
+   "expect": {
+    "directory": "/run/user/1000/tsm",
+    "client": {
+     "socket": "/run/user/1000/tsm/client.sock"
+    },
+    "admin": {
+     "socket": "/run/user/1000/tsm/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "linux",
+   "env": {},
+   "uid": 1000,
+   "expect": {
+    "directory": "/tmp/tsm-1000",
+    "client": {
+     "socket": "/tmp/tsm-1000/client.sock"
+    },
+    "admin": {
+     "socket": "/tmp/tsm-1000/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "linux",
+   "env": {
+    "XDG_RUNTIME_DIR": ""
+   },
+   "uid": 1001,
+   "expect": {
+    "directory": "/tmp/tsm-1001",
+    "client": {
+     "socket": "/tmp/tsm-1001/client.sock"
+    },
+    "admin": {
+     "socket": "/tmp/tsm-1001/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "linux",
+   "env": {
+    "XDG_RUNTIME_DIR": "relative/dir"
+   },
+   "uid": 1000,
+   "expect": {
+    "directory": "/tmp/tsm-1000",
+    "client": {
+     "socket": "/tmp/tsm-1000/client.sock"
+    },
+    "admin": {
+     "socket": "/tmp/tsm-1000/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "linux",
+   "env": {
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "TSM_RUNTIME_DIR": "/srv/tsm-test/"
+   },
+   "uid": 1000,
+   "expect": {
+    "directory": "/srv/tsm-test",
+    "client": {
+     "socket": "/srv/tsm-test/client.sock"
+    },
+    "admin": {
+     "socket": "/srv/tsm-test/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "macos",
+   "env": {
+    "TMPDIR": "/var/folders/zz/abc123/T/"
+   },
+   "uid": 501,
+   "expect": {
+    "directory": "/var/folders/zz/abc123/T/tsm",
+    "client": {
+     "socket": "/var/folders/zz/abc123/T/tsm/client.sock"
+    },
+    "admin": {
+     "socket": "/var/folders/zz/abc123/T/tsm/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "macos",
+   "env": {},
+   "uid": 501,
+   "expect": {
+    "directory": "/tmp/tsm-501",
+    "client": {
+     "socket": "/tmp/tsm-501/client.sock"
+    },
+    "admin": {
+     "socket": "/tmp/tsm-501/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "macos",
+   "env": {
+    "TMPDIR": "/var/folders/zz/abc123/T/",
+    "TSM_RUNTIME_DIR": "/Users/demo/tsm"
+   },
+   "uid": 501,
+   "expect": {
+    "directory": "/Users/demo/tsm",
+    "client": {
+     "socket": "/Users/demo/tsm/client.sock"
+    },
+    "admin": {
+     "socket": "/Users/demo/tsm/admin.sock"
+    }
+   }
+  },
+  {
+   "os": "windows",
+   "env": {
+    "LOCALAPPDATA": "C:\\Users\\demo\\AppData\\Local"
+   },
+   "uid": null,
+   "expect": {
+    "directory": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run",
+    "client": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.port",
+     "tokenFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.token"
+    },
+    "admin": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\admin.port"
+    }
+   }
+  },
+  {
+   "os": "windows",
+   "env": {
+    "LOCALAPPDATA": "C:\\Users\\demo\\AppData\\Local\\"
+   },
+   "uid": null,
+   "expect": {
+    "directory": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run",
+    "client": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.port",
+     "tokenFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.token"
+    },
+    "admin": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\admin.port"
+    }
+   }
+  },
+  {
+   "os": "windows",
+   "env": {
+    "USERPROFILE": "C:\\Users\\demo"
+   },
+   "uid": null,
+   "expect": {
+    "directory": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run",
+    "client": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.port",
+     "tokenFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\client.token"
+    },
+    "admin": {
+     "portFile": "C:\\Users\\demo\\AppData\\Local\\TomSecretsManager\\run\\admin.port"
+    }
+   }
+  },
+  {
+   "os": "windows",
+   "env": {},
+   "uid": null,
+   "expect": {
+    "notRunning": "no_runtime_directory"
+   }
+  },
+  {
+   "os": "windows",
+   "env": {
+    "LOCALAPPDATA": "C:\\Users\\demo\\AppData\\Local",
+    "TSM_RUNTIME_DIR": "D:\\tsm"
+   },
+   "uid": null,
+   "expect": {
+    "directory": "D:\\tsm",
+    "client": {
+     "portFile": "D:\\tsm\\client.port",
+     "tokenFile": "D:\\tsm\\client.token"
+    },
+    "admin": {
+     "portFile": "D:\\tsm\\admin.port"
+    }
+   }
+  }
+ ],
+ "portFiles": [
+  {
+   "text": "49152",
+   "port": 49152
+  },
+  {
+   "text": "49152\n",
+   "port": 49152
+  },
+  {
+   "text": "49152\r\n",
+   "port": 49152
+  },
+  {
+   "text": "1",
+   "port": 1
+  },
+  {
+   "text": "65535",
+   "port": 65535
+  },
+  {
+   "text": "0",
+   "port": null
+  },
+  {
+   "text": "65536",
+   "port": null
+  },
+  {
+   "text": "+80",
+   "port": null
+  },
+  {
+   "text": " 80",
+   "port": null
+  },
+  {
+   "text": "080",
+   "port": null
+  },
+  {
+   "text": "49152\n\n",
+   "port": null
+  },
+  {
+   "text": "",
+   "port": null
+  },
+  {
+   "text": "abc",
+   "port": null
+  }
+ ]
+}
