@@ -343,7 +343,7 @@ The answer is `value`:
 | `id` | the request id |
 | `value` | the value: the text, or the bytes in base64 |
 | `encoding` | `utf8` for text, `base64` for bytes; a library refuses text access to a `base64` value |
-| `entry` | `{store, uuid, source, fetchedAt}`: the entry's store and UUID; `source` is `github` when the store was fetched in this refresh cycle and `cache` when the service serves its offline copy; `fetchedAt` the last successful fetch |
+| `entry` | `{store, uuid, source, fetchedAt}`: the entry's store and UUID; `source` is `github` when the store was fetched from GitHub in this refresh cycle, `file` when it is a `file:` vault read from the local disk in this cycle, and `cache` when the service serves its offline copy of a GitHub store; `fetchedAt` the last successful fetch or read |
 | `bound` | the bindings the winning entry carries, `{dimension: value}` |
 | `version` | `{modified, revision}`: the entry's last modification time and the store file revision it was read from; a client caching the value compares it to see a change |
 | `expires` | the entry's expiry time, when it has one |
@@ -442,7 +442,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
 | `lock {id}` | `ok` | lock: clear every secret from memory |
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
-| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening}` | the service's state; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; `notPushed` counts its changes not yet written to GitHub; `hardening` names the memory protections achieved |
+| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening}` | the service's state; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `hardening` names the memory protections achieved |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch and reopen the stores now; on a failed fetch the stores stay on their cache |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, keys}]}` | the keys of the open vaults, for the app's editing path (6.4) |
 | `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
@@ -597,7 +597,8 @@ from the vault instead (9.4).
   with `details.op` and the connection stays open.
 - A value of an enumerated member that a receiver does not know (a new error
   kind, a new store state) is treated as the most general one it knows: an
-  unknown error kind as `internal`, an unknown state as `unavailable`.
+  unknown error kind as `internal`, an unknown state as `unavailable`, an
+  unknown `source` as `cache` (no claim to be fresh).
 
 ## 9. Signed objects and the approval link
 
@@ -979,3 +980,8 @@ part-service) leaves these open; this document fixes them:
     key is passed as `linkKey` inside a session under the old keys.
 20. `hello` carries the client's `features` **[B]**, so that binary frames
     (2.5), which both sides must announce, can be announced by the client.
+21. `source` (5.2, 6) has a third value, `file`, for a `file:` vault read from
+    the local disk in this refresh cycle: neither `github` (it was not
+    fetched from GitHub) nor `cache` (it is no offline copy) says what
+    happened. A `file:` vault has no offline copy, so it answers `file` or is
+    `unavailable`.

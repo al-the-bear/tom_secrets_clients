@@ -140,6 +140,7 @@
     "source": {
       "enum": [
         "github",
+        "file",
         "cache"
       ]
     },

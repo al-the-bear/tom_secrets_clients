@@ -184,6 +184,14 @@ void main() {
     );
   });
 
+  test('a source names github, file or cache; an unknown one is cache', () {
+    expect(TomSecretSource.fromWire('github'), TomSecretSource.github);
+    expect(TomSecretSource.fromWire('file'), TomSecretSource.file);
+    expect(TomSecretSource.fromWire('cache'), TomSecretSource.cache);
+    expect(TomSecretSource.fromWire('relay'), TomSecretSource.cache);
+    expect(TomSecretSource.fromWire(null), TomSecretSource.cache);
+  });
+
   group('get', () {
     test('a text value, its entry, bindings and version', () async {
       await startWith(

@@ -1,5 +1,5 @@
 {
- "note": "get: values (text and binary, entry, bindings, version, expiry, client token), the request members, local refusals, every error kind, progress and the wait for an unlock, rate limits, overlapping requests and broken answers.",
+ "note": "get: values (text and binary, entry and its source, bindings, version, expiry, client token), the request members, local refusals, every error kind, progress and the wait for an unlock, rate limits, overlapping requests and broken answers.",
  "cases": [
   {
    "name": "a text value, its entry, bindings and version; the request",
@@ -194,6 +194,170 @@
       "base64": "Y2FjaGUtdmFsdWU=",
       "entry": {
        "store": "fleet",
+       "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+       "source": "cache",
+       "fetchedAtMs": 1794560370000
+      },
+      "bound": {},
+      "version": {
+       "modifiedMs": 1793534400000,
+       "revision": "b1946ac9"
+      },
+      "masked": true,
+      "text": "cache-value",
+      "expiresMs": 1798761600000,
+      "clientToken": "Y2xpZW50LXRva2VuLWdyYW50ZWQtMDAwMDAwMDAwMDA="
+     }
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      }
+     },
+     {
+      "op": "get",
+      "ref": "db.main",
+      "wantClientToken": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "a file: vault read in this cycle: source file",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "cache-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "local",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "file",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {},
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         },
+         "expires": "2027-01-01T00:00:00Z",
+         "clientToken": "Y2xpZW50LXRva2VuLWdyYW50ZWQtMDAwMDAwMDAwMDA=",
+         "newMember": {
+          "ignored": true
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "get",
+    "ref": "db.main",
+    "wantClientToken": true
+   },
+   "expect": {
+    "result": {
+     "value": {
+      "encoding": "utf8",
+      "base64": "Y2FjaGUtdmFsdWU=",
+      "entry": {
+       "store": "local",
+       "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+       "source": "file",
+       "fetchedAtMs": 1794560370000
+      },
+      "bound": {},
+      "version": {
+       "modifiedMs": 1793534400000,
+       "revision": "b1946ac9"
+      },
+      "masked": true,
+      "text": "cache-value",
+      "expiresMs": 1798761600000,
+      "clientToken": "Y2xpZW50LXRva2VuLWdyYW50ZWQtMDAwMDAwMDAwMDA="
+     }
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      }
+     },
+     {
+      "op": "get",
+      "ref": "db.main",
+      "wantClientToken": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown source is read as cache",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "cache-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "local",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "relay",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {},
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         },
+         "expires": "2027-01-01T00:00:00Z",
+         "clientToken": "Y2xpZW50LXRva2VuLWdyYW50ZWQtMDAwMDAwMDAwMDA=",
+         "newMember": {
+          "ignored": true
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "get",
+    "ref": "db.main",
+    "wantClientToken": true
+   },
+   "expect": {
+    "result": {
+     "value": {
+      "encoding": "utf8",
+      "base64": "Y2FjaGUtdmFsdWU=",
+      "entry": {
+       "store": "local",
        "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
        "source": "cache",
        "fetchedAtMs": 1794560370000

@@ -11,7 +11,8 @@
   progress notices with the approval code.
 - `TomSecretReference.parse` / `format`: the reference grammar, its canonical
   form and the malformed reasons, refused locally.
-- `TomSecretValue`: text or bytes, entry, bindings, version, expiry, client
-  token; masked `toString`, `dispose` overwrites the buffer.
+- `TomSecretValue`: text or bytes, entry (source `github`, `file` or `cache`),
+  bindings, version, expiry, client token; masked `toString`, `dispose`
+  overwrites the buffer.
 - `TomSecretsClientException` with `TomSecretsErrorKind`: the protocol's kinds
   plus `notRunning`; `rateLimited` waited out on request.

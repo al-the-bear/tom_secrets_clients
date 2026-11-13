@@ -68,7 +68,7 @@ start.
 ## Values
 
 A `TomSecretValue` carries the value as `text` or `bytes`, its `entry`
-(store, UUID, `github` or `cache`, fetch time), the `bound` dimensions, the
+(store, UUID, `github`, `file` or `cache`, fetch time), the `bound` dimensions, the
 `version` (modification time and store revision: compare it to see a
 change), `expires` and a granted `clientToken`.
 

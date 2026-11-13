@@ -18,14 +18,26 @@ enum TomSecretEncoding {
   base64,
 }
 
-/// Where a value came from: `github` when its store was fetched in this
-/// refresh cycle, `cache` when the service serves its offline copy.
+/// Where a value came from: `github` when its store was fetched from GitHub
+/// in this refresh cycle, `file` when it was read from a `file:` vault on the
+/// local disk in this cycle, `cache` when the service serves its offline copy.
 enum TomSecretSource {
-  /// Fetched in this refresh cycle.
+  /// Fetched from GitHub in this refresh cycle.
   github,
 
+  /// Read from a `file:` vault on the local disk in this refresh cycle.
+  file,
+
   /// The service's offline copy.
-  cache,
+  cache;
+
+  /// The source a protocol `source` names; an unknown one is [cache]
+  /// (section 8: the most general one known, no claim to be fresh).
+  static TomSecretSource fromWire(Object? name) => switch (name) {
+    'github' => github,
+    'file' => file,
+    _ => cache,
+  };
 }
 
 /// The entry a value was read from.
@@ -106,9 +118,7 @@ final class TomSecretValue {
         entry: TomSecretEntry(
           store: entry['store']! as String,
           uuid: entry['uuid']! as String,
-          source: entry['source'] == 'cache'
-              ? TomSecretSource.cache
-              : TomSecretSource.github,
+          source: TomSecretSource.fromWire(entry['source']),
           fetchedAt: DateTime.parse(entry['fetchedAt']! as String),
         ),
         bound: Map.unmodifiable(

@@ -60,7 +60,7 @@ COMMON = {
                       'properties': {'store': {'$ref': '#/$defs/storeName'}, 'path': STR,
                                      'uuid': {'$ref': '#/$defs/uuid'}}},
     'storeState': {'enum': ['current', 'offline', 'token_expired', 'needs_unlock', 'unavailable']},
-    'source': {'enum': ['github', 'cache']},
+    'source': {'enum': ['github', 'file', 'cache']},
     'decision': {'enum': ['once', 'always', 'folder', 'never']},
     'secretScope': {'description': 'What a decision covers: the reference, its store, or all.',
                     'enum': ['ref', 'store', 'all']},
