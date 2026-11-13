@@ -245,6 +245,11 @@ STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPu
                 'properties': {'name': ref('storeName'), 'state': ref('storeState'),
                                'source': ref('source'), 'fetchedAt': ref('timestamp'),
                                'notPushed': INT0}}
+EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
+                'properties': {'kind': {'enum': ['github_token', 'vault_keys']},
+                               'key': STR, 'vault': ref('storeName'),
+                               'expiresAt': ref('timestamp'),
+                               'daysLeft': {'type': 'integer'}}}
 message('status', 'admin', 'a2s', 'A', 'Ask for the service state.', ['id'], id=ref('id'))
 message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         ['id', 'locked', 'lockMode', 'protocol', 'service', 'stores', 'admins', 'hardening'],
@@ -253,7 +258,8 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         service={'type': 'object', 'required': ['version', 'start'],
                  'properties': {'version': STR, 'start': ref('epochMs')}},
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
-        hardening={'type': 'object', 'additionalProperties': BOOL})
+        hardening={'type': 'object', 'additionalProperties': BOOL},
+        expiring={'type': 'array', 'items': EXPIRING_KEY})
 message('reload', 'admin', 'a2s', 'A', 'Fetch and reopen the stores now.', ['id'], id=ref('id'))
 message('vaultKeys', 'admin', 'a2s', 'A', 'Get the keys of the open vaults for editing.',
         ['id'], id=ref('id'), stores={'type': 'array', 'items': ref('storeName')})

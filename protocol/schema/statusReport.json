@@ -90,6 +90,38 @@
       "additionalProperties": {
         "type": "boolean"
       }
+    },
+    "expiring": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "expiresAt",
+          "daysLeft"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "github_token",
+              "vault_keys"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "vault": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "expiresAt": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "daysLeft": {
+            "type": "integer"
+          }
+        }
+      }
     }
   },
   "x-tsm": {
