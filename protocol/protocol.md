@@ -449,7 +449,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, keys}]}` | the keys of the open vaults, for the app's editing path (6.4) |
 | `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
-| `approve {id, approvalId, decision, secret, folder?, pin?}` | `ok` | answer a prompt (7.2) |
+| `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
 | `approval.issue {id, host, code, decision, secret, pin?}` | `approvalToken {id, token}` | have this device make the token for a code shown on `host` (7.5, 9.6); for a decision other than `once` its app also writes the signed grant |
 | `grants.list {id, host?}` | `grantList {id, grants[]}` | the allow list of one host, or of every host (7.3) |
@@ -503,7 +503,7 @@ After `subscribe` the service pushes events on that connection (no `id`):
 | Event | Members | When |
 | --- | --- | --- |
 | `unlock_needed` | `identity?` | a client waits for an unlock |
-| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?` | a request needs an approval (7.2) |
+| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4) |
 | `approval_closed` | `approvalId, outcome` (`approved`, `denied`, `timeout`, `abandoned`, `no_approver`) | a prompt was answered or ended elsewhere |
 | `locked`, `unlocked` | — | the service locked or unlocked |
 | `store_changed` | `store, revision?` | a store was reopened with new content |
@@ -576,13 +576,36 @@ against an approver key it recorded at pairing (section 9).
 
 ### 7.4 Client tokens
 
-A client that asks with `wantClientToken` and is approved **always** gets
-`clientToken` in the `value`: 32 random bytes in base64. The grant's subject
-becomes `exe-token <path> <tokenId>`, and the service keeps only the token's
-hash. The client sends the token in every later `hello` (`clientToken`);
-without it the connection is the bare executable and gets no grant made for
-the token. Revoking the grant invalidates the token. A library hands the
-token to its caller and never stores it itself.
+A client token tells apart programs one process hosts (an extension host
+running many extensions), which the measured identity cannot. The
+**approving device makes it**; the host never makes a token or a token id
+for an approver to sign blind:
+
+- A client asks with `wantClientToken`; its prompt says so
+  (`approval_needed.wantClientToken`).
+- The approver that answers **always** makes the token, 32 random bytes,
+  and its **token id**, the first 16 bytes in lower-case hex of
+  SHA-256(lps("tsm-client-token-v1") || token). The grant's subject is
+  `exe-token <path> <tokenId>`, `<path>` the client's measured executable.
+  - The attached app sends the token in `approve` (`clientToken`); its own
+    service signs the grant.
+  - A remote approver signs the grant itself and sends it with the token
+    over the approval link: `grant {id, grant, clientToken, approvalId}`
+    (9.7). The host checks that the subject names that token's id, and
+    `approvalId` makes the grant answer the waiting request.
+- The host keeps only the token's hash (in its device settings, never in the
+  vault) and hands the token to the client in its `value` (`clientToken`).
+- The client sends the token in every later `hello` (`clientToken`): a
+  connection whose measured executable is the grant's and whose token's id
+  is the subject's is that subject; without it the connection is the bare
+  executable and gets no grant made for the token. The host records the
+  measured identity each token first and last came with.
+- Revoking the grant invalidates the token; a token no grant of the host
+  names any more is forgotten.
+- An approval code issues no token: a code's answer to a token request is
+  the value alone.
+
+A library hands the token to its caller and never stores it itself.
 
 ### 7.5 Approval codes and tokens
 
@@ -834,7 +857,7 @@ the link. The messages are the JSON messages of section 2.2, each with `op`:
 | host | `approval_needed` | — | as on the admin endpoint (7.2) |
 | approver | `approve {id, approvalId, decision, secret, folder?, pin?}` | `ok` or `error` | the answer to a prompt; for a decision other than `once` the app also writes the signed grant |
 | host | `approval_closed` | — | the prompt was answered or ended |
-| approver | `grant {id, grant}` | `ok` or `error` | a signed grant (9.4) for the host to apply at once, before the vault copy arrives |
+| approver | `grant {id, grant, clientToken?, approvalId?}` | `ok` or `error` | a signed grant (9.4) for the host to apply at once, before the vault copy arrives; with `approvalId` it answers that waiting request, with `clientToken` it brings the token its `exe-token` subject names (7.4) |
 | approver | `revoke {id, host, grantId, revoked, approver, signatures}` | `ok` or `error` | a signed revocation (9.4), applied at once |
 | approver | `keychange {id, statement}` | `ok` or `error` | a key-change statement (9.4) |
 | either | `linkKey {id, device, x25519, mlKem768}` | `ok` or `error` | the sender's new link public key; the peer records it, authenticated by this session under the old keys, and accepts the old key for the migration period |
@@ -1044,3 +1067,10 @@ part-service) leaves these open; this document fixes them:
       `{time, host, identity, refs, outcome, grantId?, approver?, entries}`,
       `outcome` being `allowed`, `denied:<reason>`, `timeout`,
       `rate_limited` or `locked`.
+25. Client tokens (7.4, DP-20): the approving device makes the token and
+    its id (derived from the token, so the host checks that a grant names
+    the token it is sent); the attached app sends it in `approve`, a remote
+    approver with its grant over the link (`grant {grant, clientToken,
+    approvalId}`); `approval_needed` says `wantClientToken` and carries no
+    token id; the host keeps the hash and the identities a token came with;
+    an approval code issues no token.

@@ -32,6 +32,9 @@
     },
     "pin": {
       "$ref": "common.json#/$defs/pin"
+    },
+    "clientToken": {
+      "$ref": "common.json#/$defs/base64"
     }
   },
   "x-tsm": {

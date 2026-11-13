@@ -59,6 +59,9 @@
     "approvalCode": {
       "type": "string",
       "pattern": "^[A-Z2-7]{10}$"
+    },
+    "wantClientToken": {
+      "type": "boolean"
     }
   },
   "x-tsm": {

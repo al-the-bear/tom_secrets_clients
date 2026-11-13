@@ -276,7 +276,8 @@ message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connec
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
         ['id', 'approvalId', 'decision', 'secret'], also=['link'], id=ref('id'), approvalId=STR,
-        decision=ref('decision'), secret=ref('secretScope'), folder=STR, pin=ref('pin'))
+        decision=ref('decision'), secret=ref('secretScope'), folder=STR, pin=ref('pin'),
+        clientToken=ref('base64'))
 message('approval.redeem', 'admin', 'a2s', 'A', 'Redeem a one-time approval token.',
         ['id', 'token'], id=ref('id'),
         token={'type': 'string', 'pattern': '^[A-Z2-7]{26}$'})
@@ -323,7 +324,8 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
         resolved={'type': 'array', 'items': {
             'type': 'object', 'required': ['store', 'path', 'kind'],
             'properties': {'store': ref('storeName'), 'path': STR, 'kind': STR}}},
-        hostHint=STR, approvalCode={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'})
+        hostHint=STR, approvalCode={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'},
+        wantClientToken=BOOL)
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})
@@ -347,8 +349,11 @@ message('proposal', 'admin', 's2a', 'B', 'A login the browser host proposed.',
 message('ready', 'link', 'a2h', 'A', 'The approver\'s first transport frame; confirms the '
         'handshake.')
 message('rekey', 'link', 'both', 'A', 'The sender renews its sending key after this frame.')
-message('grant', 'link', 'a2h', 'A', 'A signed grant for the host to apply at once.',
-        ['id', 'grant'], id=ref('id'), grant=ref('grant'))
+message('grant', 'link', 'a2h', 'A', 'A signed grant for the host to apply at once; with '
+        'approvalId it answers that waiting request, with clientToken it brings the token of '
+        'its exe-token subject (section 7.4).',
+        ['id', 'grant'], id=ref('id'), grant=ref('grant'), clientToken=ref('base64'),
+        approvalId=STR)
 message('revoke', 'link', 'a2h', 'A', 'A signed revocation for the host to apply at once.',
         ['id', 'host', 'grantId', 'revoked', 'approver', 'signatures'], id=ref('id'), host=STR,
         grantId=STR, revoked=ref('timestamp'), approver=STR, signatures=ref('signatures'))
