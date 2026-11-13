@@ -442,7 +442,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
 | `lock {id}` | `ok` | lock: clear every secret from memory |
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
-| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening}` | the service's state; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `hardening` names the memory protections achieved |
+| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening}` | the service's state; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM) |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch and reopen the stores now; on a failed fetch the stores stay on their cache |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, keys}]}` | the keys of the open vaults, for the app's editing path (6.4) |
 | `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
@@ -461,10 +461,27 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 The service owns every vault file and every write to GitHub on its device.
 To edit, the app asks for `vaultKeys`, opens the vaults in its own memory and
 hands each saved file back with `save` (`bytes` the whole file,
-`baseRevision` the revision it edited). The members of a store's `keys`
-object are defined with the store format (the outer encryption and its key
-slots); this document fixes only that they travel in `vaultKeySet` over an
-authenticated admin connection.
+`baseRevision` the revision it edited). A store's `keys` object carries what
+opens it, each member when the store has one: `password` (its master
+password), `keyFile` (the key file's bytes, base64) and `outerKey` (the
+repository's outer key of a `.tsmx` file, base64). They travel only in
+`vaultKeySet` over an authenticated admin connection; `location` is where
+the store's file is (its locator).
+
+The service takes a `save` when `bytes` open with the store's keys
+(otherwise `malformed`, reason `bytes`):
+
+- the file is still at `baseRevision`, or `save` names none: it is written
+  as it is;
+- the file has moved, and `baseRevision` is the copy the service holds: the
+  app's copy is merged three-way into the file as it is now, the held copy
+  as the base (part-stores), and the merge is written;
+- any other `baseRevision`: `denied`, reason `stale_base`; the app reads the
+  file again and edits that.
+
+The store is then reopened from what was written and `store_changed` names
+the new revision. A store that is not open answers `not_found`,
+`needs_unlock` or `unavailable` as a `get` would.
 
 **[B] The key bundle.** The OS unlock hands key material to the service only
 sealed:
@@ -848,14 +865,14 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `stale_base` (a `save` of a revision the file has moved past, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
 | `offline` | admin only: a `reload` whose fetch failed for a network reason, or a `save` that cannot be taken while offline | `stores` |
 | `token_expired` | admin only: as `offline`, because GitHub answered 401 or 403 or the token is past its expiry | `stores` |
-| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`) |
+| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4) |
 | `timeout` | an approval was not answered in time | — |
 | `rate_limited` | the identity is held back (section 11) | `retryAfterMs` |
 | `unsupported` | an unknown `op`, or a protocol the service does not speak | `op`, or `protocols` |
@@ -985,3 +1002,8 @@ part-service) leaves these open; this document fixes them:
     fetched from GitHub) nor `cache` (it is no offline copy) says what
     happened. A `file:` vault has no offline copy, so it answers `file` or is
     `unavailable`.
+22. The editing path (6.4): a store's `keys` are `password`, `keyFile` and
+    `outerKey`; a `save` must open with them; a moved file is merged when
+    `baseRevision` is the service's held copy and refused (`stale_base`)
+    otherwise; `statusReport.hardening` names `noCoreDumps`, `notDumpable`
+    and `memoryAccessDenied`.

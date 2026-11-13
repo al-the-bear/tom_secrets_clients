@@ -262,9 +262,13 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
         stores={'type': 'array', 'items': {
             'type': 'object', 'required': ['store', 'location', 'keys'],
             'properties': {'store': ref('storeName'), 'location': STR,
-                           'keys': {'description': 'The store key material; its members '
-                                    'are defined with the store format (section 6.4).',
-                                    'type': 'object'}}}})
+                           'keys': {'description': 'The store key material (section 6.4): '
+                                    'its master password, key file and repository outer key, '
+                                    'each when the store has one.',
+                                    'type': 'object',
+                                    'properties': {'password': STR,
+                                                   'keyFile': ref('base64'),
+                                                   'outerKey': ref('base64')}}}}})
 message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write.',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
         baseRevision=STR)

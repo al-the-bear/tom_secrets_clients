@@ -33,8 +33,19 @@
             "type": "string"
           },
           "keys": {
-            "description": "The store key material; its members are defined with the store format (section 6.4).",
-            "type": "object"
+            "description": "The store key material (section 6.4): its master password, key file and repository outer key, each when the store has one.",
+            "type": "object",
+            "properties": {
+              "password": {
+                "type": "string"
+              },
+              "keyFile": {
+                "$ref": "common.json#/$defs/base64"
+              },
+              "outerKey": {
+                "$ref": "common.json#/$defs/base64"
+              }
+            }
           }
         }
       }
