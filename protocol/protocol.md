@@ -1021,3 +1021,26 @@ part-service) leaves these open; this document fixes them:
     closes (after its first frame); an admin's executable is checked before
     its key, against `tsm` and the manager app beside the service and the
     bootstrap's `admin_executables`.
+24. Approvals and grants (7.2, 7.3, 9):
+    - a request's items are decided together, so a `getMany` gets one
+      prompt; a repeat of a waiting prompt (the same identity and
+      references) joins it;
+    - an approver on the admin endpoint is a subscribed admin that is not
+      `tsm`; with none attached and no link connected the request gets an
+      approval code;
+    - the service of the approving device signs what its app decides
+      (`approve` with a lasting decision, `grants.add`, `grants.revoke`)
+      with that device's approver key and writes it into `tsm.grants/<host>`;
+    - a grant's signed members carry no hash: the hash a pinned grant holds
+      is recorded by the host in its device settings, at the approval made
+      there or at the first use of a grant that came from elsewhere, so no
+      one who can write the vault can move a pin;
+    - a `never` at a prompt also writes a `never` grant; `rate_limited`
+      answers carry `retryAfterMs`; a request waiting when the service locks
+      ends `locked` (`approval_closed` `abandoned`);
+    - the approval link listens on the device setting `approvalLink`
+      (`address:port`, a VPN or LAN address, never every interface);
+    - the audit log keeps one record per resolved item:
+      `{time, host, identity, refs, outcome, grantId?, approver?, entries}`,
+      `outcome` being `allowed`, `denied:<reason>`, `timeout`,
+      `rate_limited` or `locked`.
