@@ -15,14 +15,14 @@ In the workspace this repository is the submodule `tom_ai/secrets_clients`
 | Package | Phase | What it holds |
 | --- | --- | --- |
 | [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning, the signed objects, the approval code and the approval link with its hybrid handshake; a JSON Schema per message, the test vectors and the tools that write and check them (Python, Dart on `tom_pqc`, and a Go cross-check) |
-| the conformance suite | A | the harness and its fake service (Dart) |
+| [`conformance/`](conformance/README.md) | A | the suite every client runs: the fake service (Dart), the case tables, a runner per language (Dart now), the driver with its coverage and parity gates |
 | [`clients/dart/tom_secrets_client`](clients/dart/tom_secrets_client/README.md) | A | the Dart client: finding the service, frames, `get`, `getMany`, `getFile` (B), waiting for an unlock or an approval, the reference grammar |
 | `tsm` | A | the command line (`get`, `run`, the admin commands), on `tom_build_base` |
 | the TypeScript client | A | the npm package |
 | the other seven libraries | B | C, C++, Go, Java, JavaScript, Python, Rust |
 
-The protocol document and the Dart client exist; the other packages are
-created by the quest's todos of their phase.
+The protocol document, the Dart client and the conformance suite exist; the
+other packages are created by the quest's todos of their phase.
 
 ## Checking the protocol
 
@@ -30,13 +30,15 @@ created by the quest's todos of their phase.
 python3 protocol/tool/check_protocol.py
 (cd protocol/tool/vectors_dart && testkit :test)
 (cd protocol/tool/vectors_go && go run .)
+conformance/tool/run_all.sh
 ```
 
 check that the document, the schemas and the vectors agree (Python 3.9 or
 later with `jsonschema`), that the signatures and the approval link verify
 and run both ways in Dart, and that Go's standard library computes the same
-signatures, codes, tokens and handshake (Go 1.27 or later). Section 12 of
-the protocol document lists how the vectors are regenerated.
+signatures, codes, tokens and handshake (Go 1.27 or later); and that every
+client library passes the conformance suite (`conformance/README.md`).
+Section 12 of the protocol document lists how the vectors are regenerated.
 
 ## Licence and boundaries
 

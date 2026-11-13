@@ -17,8 +17,11 @@ document, the conformance suite, the client libraries and `tsm`).
   section 12). The wire formats are fixed
   in phase A: a later change is a new protocol version or a feature
   (section 8), never an edit of a version-1 message.
-- Every client library passes the conformance suite against the fake service,
-  and agrees with every case of `protocol/vectors/`.
+- Every client library passes the conformance suite against the fake service
+  (`conformance/tool/run_all.sh`; a new library adds `conformance/runners/<lang>/`
+  with its `runner.json`, conformance/README.md), and agrees with every case of
+  `protocol/vectors/`. After the protocol's `references.json` changes,
+  `python3 conformance/tool/conformance.py gen` regenerates the reference table.
 - The published packages (`tom_secrets_client`, `tsm`, the TypeScript client)
   name no private repository as their `repository:`.
 

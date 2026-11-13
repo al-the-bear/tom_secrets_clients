@@ -1,0 +1,10 @@
+{
+  "language": "dart",
+  "toolchain": ["dart", "--version"],
+  "build": [
+    ["dart", "pub", "get", "--directory", "runners/dart"],
+    ["dart", "compile", "exe", "runners/dart/bin/runner.dart", "-o", "ztmp/bin/runner_dart{exe}"]
+  ],
+  "run": ["ztmp/bin/runner_dart{exe}"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

@@ -1,0 +1,527 @@
+{
+ "note": "Connecting: hello and welcome, the client token, not_running, unsupported protocols, refused connections, reconnects after a restart.",
+ "cases": [
+  {
+   "name": "hello names the client; welcome is read",
+   "script": {},
+   "action": {
+    "do": "connect"
+   },
+   "expect": {
+    "result": {
+     "welcome": {
+      "host": "conformance-host",
+      "platform": "linux",
+      "features": []
+     }
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      },
+      "clientToken": "$absent"
+     }
+    ],
+    "connections": 1
+   }
+  },
+  {
+   "name": "unknown welcome members are ignored; features are read",
+   "script": {
+    "welcome": {
+     "features": [
+      "getFile",
+      "binary"
+     ],
+     "platform": "macos",
+     "futureMember": {
+      "nested": [
+       1,
+       2
+      ]
+     }
+    }
+   },
+   "action": {
+    "do": "connect"
+   },
+   "expect": {
+    "result": {
+     "welcome": {
+      "host": "conformance-host",
+      "platform": "macos",
+      "features": [
+       "binary",
+       "getFile"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "name": "a client token the caller gives is sent in hello",
+   "script": {},
+   "action": {
+    "do": "connect",
+    "client": {
+     "clientToken": "Y2xpZW50LXRva2VuLWRlbW8tMDAwMDAwMDAwMDAwMDA="
+    }
+   },
+   "expect": {
+    "result": {
+     "welcome": {
+      "host": "conformance-host",
+      "platform": "linux",
+      "features": []
+     }
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      },
+      "clientToken": "Y2xpZW50LXRva2VuLWRlbW8tMDAwMDAwMDAwMDAwMDA="
+     }
+    ]
+   }
+  },
+  {
+   "name": "no service: not_running",
+   "noService": true,
+   "action": {
+    "do": "get",
+    "ref": "db.main"
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "not_running"
+     }
+    }
+   }
+  },
+  {
+   "name": "an unsupported protocol: unsupported",
+   "script": {
+    "hello": [
+     {
+      "send": {
+       "op": "error",
+       "kind": "unsupported",
+       "message": "protocol 1 is not spoken",
+       "details": {
+        "protocols": [
+         2
+        ]
+       }
+      }
+     },
+     {
+      "close": true
+     }
+    ]
+   },
+   "action": {
+    "do": "connect"
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "unsupported"
+     }
+    }
+   }
+  },
+  {
+   "name": "a welcome of another protocol: unsupported",
+   "script": {
+    "welcome": {
+     "protocol": 2
+    }
+   },
+   "action": {
+    "do": "connect"
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "unsupported"
+     }
+    }
+   }
+  },
+  {
+   "name": "a refused hello: denied, bad_token",
+   "script": {
+    "hello": [
+     {
+      "send": {
+       "op": "error",
+       "kind": "denied",
+       "message": "wrong token",
+       "details": {
+        "reason": "bad_token"
+       }
+      }
+     },
+     {
+      "close": true
+     }
+    ]
+   },
+   "action": {
+    "do": "connect"
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "denied",
+      "reason": "bad_token"
+     }
+    }
+   }
+  },
+  {
+   "name": "a connection dropped while a request waits: not_running",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "close": true
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "get",
+    "ref": "db.main"
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "not_running"
+     }
+    }
+   }
+  },
+  {
+   "name": "after a service restart the next call connects again",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "conn-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "fleet",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "github",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {
+          "env": "prod"
+         },
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         }
+        }
+       },
+       {
+        "delayMs": 50
+       },
+       {
+        "restart": true
+       }
+      ],
+      "times": 1
+     },
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "conn-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "fleet",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "github",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {
+          "env": "prod"
+         },
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "sequence",
+    "actions": [
+     {
+      "do": "get",
+      "ref": "db.main"
+     },
+     {
+      "do": "pause",
+      "ms": 400
+     },
+     {
+      "do": "get",
+      "ref": "db.main"
+     }
+    ]
+   },
+   "expect": {
+    "result": {
+     "steps": [
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "Y29ubi12YWx1ZQ==",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "conn-value"
+       }
+      },
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "Y29ubi12YWx1ZQ==",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "conn-value"
+       }
+      }
+     ]
+    },
+    "connections": 2
+   }
+  },
+  {
+   "name": "Windows: the client token is re-read at every connect",
+   "platforms": [
+    "windows"
+   ],
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "conn-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "fleet",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "github",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {
+          "env": "prod"
+         },
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         }
+        }
+       },
+       {
+        "delayMs": 50
+       },
+       {
+        "restart": true
+       }
+      ],
+      "times": 1
+     },
+     {
+      "match": {
+       "op": "get"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "value",
+         "id": "$id",
+         "value": "conn-value",
+         "encoding": "utf8",
+         "entry": {
+          "store": "fleet",
+          "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+          "source": "github",
+          "fetchedAt": "2026-11-13T08:59:30Z"
+         },
+         "bound": {
+          "env": "prod"
+         },
+         "version": {
+          "modified": "2026-11-01T12:00:00Z",
+          "revision": "b1946ac9"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "sequence",
+    "actions": [
+     {
+      "do": "get",
+      "ref": "db.main"
+     },
+     {
+      "do": "pause",
+      "ms": 400
+     },
+     {
+      "do": "get",
+      "ref": "db.main"
+     }
+    ]
+   },
+   "expect": {
+    "result": {
+     "steps": [
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "Y29ubi12YWx1ZQ==",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "conn-value"
+       }
+      },
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "Y29ubi12YWx1ZQ==",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "conn-value"
+       }
+      }
+     ]
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      },
+      "token": "HyYtNDtCSVBXXmVsc3qBiI+WnaSrsrnAx87V3OPq8fg="
+     },
+     {
+      "op": "get",
+      "ref": "db.main"
+     },
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      },
+      "token": "PkVMU1phaG92fYSLkpmgp661vMPK0djf5u30+wIJEBc="
+     },
+     {
+      "op": "get",
+      "ref": "db.main"
+     }
+    ],
+    "connections": 2
+   }
+  }
+ ]
+}

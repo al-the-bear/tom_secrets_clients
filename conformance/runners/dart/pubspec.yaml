@@ -1,0 +1,18 @@
+name: tom_secrets_conformance_runner_dart
+description: >-
+  The conformance runner of the Dart client of the Tom Secrets Manager: runs
+  each case of the conformance tables with tom_secrets_client and writes a
+  canonical result line. Tooling. License: BSD-3-Clause.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # The library under test, from this repository.
+  tom_secrets_client:
+    path: ../../../clients/dart/tom_secrets_client
+
+dev_dependencies:
+  lints: ^6.0.0

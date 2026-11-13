@@ -1,0 +1,279 @@
+{
+ "note": "getMany: results in request order, one prompt with progress, refusals.",
+ "cases": [
+  {
+   "name": "results in request order, a value and an error",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "getMany"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "values",
+         "id": "$id",
+         "results": [
+          {
+           "op": "value",
+           "value": "one",
+           "encoding": "utf8",
+           "entry": {
+            "store": "fleet",
+            "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+            "source": "github",
+            "fetchedAt": "2026-11-13T08:59:30Z"
+           },
+           "bound": {
+            "env": "prod"
+           },
+           "version": {
+            "modified": "2026-11-01T12:00:00Z",
+            "revision": "b1946ac9"
+           }
+          },
+          {
+           "op": "error",
+           "kind": "not_found",
+           "message": "no candidate"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "getMany",
+    "refs": [
+     {
+      "ref": "a.one"
+     },
+     {
+      "ref": "b.two",
+      "field": "UserName"
+     }
+    ],
+    "timeoutMs": 5000
+   },
+   "expect": {
+    "result": {
+     "results": [
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "b25l",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "one"
+       }
+      },
+      {
+       "error": {
+        "kind": "not_found"
+       }
+      }
+     ]
+    },
+    "sent": [
+     {
+      "op": "hello",
+      "protocol": 1,
+      "client": {
+       "name": "conformance-runner",
+       "version": "$any",
+       "language": "$any"
+      }
+     },
+     {
+      "op": "getMany",
+      "refs": [
+       {
+        "ref": "a.one",
+        "field": "$absent"
+       },
+       {
+        "ref": "b.two",
+        "field": "UserName"
+       }
+      ],
+      "timeoutMs": 5000
+     }
+    ]
+   }
+  },
+  {
+   "name": "one approval prompt for all: progress with the code",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "getMany"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "progress",
+         "id": "$id",
+         "pending": "approval",
+         "approvalCode": "K7Q2MZ4XWA"
+        }
+       },
+       {
+        "send": {
+         "op": "values",
+         "id": "$id",
+         "results": [
+          {
+           "op": "value",
+           "value": "one",
+           "encoding": "utf8",
+           "entry": {
+            "store": "fleet",
+            "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+            "source": "github",
+            "fetchedAt": "2026-11-13T08:59:30Z"
+           },
+           "bound": {
+            "env": "prod"
+           },
+           "version": {
+            "modified": "2026-11-01T12:00:00Z",
+            "revision": "b1946ac9"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "getMany",
+    "refs": [
+     {
+      "ref": "a.one"
+     }
+    ]
+   },
+   "expect": {
+    "result": {
+     "results": [
+      {
+       "value": {
+        "encoding": "utf8",
+        "base64": "b25l",
+        "entry": {
+         "store": "fleet",
+         "uuid": "0f3c2a1b4d5e6f708192a3b4c5d6e7f8",
+         "source": "github",
+         "fetchedAtMs": 1794560370000
+        },
+        "bound": {
+         "env": "prod"
+        },
+        "version": {
+         "modifiedMs": 1793534400000,
+         "revision": "b1946ac9"
+        },
+        "masked": true,
+        "text": "one"
+       }
+      }
+     ],
+     "progress": [
+      {
+       "pending": "approval",
+       "approvalCode": "K7Q2MZ4XWA"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "the whole request refused: denied",
+   "script": {
+    "rules": [
+     {
+      "match": {
+       "op": "getMany"
+      },
+      "reply": [
+       {
+        "send": {
+         "op": "error",
+         "kind": "denied",
+         "message": "refused",
+         "id": "$id",
+         "details": {
+          "reason": "refused"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "action": {
+    "do": "getMany",
+    "refs": [
+     {
+      "ref": "a.one"
+     },
+     {
+      "ref": "b.two"
+     }
+    ]
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "denied",
+      "reason": "refused"
+     }
+    }
+   }
+  },
+  {
+   "name": "a malformed reference among them is refused locally",
+   "script": {},
+   "action": {
+    "do": "getMany",
+    "refs": [
+     {
+      "ref": "a.one"
+     },
+     {
+      "ref": "[env:]x"
+     }
+    ]
+   },
+   "expect": {
+    "result": {
+     "error": {
+      "kind": "malformed",
+      "reason": "empty_segment"
+     }
+    },
+    "notSent": [
+     "getMany"
+    ]
+   }
+  }
+ ]
+}
