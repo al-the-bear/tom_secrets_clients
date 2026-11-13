@@ -150,7 +150,9 @@ message('hello', 'client', 'c2s', 'A', 'The first frame of a client connection.'
         ['protocol', 'client'],
         protocol={'type': 'integer', 'minimum': 1}, client=ref('clientInfo'),
         token={'description': 'Windows: the text of client.token.', **ref('base64_32')},
-        clientToken=ref('base64_32'))
+        clientToken=ref('base64_32'),
+        features={'description': '[B] The optional features the client takes (section 8).',
+                  'type': 'array', 'items': STR, 'uniqueItems': True})
 message('welcome', 'client', 's2c', 'A', 'The answer to hello.',
         ['protocol', 'service', 'features', 'host', 'platform'],
         protocol={'type': 'integer', 'minimum': 1},

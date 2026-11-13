@@ -16,13 +16,13 @@ In the workspace this repository is the submodule `tom_ai/secrets_clients`
 | --- | --- | --- |
 | [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning, the signed objects, the approval code and the approval link with its hybrid handshake; a JSON Schema per message, the test vectors and the tools that write and check them (Python, Dart on `tom_pqc`, and a Go cross-check) |
 | the conformance suite | A | the harness and its fake service (Dart) |
-| `tom_secrets_client` | A | the Dart client: frames, messages, the reference grammar |
+| [`clients/dart/tom_secrets_client`](clients/dart/tom_secrets_client/README.md) | A | the Dart client: finding the service, frames, `get`, `getMany`, `getFile` (B), waiting for an unlock or an approval, the reference grammar |
 | `tsm` | A | the command line (`get`, `run`, the admin commands), on `tom_build_base` |
 | the TypeScript client | A | the npm package |
 | the other seven libraries | B | C, C++, Go, Java, JavaScript, Python, Rust |
 
-The protocol document exists; the other packages are created by the quest's
-todos of their phase.
+The protocol document and the Dart client exist; the other packages are
+created by the quest's todos of their phase.
 
 ## Checking the protocol
 

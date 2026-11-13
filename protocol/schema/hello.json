@@ -26,6 +26,14 @@
     },
     "clientToken": {
       "$ref": "common.json#/$defs/base64_32"
+    },
+    "features": {
+      "description": "[B] The optional features the client takes (section 8).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     }
   },
   "x-tsm": {

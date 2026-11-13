@@ -305,6 +305,7 @@ The client's first frame is `hello`:
 | `client` | `{name, version, language}`: the program's name (default its executable's), the library's version and language; shown in prompts, never trusted |
 | `token` | Windows: the text of `client.token` (3.2); a wrong or missing token is `denied` |
 | `clientToken` | a client token the program was given before (7.4), when it has one |
+| `features` | **[B]** the optional features the client takes (section 8), e.g. `["binary","getFile"]`; absent is none |
 
 The service answers `welcome`:
 
@@ -588,7 +589,10 @@ from the vault instead (9.4).
   | `match` | **[B]** `match`, `matches` |
   | `propose` | **[B]** `propose`, `accepted`, and the admin event `proposal` |
 
-  A client sends a feature's messages only when `welcome.features` names it.
+  A client sends a feature's messages only when `welcome.features` names it,
+  and names in `hello.features` the features it takes; the service sends
+  binary frames only to a client whose `hello.features` names `binary`. A
+  phase-A service ignores `hello.features` and offers none.
 - An unknown `op` on an open connection is answered `error` `unsupported`
   with `details.op` and the connection stays open.
 - A value of an enumerated member that a receiver does not know (a new error
@@ -973,3 +977,5 @@ part-service) leaves these open; this document fixes them:
     `{"protocol":1,"host"}`; a frame is at most 1 MiB; a `rekey` message
     announces each REKEY, so both sides switch at the same frame; a new link
     key is passed as `linkKey` inside a session under the old keys.
+20. `hello` carries the client's `features` **[B]**, so that binary frames
+    (2.5), which both sides must announce, can be announced by the client.
