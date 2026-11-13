@@ -48,11 +48,15 @@ CLIENT = {'name': 'deploy.sh', 'version': '0.1.0', 'language': 'dart'}
 IDENTITY = {'kind': 'script', 'exe': '/usr/bin/bash', 'interpreter': '/usr/bin/bash',
             'script': '/home/demo/deploy.sh', 'args': ['bash', 'deploy.sh'],
             'cwd': '/home/demo', 'parent': {'exe': '/usr/bin/sshd'}, 'uid': 1000}
-GRANT = {'id': 'g-0001', 'host': 'bigbeast', 'subject': 'script /usr/bin/bash /home/demo/deploy.sh',
-         'secret': '[env:prod]db.main', 'decision': 'allow', 'created': '2026-11-13T09:00:00Z',
-         'pin': 'hash', 'approver': 'mbp',
-         'signatures': [{'alg': 'ed25519', 'keyId': 'mbp-approver-1',
-                         'sig': b64(derive('demo signature', 64))}]}
+# The signed grant of signatures.json (written by tool/vectors_dart), so the
+# grant in frames.json carries signatures that verify.
+GRANT = next(c['object'] for c in json.loads((VECTORS / 'signatures.json').read_text())['accepted']
+             if c['name'] == 'grant')
+# The code of the request a-17 on bigbeast below, and a token for it.
+REFS = ['[env:prod]db.main']
+CODE = tp.approval_code('bigbeast', 'a-17', IDENTITY, REFS)
+TOKEN_KEY = derive('approval token key mbp bigbeast')
+TOKEN = tp.code_token(TOKEN_KEY, 'bigbeast', CODE, 'once')
 VALUE = {'value': 'demo-password-1', 'encoding': 'utf8',
          'entry': {'store': 'prod', 'uuid': UUID, 'source': 'github',
                    'fetchedAt': '2026-11-13T08:59:30Z'},
@@ -93,7 +97,7 @@ FRAMES = [
                    'details': {'dimensions': {'env': 'prod', 'host': 'bigbeast'}}}]}),
     ('progress: waiting for an unlock', 'client', {'op': 'progress', 'id': 1, 'pending': 'unlock'}),
     ('progress: waiting for approval, with an approval code', 'client',
-     {'op': 'progress', 'id': 4, 'pending': 'approval', 'approvalCode': 'K7Q2MZ4XWA'}),
+     {'op': 'progress', 'id': 4, 'pending': 'approval', 'approvalCode': CODE}),
     ('error: not_found naming the dimensions', 'client',
      {'op': 'error', 'id': 1, 'kind': 'not_found', 'message': 'no candidate for db.main',
       'details': {'dimensions': {'env': 'staging'}}}),
@@ -176,11 +180,11 @@ FRAMES = [
      {'op': 'approve', 'id': 12, 'approvalId': 'a-18', 'decision': 'folder', 'secret': 'store',
       'folder': '/home/demo/Code', 'pin': {'relaxedUntil': '2026-11-20T00:00:00Z'}}),
     ('approval.redeem', 'admin', {'op': 'approval.redeem', 'id': 13,
-                                  'token': 'MZXW6YTBOJRGC4TCMFZGKYLSMQ'}),
-    ('approval.issue', 'admin', {'op': 'approval.issue', 'id': 14, 'code': 'K7Q2MZ4XWA',
-                                 'decision': 'once', 'secret': 'ref'}),
+                                  'token': TOKEN}),
+    ('approval.issue', 'admin', {'op': 'approval.issue', 'id': 14, 'host': 'bigbeast',
+                                 'code': CODE, 'decision': 'once', 'secret': 'ref'}),
     ('approvalToken', 'admin', {'op': 'approvalToken', 'id': 14,
-                                'token': 'MZXW6YTBOJRGC4TCMFZGKYLSMQ'}),
+                                'token': TOKEN}),
     ('grants.list', 'admin', {'op': 'grants.list', 'id': 15, 'host': 'bigbeast'}),
     ('grantList', 'admin', {'op': 'grantList', 'id': 15, 'grants': [GRANT]}),
     ('grants.add', 'admin', {'op': 'grants.add', 'id': 16, 'grant': {
@@ -197,9 +201,9 @@ FRAMES = [
     ('event unlock_needed', 'admin', {'op': 'unlock_needed', 'identity': IDENTITY}),
     ('event approval_needed', 'admin',
      {'op': 'approval_needed', 'approvalId': 'a-17', 'host': 'bigbeast', 'identity': IDENTITY,
-      'refs': ['[env:prod]db.main'],
+      'refs': REFS,
       'resolved': [{'store': 'prod', 'path': 'Db/Main', 'kind': 'login'}],
-      'hostHint': 'bigbeast (Linux, over SSH from mbp)', 'approvalCode': 'K7Q2MZ4XWA'}),
+      'hostHint': 'bigbeast (Linux, over SSH from mbp)', 'approvalCode': CODE}),
     ('event approval_closed', 'admin', {'op': 'approval_closed', 'approvalId': 'a-17',
                                         'outcome': 'approved'}),
     ('event locked', 'admin', {'op': 'locked'}),
@@ -399,6 +403,78 @@ def hmac_vectors() -> dict:
 
 
 # --------------------------------------------------------------------------
+# approval_codes.json
+# --------------------------------------------------------------------------
+
+CODE_REQUESTS = [
+    ('the request of frames.json', 'bigbeast', 'a-17', IDENTITY, REFS),
+    ('an executable, two references, one with an escape', 'bigbeast', 'a-18',
+     {'kind': 'exe', 'exe': '/usr/local/bin/backup', 'args': ['backup', '--nightly'],
+      'cwd': '/srv', 'uid': 1000},
+     ['store-key.backup', 'fleet/Telegram/Bot%2FMain#Token']),
+    ('a reference that is not canonical as written', 'legiondary01', 'a-1',
+     {'kind': 'interpreter', 'exe': 'C:\\Python312\\python.exe',
+      'interpreter': 'C:\\Python312\\python.exe', 'args': ['python', '-c', 'print(1)'],
+      'cwd': 'C:\\Code', 'uid': 'S-1-5-21-1004336348-1177238915-682003330-1001'},
+     ['[os:windows,env:dev]openai.api_key#Password']),
+    ('no arguments, unicode in the path', 'mbp', 'a-9',
+     {'kind': 'script', 'exe': '/usr/bin/python3', 'interpreter': '/usr/bin/python3',
+      'script': '/Users/demo/Überweisung.py', 'args': [], 'cwd': '/Users/demo', 'uid': 501},
+     ['banking.pin']),
+]
+
+
+def approval_codes() -> dict:
+    codes = []
+    for name, host, approval_id, identity, refs in CODE_REQUESTS:
+        codes.append({'name': name, 'host': host, 'approvalId': approval_id,
+                      'identity': identity, 'refs': refs,
+                      'canonicalRefs': [tp.parse(r)['canonical'] for r in refs],
+                      'requestDigestHex': tp.request_digest(identity, refs).hex(),
+                      'code': tp.approval_code(host, approval_id, identity, refs)})
+    tokens = []
+    for i, (host, code) in enumerate([('bigbeast', CODE), ('bigbeast', codes[1]['code']),
+                                      ('legiondary01', codes[2]['code'])]):
+        key = TOKEN_KEY if i == 0 else derive(f'approval token key {i}')
+        for decision in tp.DECISIONS:
+            tag_input = (tp.lps('tsm-code-token-v1') + tp.lps(host) + tp.lps(code) +
+                         tp.lps(decision))
+            tokens.append({'tokenKey': b64(key), 'host': host, 'code': code,
+                           'decision': decision, 'tagInputHex': tag_input.hex(),
+                           'token': tp.code_token(key, host, code, decision)})
+    other_key = derive('approval token key of another approver')
+    redeem = [
+        {'name': 'the token of frames.json answers a-17 once',
+         'token': TOKEN, 'outcome': ['a-17', 'once']},
+        {'name': 'the same token typed in lower case, in groups',
+         'token': ' '.join(TOKEN.lower()[i:i + 4] for i in range(0, 26, 4)),
+         'outcome': ['a-17', 'once']},
+        {'name': 'a token of 25 characters', 'token': TOKEN[:-1], 'outcome': None},
+        {'name': 'a token for an ended request (no longer waiting)',
+         'token': tp.code_token(TOKEN_KEY, 'bigbeast', codes[1]['code'], 'never'),
+         'outcome': None},
+        {'name': 'a token under a key the host did not record',
+         'token': tp.code_token(other_key, 'bigbeast', CODE, 'once'), 'outcome': None},
+        {'name': 'a token made for another host',
+         'token': tp.code_token(TOKEN_KEY, 'mbp', CODE, 'once'), 'outcome': None},
+        {'name': 'a token with its last character changed',
+         'token': TOKEN[:-1] + ('A' if TOKEN[-1] != 'A' else 'Q'), 'outcome': None},
+    ]
+    for case in redeem:
+        found = tp.redeem(case['token'], {CODE: 'a-17'}, [TOKEN_KEY], 'bigbeast')
+        assert (list(found) if found else None) == case['outcome'], case['name']
+    return {'note': 'The approval code and the approval-code token of sections 9.5 and 9.6. '
+                    'requestDigestHex is the request digest, code the approval code, '
+                    'tagInputHex the HMAC input of the token. redeem: what host bigbeast does '
+                    'with a token while only a-17 waits (code ' + CODE + ') and only the '
+                    'token key of frames.json is recorded; outcome is [approvalId, decision] '
+                    'or null (refused). Keys are demo values derived from labels.',
+            'codes': codes, 'tokens': tokens,
+            'redeem': {'host': 'bigbeast', 'waiting': {CODE: 'a-17'},
+                       'tokenKeys': [b64(TOKEN_KEY)], 'cases': redeem}}
+
+
+# --------------------------------------------------------------------------
 # discovery.json
 # --------------------------------------------------------------------------
 
@@ -444,7 +520,9 @@ def main() -> None:
     write('references.json', references())
     write('hmac.json', hmac_vectors())
     write('discovery.json', discovery())
-    print(f'{VECTORS}: frames.json, references.json, hmac.json, discovery.json')
+    write('approval_codes.json', approval_codes())
+    print(f'{VECTORS}: frames.json, references.json, hmac.json, discovery.json, '
+          'approval_codes.json')
 
 
 if __name__ == '__main__':

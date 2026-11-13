@@ -1,8 +1,11 @@
 # Copyright (c) 2026 Peter Nicolai Alexis Kyaw
 # SPDX-License-Identifier: BSD-3-Clause
 """Reference implementation of the parts of protocol.md that can be computed:
-the reference grammar (parse and format), framing, the admin challenge and the
-runtime-directory discovery.
+the reference grammar (parse and format), framing, the admin challenge, the
+runtime-directory discovery, and of section 9 the signed bytes, approver key
+ids, the approval code and the approval-code token (the signatures and the
+approval link need ML-DSA and ML-KEM and are computed by tool/vectors_dart,
+checked independently by tool/vectors_go).
 
 It writes the test vectors (gen_vectors.py) and re-checks them
 (check_protocol.py). It is not a client library: it exists so that the
@@ -11,6 +14,7 @@ Standard library only.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -234,6 +238,110 @@ def admin_mac(label: str, admin_key: bytes, service_nonce: bytes,
     message = (label.encode('ascii') + service_nonce + admin_nonce +
                service_start.to_bytes(8, 'big'))
     return hmac.new(admin_key, message, hashlib.sha256).digest()
+
+
+# --------------------------------------------------------------------------
+# Signed objects and approval codes (protocol.md section 9)
+# --------------------------------------------------------------------------
+
+def lp(data: bytes) -> bytes:
+    """The length as 4 bytes big-endian, then the bytes."""
+    return len(data).to_bytes(4, 'big') + data
+
+
+def lps(text: str) -> bytes:
+    return lp(text.encode('utf-8'))
+
+
+SIGNED_FIELDS = {
+    'tsm-grant-v1': ['id', 'host', 'subject', 'secret', 'decision', 'created', 'pin', 'approver'],
+    'tsm-revoke-v1': ['host', 'grantId', 'revoked', 'approver'],
+    'tsm-approval-v1': ['host', 'code', 'decision', 'approver', 'created'],
+    'tsm-keychange-v1': ['device', 'oldKeyId', 'newKeyId', 'newEd25519', 'newMlDsa65', 'time'],
+}
+
+
+def pin_text(pin) -> str:
+    """`hash`, `off`, `relaxed:<relaxedUntil>`, or empty when absent."""
+    if pin is None:
+        return ''
+    if isinstance(pin, str):
+        return pin
+    return 'relaxed:' + pin['relaxedUntil']
+
+
+def signed_bytes(label: str, obj: dict) -> bytes:
+    """lp(label) || lp(member) for each signed member; absent is empty."""
+    out = lps(label)
+    for name in SIGNED_FIELDS[label]:
+        out += lps(pin_text(obj.get(name)) if name == 'pin' else obj.get(name, ''))
+    return out
+
+
+def key_id(ed25519_public: bytes, ml_dsa_public: bytes) -> str:
+    digest = hashlib.sha256(lps('tsm-approver-key-v1') + lp(ed25519_public) +
+                            lp(ml_dsa_public)).digest()
+    return digest[:16].hex()
+
+
+def base32(data: bytes) -> str:
+    """RFC 4648 base32, upper case, without padding."""
+    return base64.b32encode(data).decode('ascii').rstrip('=')
+
+
+def request_digest(identity: dict, refs: list[str]) -> bytes:
+    """SHA-256 over what the waiting request is: the identity's kind, exe,
+    interpreter, script, cwd, uid and arguments, and its references in
+    canonical form."""
+    data = lps('tsm-approval-request-v1')
+    for name in ('kind', 'exe', 'interpreter', 'script', 'cwd'):
+        data += lps(identity.get(name, ''))
+    data += lps(str(identity['uid']))
+    data += len(identity['args']).to_bytes(4, 'big')
+    for arg in identity['args']:
+        data += lps(arg)
+    data += len(refs).to_bytes(4, 'big')
+    for ref in refs:
+        data += lps(parse(ref)['canonical'])
+    return hashlib.sha256(data).digest()
+
+
+def approval_code(host: str, approval_id: str, identity: dict, refs: list[str]) -> str:
+    """The first ten base32 characters of SHA-256(lp("tsm-approval-code-v1")
+    || lp(host) || lp(approvalId) || requestDigest)."""
+    digest = hashlib.sha256(lps('tsm-approval-code-v1') + lps(host) + lps(approval_id) +
+                            request_digest(identity, refs)).digest()
+    return base32(digest)[:10]
+
+
+DECISIONS = ('once', 'always', 'folder', 'never')
+
+
+def code_token(token_key: bytes, host: str, code: str, decision: str) -> str:
+    """26 base32 characters: the first 16 bytes of HMAC-SHA256(approvalTokenKey,
+    lp("tsm-code-token-v1") || lp(host) || lp(code) || lp(decision))."""
+    if len(token_key) != 32 or decision not in DECISIONS:
+        raise ValueError('a 32-byte key and a known decision')
+    tag = hmac.new(token_key, lps('tsm-code-token-v1') + lps(host) + lps(code) + lps(decision),
+                   hashlib.sha256).digest()[:16]
+    return base32(tag)
+
+
+def redeem(token: str, waiting: dict[str, str], token_keys: list[bytes], host: str):
+    """What a service does with `approval.redeem`: `waiting` maps each code of a
+    waiting request to its approval id. Returns (approvalId, decision) for the
+    request the token answers, or None. Every candidate is compared in
+    constant time. The token is read in any case and without spaces."""
+    token = token.replace(' ', '').upper()
+    if not re.fullmatch('[A-Z2-7]{26}', token):
+        return None
+    found = None
+    for code, approval_id in waiting.items():
+        for key in token_keys:
+            for decision in DECISIONS:
+                if hmac.compare_digest(code_token(key, host, code, decision), token):
+                    found = (approval_id, decision)
+    return found
 
 
 # --------------------------------------------------------------------------

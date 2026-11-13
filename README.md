@@ -14,25 +14,29 @@ In the workspace this repository is the submodule `tom_ai/secrets_clients`
 
 | Package | Phase | What it holds |
 | --- | --- | --- |
-| [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning; a JSON Schema per message, the test vectors and the tools that write and check them |
+| [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning, the signed objects, the approval code and the approval link with its hybrid handshake; a JSON Schema per message, the test vectors and the tools that write and check them (Python, Dart on `tom_pqc`, and a Go cross-check) |
 | the conformance suite | A | the harness and its fake service (Dart) |
 | `tom_secrets_client` | A | the Dart client: frames, messages, the reference grammar |
 | `tsm` | A | the command line (`get`, `run`, the admin commands), on `tom_build_base` |
 | the TypeScript client | A | the npm package |
 | the other seven libraries | B | C, C++, Go, Java, JavaScript, Python, Rust |
 
-The protocol document exists (its second part, the signed objects and the
-approval link, is still to come); the other packages are created by the
-quest's todos of their phase.
+The protocol document exists; the other packages are created by the quest's
+todos of their phase.
 
 ## Checking the protocol
 
 ```text
 python3 protocol/tool/check_protocol.py
+(cd protocol/tool/vectors_dart && testkit :test)
+(cd protocol/tool/vectors_go && go run .)
 ```
 
-checks that the document, the schemas and the vectors agree (Python 3.9 or
-later with `jsonschema`).
+check that the document, the schemas and the vectors agree (Python 3.9 or
+later with `jsonschema`), that the signatures and the approval link verify
+and run both ways in Dart, and that Go's standard library computes the same
+signatures, codes, tokens and handshake (Go 1.27 or later). Section 12 of
+the protocol document lists how the vectors are regenerated.
 
 ## Licence and boundaries
 

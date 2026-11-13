@@ -7,6 +7,7 @@
   "required": [
     "op",
     "id",
+    "host",
     "code",
     "decision",
     "secret"
@@ -17,6 +18,9 @@
     },
     "id": {
       "$ref": "common.json#/$defs/id"
+    },
+    "host": {
+      "type": "string"
     },
     "code": {
       "type": "string",

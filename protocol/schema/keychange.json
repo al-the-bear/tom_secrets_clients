@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/keychange.json",
+  "title": "keychange",
+  "description": "A key-change statement of the approver key. Endpoint: link; direction: a2h; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "statement"
+  ],
+  "properties": {
+    "op": {
+      "const": "keychange"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "statement": {
+      "$ref": "common.json#/$defs/keyChange"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "link",
+    "direction": "a2h",
+    "phase": "A"
+  }
+}

@@ -1,0 +1,6 @@
+.dart_tool/
+build/
+testlog/
+ztmp/
+# Application package (bin/): its pubspec.lock is tracked (/tom_app_locks).
+!/pubspec.lock

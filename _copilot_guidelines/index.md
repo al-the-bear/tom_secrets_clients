@@ -10,8 +10,11 @@ document, the conformance suite, the client libraries and `tsm`).
   the protocol document.
 - **The protocol document is the authority** (`protocol/protocol.md`). A
   change to a message, the grammar or a vector starts there; then
-  `protocol/tool/gen_schemas.py` and `gen_vectors.py` regenerate the schemas
-  and vectors, and `check_protocol.py` must pass. The wire formats are fixed
+  `protocol/tool/gen_schemas.py`, `vectors_dart/bin/gen_vectors.dart` (the
+  signatures and the approval link) and `gen_vectors.py` regenerate the
+  schemas and vectors, in that order, and `check_protocol.py`, the
+  `vectors_dart` tests and the `vectors_go` cross-check must pass (protocol.md
+  section 12). The wire formats are fixed
   in phase A: a later change is a new protocol version or a feature
   (section 8), never an edit of a version-1 message.
 - Every client library passes the conformance suite against the fake service,

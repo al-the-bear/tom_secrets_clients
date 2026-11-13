@@ -12,10 +12,9 @@ Every part is **phase A** unless marked **[B]** or **[C]**. A phase-B part is
 specified here already, so that its wire format is fixed from the start; a
 phase-A implementation does not send it and refuses it as section 8 says.
 
-Section 9 (the signed bytes of grants, revocations, approval tokens and
-key-change statements, the approval code's derivation, and the approval
-link's handshake) is the second part of this document and is written
-separately; the messages that carry those objects are specified here.
+Section 9 specifies the signed objects (grants, revocations, approval records
+and key-change statements), the approval code and its token, and the approval
+link with its handshake.
 
 ## 1. Endpoints
 
@@ -449,7 +448,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?}` | `ok` | answer a prompt (7.2) |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
-| `approval.issue {id, code, decision, secret, pin?}` | `approvalToken {id, token}` | have this device's approver key make a token for a code (7.5) |
+| `approval.issue {id, host, code, decision, secret, pin?}` | `approvalToken {id, token}` | have this device make the token for a code shown on `host` (7.5, 9.6); for a decision other than `once` its app also writes the signed grant |
 | `grants.list {id, host?}` | `grantList {id, grants[]}` | the allow list of one host, or of every host (7.3) |
 | `grants.add {id, grant{host, subject, secret, decision, pin?}}` | `ok` | add a grant, for another host a pre-approval; the service fills in `id`, `created` and `approver` and signs it |
 | `grants.revoke {id, host, grantId}` | `ok` | revoke a grant of any host |
@@ -568,8 +567,9 @@ token to its caller and never stores it itself.
   waiting host (`approval.redeem`). It is single-use and expires with its
   code.
 
-How the code is derived and what the token's tag covers are specified in
-section 9.
+The code's derivation is 9.5, the token's tag and its redemption 9.6. `tsm
+approve` without a token takes a signed approval record for a waiting code
+from the vault instead (9.4).
 
 ## 8. Versioning and extension
 
@@ -597,19 +597,242 @@ section 9.
 
 ## 9. Signed objects and the approval link
 
-The second part of this document specifies:
+### 9.1 The length-prefixed encoding
 
-- the signed bytes and the signature list of grants, revocations,
-  approval tokens and key-change statements (Ed25519 and ML-DSA-65);
-- the derivation of the approval code and the tag of the approval token;
-- the approval link: its frames over the `ApprovalChannel`, its messages
-  (`approval_needed`, `approve`, `approval_closed`, `grant`, `revoke`, key-change
-  statements) and its hybrid handshake;
-- their test vectors.
+Everything signed, tagged or digested in this section is a sequence of byte
+strings, each written as `lp(x)`: the length of `x` as 4 bytes big-endian,
+then `x`. A text is its UTF-8 (`lps(text)`), with no normalisation. A list is
+its item count as 4 bytes big-endian, then `lp` of each item. No JSON is ever
+signed, so nothing depends on how a writer orders or escapes JSON.
 
-Until it is written, the messages of sections 6 and 7 that carry these
-objects are fixed in their members, and their signature and tag contents are
-not.
+### 9.2 Approver keys
+
+An **approver key** is an Ed25519 key and an ML-DSA-65 key (FIPS 204) used
+together. Its **key id** is the first 16 bytes, as 32 lower-case hex digits,
+of
+
+```text
+SHA-256(lps("tsm-approver-key-v1") || lp(Ed25519 public key, 32 bytes)
+        || lp(ML-DSA-65 public key, 1,952 bytes))
+```
+
+A host's service records, at pairing, the public keys of each approver device
+with their key id and the device's id; only those records make a device an
+approver. A key id names a recorded key; it is never trusted on its own.
+
+### 9.3 The signature list
+
+A signed object carries `signatures`, a list of items `{alg, keyId, sig}`
+(`sig` in base64). An approver key signs the object's signed bytes `m`
+(9.4), made under the object's domain label `L`, twice:
+
+| `alg` | `sig` |
+| --- | --- |
+| `ed25519` | the Ed25519 signature of `m` (RFC 8032, 64 bytes) |
+| `ml-dsa-65` | the ML-DSA-65 signature of `m` with `L` as its context string (FIPS 204, 3,309 bytes), in the hedged mode |
+
+A receiver **accepts** the object when, for one recorded approver key, the
+list holds an `ed25519` item and an `ml-dsa-65` item with that key's id that
+both verify (the ML-DSA-65 one under the context `L`). One algorithm alone is
+never enough, so a forgery has to break Ed25519 and ML-DSA-65 alike. Items of
+an `alg` the receiver does not know, and items of key ids it has not
+recorded, are ignored; that is how a later algorithm is added (section 8).
+The label in the signed bytes and in the ML-DSA context keeps a signature of
+one kind of object from passing as another.
+
+### 9.4 The signed objects
+
+The signed bytes of an object are `lps(L)` followed by `lps(member)` for each
+member below, in this order. An absent optional member is the empty string;
+`pin` is written `hash`, `off` or `relaxed:<relaxedUntil>`.
+
+| Object | Label `L` | Members, in order | Where it is |
+| --- | --- | --- | --- |
+| grant (7.3) | `tsm-grant-v1` | `id`, `host`, `subject`, `secret`, `decision`, `created`, `pin`, `approver` | `tsm.grants/<host>`; `grant` on the link; `grantList` |
+| revocation | `tsm-revoke-v1` | `host`, `grantId`, `revoked`, `approver` | `tsm.grants/<host>`; `revoke` on the link |
+| approval record | `tsm-approval-v1` | `host`, `code`, `decision`, `approver`, `created` | `tsm.grants/<host>` |
+| key-change statement | `tsm-keychange-v1` | `device`, `oldKeyId`, `newKeyId`, `newEd25519`, `newMlDsa65`, `time` | `tsm.grants/<host>`; `keychange` on the link |
+
+- A **grant** is accepted as 9.3 says; `lastUsed` is not signed (the service
+  updates it). A service applies only the grants of its own `host`.
+- A **revocation** `{host, grantId, revoked, approver, signatures}` removes
+  the grant `grantId` of `host`. It is accepted like a grant.
+- An **approval record** `{host, code, decision, approver, created,
+  signatures}` answers the request waiting with approval code `code` on
+  `host` (9.5), as a token would (9.6). It is what an approving app writes into
+  the vault when the user approves a code; `tsm approve` without a token makes
+  the service reload the primary vault and take the record for a waiting code.
+  It answers that one request: a lasting decision comes only from a grant,
+  written beside it.
+- A **key-change statement** carries the device's new approver key: its id
+  (`newKeyId`), its public keys in base64 (`newEd25519`, `newMlDsa65`) and the
+  id of the key it replaces (`oldKeyId`). It is signed by the old key and by
+  the new key, each with both algorithms: four items. A host records the new
+  key only when `oldKeyId` is the id of the key it recorded for `device`,
+  `newKeyId` is the id of the public keys in the statement (9.2), and the
+  statement is accepted under the old key and under the new key.
+
+### 9.5 The approval code
+
+A request waiting on a host without a connected approver gets an approval code
+(7.2, 7.5). The service chooses the request's `approvalId` (unique among the
+service's requests since it started) and derives the code from it, the host and
+the request:
+
+```text
+requestDigest = SHA-256(lps("tsm-approval-request-v1")
+                || lps(kind) || lps(exe) || lps(interpreter) || lps(script)
+                || lps(cwd) || lps(uid as text) || args as a list
+                || the references, each in canonical form (4.5), as a list)
+code = the first 10 characters of
+       base32(SHA-256(lps("tsm-approval-code-v1") || lps(host)
+                      || lps(approvalId) || requestDigest))
+```
+
+The identity members are those of 7.1 (`interpreter` and `script` empty when
+absent; `uid` a decimal number or the SID). `base32` is RFC 4648's alphabet
+`A`–`Z`, `2`–`7`, upper case, without padding; a reader takes a code in any
+case and without the spaces a person may type. The code is shown, not secret:
+it names the request, and the token proves the approval.
+
+### 9.6 The approval-code token
+
+Pairing gives each approver device and host an **approval-token key**, 32
+bytes both keep in their device settings. For a code shown on `host`, the
+approving device computes
+
+```text
+token = base32(the first 16 bytes of HMAC-SHA256(approvalTokenKey,
+          lps("tsm-code-token-v1") || lps(host) || lps(code) || lps(decision))
+```
+
+26 characters (128 bits), where `decision` is `once`, `always`, `folder` or
+`never` (`approval.issue` returns it as `approvalToken`). The approval id and
+the request enter through the code, which is all the approving device is
+given. For a decision other than `once`, the approving app also writes the
+signed grant into the vault.
+
+The service redeems a token (`approval.redeem`, `tsm approve <token>`):
+
+1. It reads the token in any case, without spaces; anything that is not 26
+   base32 characters is refused.
+2. For every request waiting with a code, every recorded approval-token key
+   and every decision, it recomputes the token and compares in constant time.
+3. A match answers that request: allowed for `once`, `always` and `folder`,
+   `denied` (reason `refused`) for `never`. A lasting decision is applied only
+   from the signed grant (7.2), never from the token.
+4. A token is single-use: the service records each redeemed token until its
+   request has ended and refuses it again. It expires with its code, when the
+   request ends (the code timeout, default 5 minutes); a token for an ended or
+   unknown request matches nothing.
+5. A token that matches nothing is answered `error` `denied` (reason
+   `bad_token`), counts as a failed admin authentication and counts against
+   every request waiting with a code; the third ends such a request `denied`
+   (section 11).
+
+### 9.7 The approval link
+
+The approval link joins a host's service and the manager app of a paired
+approver device. The app connects; the host listens on its VPN or LAN address
+only (phase A). The link runs over an `ApprovalChannel`, a bidirectional byte
+stream (`incoming`, `send`, `close`) that a TCP connection implements in
+phase A and the relay in phase C. On the channel every message is a **frame**:
+its length as 4 bytes big-endian, then its bytes; a frame over 1 MiB closes
+the link. The first two frames are the handshake, every later frame one
+transport message.
+
+**Keys.** Each side has a **link key**: an X25519 key and an ML-KEM-768 key
+(FIPS 203, encapsulation key 1,184 bytes). Pairing records each side's public
+link key at the other; they are the only trust anchor.
+
+**The handshake** is the Noise pattern `KK`, with every Diffie-Hellman step
+paired with an ML-KEM-768 encapsulation and both secrets mixed into the key
+schedule, under the protocol name
+
+`tsm-link-v1_KK-hybrid_25519+MLKEM768_ChaChaPoly_SHA256`
+
+The symmetric state is Noise's with SHA-256: `h` = SHA-256(protocol name),
+`ck` = `h`; `MixHash(x)`: `h` = SHA-256(`h` || `x`); `MixKey(x)`: (`ck`, `k`)
+= HKDF(`ck`, `x`) with Noise's HKDF over HMAC-SHA256, and the nonce counter
+`n` to 0; `EncryptAndHash(p)`: `c` = ChaCha20-Poly1305(`k`, `n`, ad `h`, `p`),
+`n` + 1, `MixHash(c)`; `DecryptAndHash` the inverse. The nonce is 4 zero bytes
+followed by `n` as 8 bytes little-endian. A DH output of all zeros, from a
+low-order point, aborts the handshake. The approver is the initiator (`i`),
+the host the responder (`r`); `s` is a static key, `e` an ephemeral one.
+
+1. **Both** start with `MixHash` of `i`'s static X25519 public key, `i`'s
+   static ML-KEM public key, `r`'s static X25519 public key and `r`'s static
+   ML-KEM public key, in that order.
+2. **Message 1**, approver to host: `e` (32 bytes) || `ek` (1,184) || `c0`
+   (1,088) || the encrypted payload.
+   - `e`: a fresh X25519 key, `MixHash(e)`; `ek`: a fresh ML-KEM-768 key,
+     `MixHash(ek)`.
+   - `MixKey(DH(e, rs))`, then `MixKey(DH(is, rs))`.
+   - `c0`: an encapsulation to `r`'s static ML-KEM key; `MixHash(c0)`, then
+     `MixKey` of its shared secret.
+   - The payload `{"protocol":1,"device":<the approver's device id>}`, by
+     `EncryptAndHash`.
+3. **Message 2**, host to approver: `e` (32) || `c1` (1,088) || `c2` (1,088)
+   || the encrypted payload.
+   - `e`: a fresh X25519 key, `MixHash(e)`.
+   - `MixKey(DH(re, ie))`, then `MixKey(DH(re, is))`.
+   - `c1`: an encapsulation to the approver's `ek`; `c2`: one to its static
+     ML-KEM key. For each: `MixHash`, then `MixKey` of its shared secret.
+   - The payload `{"protocol":1,"host":<the host's name>}`, by
+     `EncryptAndHash`.
+4. **Split**: (`k1`, `k2`) = HKDF(`ck`, empty). `k1` encrypts approver to
+   host, `k2` host to approver; the final `h` is the handshake hash. The
+   ephemeral keys are dropped.
+
+A payload that does not decrypt, a message of the wrong length or an unknown
+protocol version closes the link before any transport message. A peer whose
+static keys are not the recorded ones cannot produce a message that decrypts,
+so an unknown peer is closed at message 1 (by the host) or message 2 (by the
+approver). A device id that is not the paired one for the recorded keys closes
+it too. Each side is authenticated by its static X25519 key and by its static
+ML-KEM key, and the session keys depend on X25519 and ML-KEM-768 secrets alike.
+
+**Transport.** Each direction has its key and counter `n` from 0: a transport
+message is ChaCha20-Poly1305(`k`, `n`, empty ad, the message's JSON), `n` + 1.
+A frame that does not decrypt (altered, replayed, dropped or reordered) closes
+the link. The messages are the JSON messages of section 2.2, each with `op`:
+
+| From | Message | Answer | Meaning |
+| --- | --- | --- | --- |
+| approver | `ready` | — | its first transport frame; the host sends nothing after message 2 before it has decrypted `ready`, which proves the approver holds its static ML-KEM key |
+| host | `approval_needed` | — | as on the admin endpoint (7.2) |
+| approver | `approve {id, approvalId, decision, secret, folder?, pin?}` | `ok` or `error` | the answer to a prompt; for a decision other than `once` the app also writes the signed grant |
+| host | `approval_closed` | — | the prompt was answered or ended |
+| approver | `grant {id, grant}` | `ok` or `error` | a signed grant (9.4) for the host to apply at once, before the vault copy arrives |
+| approver | `revoke {id, host, grantId, revoked, approver, signatures}` | `ok` or `error` | a signed revocation (9.4), applied at once |
+| approver | `keychange {id, statement}` | `ok` or `error` | a key-change statement (9.4) |
+| either | `linkKey {id, device, x25519, mlKem768}` | `ok` or `error` | the sender's new link public key; the peer records it, authenticated by this session under the old keys, and accepts the old key for the migration period |
+| either | `rekey` | — | after sending it the sender replaces its sending key `k` by Noise's REKEY (the first 32 bytes of ChaCha20-Poly1305(`k`, 2^64 − 1, empty ad, 32 zero bytes)); the receiver does the same to its receiving key after decrypting it. The counter goes on. Each side sends it after 2^20 frames or an hour |
+
+The answers are `ok {id}` and `error {id, kind, message, details?}` of
+sections 6 and 10 (`denied` for an object whose signatures are not accepted).
+Any other message closes the link. A new connection makes a new handshake.
+
+### 9.8 Test vectors
+
+- [`vectors/signatures.json`](vectors/signatures.json): three approver keys
+  from seeds, with their key ids; a grant, a grant with a relaxed pin, a
+  revocation, an approval record and a key-change statement, each with its
+  signed bytes and signatures, all accepted under the recorded key; and
+  objects that must be refused: a changed member, one algorithm alone, an
+  unrecorded key, a grant's signatures on a revocation, signatures of two
+  different objects, a key change signed by the old key only, and one whose
+  `newKeyId` is not its keys' id. ML-DSA-65 signs in its deterministic mode
+  there (all-zero randomness), which verifies like the hedged mode.
+- [`vectors/approval_codes.json`](vectors/approval_codes.json): requests with
+  their request digests and codes; tokens for every decision with their HMAC
+  input; redemption cases with their outcome.
+- [`vectors/link_handshake.json`](vectors/link_handshake.json): both link keys
+  and every random input of a handshake (ephemeral seeds, encapsulation
+  coins); both messages and frames, the handshake hash after message 1 and at
+  the end, the transport keys; transport frames with their plaintext,
+  ciphertext and a rekey in each direction; and failures the receiver must
+  detect.
 
 ## 10. Error kinds
 
@@ -620,7 +843,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -648,9 +871,12 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 53 message schemas, one per `op` (JSON Schema draft
-  2020-12, file `<op>.json`), and `common.json` with the shared definitions.
-  Each schema's `x-tsm` member names its endpoint, direction and phase.
+- [`schema/`](schema/): 59 message schemas, one per `op` (JSON Schema draft
+  2020-12, file `<op>.json`), and `common.json` with the shared definitions,
+  the signed objects of 9.4 among them. Each schema's `x-tsm` member names
+  its endpoint (`link` for the approval link), direction (`a2h` approver to
+  host, `h2a`, `both` on the link) and phase, and `alsoOn` the further
+  endpoints a message is used on unchanged.
 - [`vectors/frames.json`](vectors/frames.json): a frame for every message, as
   hex with its decoded JSON, a phase-B binary chunk, and the invalid frames of
   2.4 with their outcome.
@@ -661,17 +887,34 @@ Per measured identity, configurable in the service:
   MACs.
 - [`vectors/discovery.json`](vectors/discovery.json): the runtime directory
   per OS and environment, and port files.
+- [`vectors/signatures.json`](vectors/signatures.json),
+  [`vectors/approval_codes.json`](vectors/approval_codes.json) and
+  [`vectors/link_handshake.json`](vectors/link_handshake.json): section 9's
+  signed objects, approval codes and tokens, and the approval link (9.8).
 - [`tool/`](tool/): `tsm_protocol.py`, the reference implementation of the
   computable parts (references, frames, the MAC, discovery);
   `gen_schemas.py` and `gen_vectors.py`, which write `schema/` and
   `vectors/`; and `check_protocol.py`, which checks that this document, the
-  schemas and the vectors agree. Run by hand (Python 3.9 or later, with
-  `jsonschema` for the checker):
+  schemas and the vectors agree. Of section 9, `tsm_protocol.py` computes the
+  signed bytes, key ids, codes and tokens; the signatures and the link need
+  ML-DSA and ML-KEM:
+  - `vectors_dart/` (Dart, on `tom_pqc`) writes `signatures.json` and
+    `link_handshake.json` and tests both roles of the link against them;
+  - `vectors_go/` recomputes every signature, handshake message, key and
+    transport frame of those two files, and the codes and tokens of
+    `approval_codes.json`, with Go's standard library (Go 1.27 or later),
+    independently of the Dart and the Python tool.
+
+  Run by hand (Python 3.9 or later, with `jsonschema` for the checker), the
+  Dart tool first, since `frames.json` carries its signed grant:
 
   ```text
   python3 protocol/tool/gen_schemas.py
+  (cd protocol/tool/vectors_dart && dart run bin/gen_vectors.dart)
   python3 protocol/tool/gen_vectors.py
   python3 protocol/tool/check_protocol.py
+  (cd protocol/tool/vectors_dart && testkit :test)
+  (cd protocol/tool/vectors_go && go run .)
   ```
 
 Every value in the vectors is demo data under demo keys derived from labels;
@@ -707,3 +950,26 @@ part-service) leaves these open; this document fixes them:
 12. A binary chunk carries its request id in 8 bytes; a `getFile` answer ends
     with `end {id, sha256}`.
 13. An unknown enumerated value is read as the most general known one.
+14. Signatures are DP-160's list of separate Ed25519 and ML-DSA-65 items over
+    length-prefixed bytes (9.1, 9.3), not a composite signature: a list lets a
+    later algorithm be added beside them, and the ML-DSA context carries the
+    object's label.
+15. An approver key id is 16 bytes of a labelled SHA-256 of both public keys
+    (9.2); a key-change statement names the old key by its id, which the host
+    checks against the key it recorded.
+16. The vault path of an approval code (`tsm approve` without a token) is a
+    signed **approval record** (`tsm-approval-v1`, 9.4) answering the waiting
+    code, beside the grant of a lasting decision.
+17. The approval-code token's tag covers the host, the code and the decision
+    (9.6); the approval id and the request enter through the code (9.5),
+    because the approving device is given only the code. `approval.issue`
+    therefore names the `host`. What a lasting decision covers is signed in the
+    grant, so the tag carries no digest of it.
+18. The request digest of the approval code covers the identity's kind, exe,
+    interpreter, script, cwd, uid and arguments and the canonical references.
+19. On the approval link (9.7): the static keys are mixed into `h` first, in
+    the order initiator X25519, initiator ML-KEM, responder X25519, responder
+    ML-KEM; the handshake payloads are `{"protocol":1,"device"}` and
+    `{"protocol":1,"host"}`; a frame is at most 1 MiB; a `rekey` message
+    announces each REKEY, so both sides switch at the same frame; a new link
+    key is passed as `linkKey` inside a session under the old keys.

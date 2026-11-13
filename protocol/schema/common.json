@@ -254,8 +254,13 @@
         }
       }
     },
+    "keyId": {
+      "description": "An approver key id (section 9.2): 16 bytes in lower-case hex.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
     "signature": {
-      "description": "One item of a signature list; the signed bytes are section 9.",
+      "description": "One item of a signature list (section 9.3); an item of an unknown alg is ignored.",
       "type": "object",
       "required": [
         "alg",
@@ -267,11 +272,19 @@
           "type": "string"
         },
         "keyId": {
-          "type": "string"
+          "$ref": "#/$defs/keyId"
         },
         "sig": {
           "$ref": "#/$defs/base64"
         }
+      }
+    },
+    "signatures": {
+      "description": "A signature list: for a recorded approver key, an ed25519 and an ml-dsa-65 item (section 9.3).",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/signature"
       }
     },
     "grant": {
@@ -321,7 +334,105 @@
           "type": "string"
         },
         "signatures": {
+          "$ref": "#/$defs/signatures"
+        }
+      }
+    },
+    "revocation": {
+      "description": "A signed revocation (section 9.4).",
+      "type": "object",
+      "required": [
+        "host",
+        "grantId",
+        "revoked",
+        "approver",
+        "signatures"
+      ],
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "grantId": {
+          "type": "string"
+        },
+        "revoked": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "approver": {
+          "type": "string"
+        },
+        "signatures": {
+          "$ref": "#/$defs/signatures"
+        }
+      }
+    },
+    "approvalRecord": {
+      "description": "A signed approval record in tsm.grants/<host>: the answer to a waiting approval code (section 9.4).",
+      "type": "object",
+      "required": [
+        "host",
+        "code",
+        "decision",
+        "approver",
+        "created",
+        "signatures"
+      ],
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z2-7]{10}$"
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
+        "approver": {
+          "type": "string"
+        },
+        "created": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "signatures": {
+          "$ref": "#/$defs/signatures"
+        }
+      }
+    },
+    "keyChange": {
+      "description": "A key-change statement, signed by the old and the new approver key (section 9.4).",
+      "type": "object",
+      "required": [
+        "device",
+        "oldKeyId",
+        "newKeyId",
+        "newEd25519",
+        "newMlDsa65",
+        "time",
+        "signatures"
+      ],
+      "properties": {
+        "device": {
+          "type": "string"
+        },
+        "oldKeyId": {
+          "$ref": "#/$defs/keyId"
+        },
+        "newKeyId": {
+          "$ref": "#/$defs/keyId"
+        },
+        "newEd25519": {
+          "$ref": "#/$defs/base64_32"
+        },
+        "newMlDsa65": {
+          "$ref": "#/$defs/base64"
+        },
+        "time": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "signatures": {
           "type": "array",
+          "minItems": 4,
           "items": {
             "$ref": "#/$defs/signature"
           }

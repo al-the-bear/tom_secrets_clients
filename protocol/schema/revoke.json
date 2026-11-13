@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/revoke.json",
+  "title": "revoke",
+  "description": "A signed revocation for the host to apply at once. Endpoint: link; direction: a2h; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "host",
+    "grantId",
+    "revoked",
+    "approver",
+    "signatures"
+  ],
+  "properties": {
+    "op": {
+      "const": "revoke"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "host": {
+      "type": "string"
+    },
+    "grantId": {
+      "type": "string"
+    },
+    "revoked": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "approver": {
+      "type": "string"
+    },
+    "signatures": {
+      "$ref": "common.json#/$defs/signatures"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "link",
+    "direction": "a2h",
+    "phase": "A"
+  }
+}

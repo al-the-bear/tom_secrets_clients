@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/rekey.json",
+  "title": "rekey",
+  "description": "The sender renews its sending key after this frame. Endpoint: link; direction: both; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op"
+  ],
+  "properties": {
+    "op": {
+      "const": "rekey"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "link",
+    "direction": "both",
+    "phase": "A"
+  }
+}

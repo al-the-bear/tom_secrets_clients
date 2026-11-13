@@ -80,9 +80,16 @@ COMMON = {
                      'parent': {'type': 'object', 'required': ['exe'],
                                 'properties': {'exe': STR, 'args': {'type': 'array', 'items': STR}}},
                      'uid': {'type': ['integer', 'string']}}},
-    'signature': {'description': 'One item of a signature list; the signed bytes are section 9.',
+    'keyId': {'description': 'An approver key id (section 9.2): 16 bytes in lower-case hex.',
+              'type': 'string', 'pattern': '^[0-9a-f]{32}$'},
+    'signature': {'description': 'One item of a signature list (section 9.3); an item of an '
+                                 'unknown alg is ignored.',
                   'type': 'object', 'required': ['alg', 'keyId', 'sig'],
-                  'properties': {'alg': STR, 'keyId': STR, 'sig': {'$ref': '#/$defs/base64'}}},
+                  'properties': {'alg': STR, 'keyId': {'$ref': '#/$defs/keyId'},
+                                 'sig': {'$ref': '#/$defs/base64'}}},
+    'signatures': {'description': 'A signature list: for a recorded approver key, an ed25519 '
+                                  'and an ml-dsa-65 item (section 9.3).',
+                   'type': 'array', 'minItems': 2, 'items': {'$ref': '#/$defs/signature'}},
     'grant': {'description': 'A grant of the allow list (section 7.3).',
               'type': 'object',
               'required': ['id', 'host', 'subject', 'secret', 'decision', 'created', 'pin',
@@ -94,17 +101,48 @@ COMMON = {
                   'created': {'$ref': '#/$defs/timestamp'},
                   'lastUsed': {'$ref': '#/$defs/timestamp'},
                   'pin': {'$ref': '#/$defs/pin'}, 'approver': STR,
-                  'signatures': {'type': 'array', 'items': {'$ref': '#/$defs/signature'}}}},
+                  'signatures': {'$ref': '#/$defs/signatures'}}},
+    'revocation': {'description': 'A signed revocation (section 9.4).',
+                   'type': 'object',
+                   'required': ['host', 'grantId', 'revoked', 'approver', 'signatures'],
+                   'properties': {'host': STR, 'grantId': STR,
+                                  'revoked': {'$ref': '#/$defs/timestamp'}, 'approver': STR,
+                                  'signatures': {'$ref': '#/$defs/signatures'}}},
+    'approvalRecord': {'description': 'A signed approval record in tsm.grants/<host>: the '
+                                      'answer to a waiting approval code (section 9.4).',
+                       'type': 'object',
+                       'required': ['host', 'code', 'decision', 'approver', 'created',
+                                    'signatures'],
+                       'properties': {'host': STR,
+                                      'code': {'type': 'string', 'pattern': '^[A-Z2-7]{10}$'},
+                                      'decision': {'$ref': '#/$defs/decision'}, 'approver': STR,
+                                      'created': {'$ref': '#/$defs/timestamp'},
+                                      'signatures': {'$ref': '#/$defs/signatures'}}},
+    'keyChange': {'description': 'A key-change statement, signed by the old and the new '
+                                 'approver key (section 9.4).',
+                  'type': 'object',
+                  'required': ['device', 'oldKeyId', 'newKeyId', 'newEd25519', 'newMlDsa65',
+                               'time', 'signatures'],
+                  'properties': {'device': STR, 'oldKeyId': {'$ref': '#/$defs/keyId'},
+                                 'newKeyId': {'$ref': '#/$defs/keyId'},
+                                 'newEd25519': {'$ref': '#/$defs/base64_32'},
+                                 'newMlDsa65': {'$ref': '#/$defs/base64'},
+                                 'time': {'$ref': '#/$defs/timestamp'},
+                                 'signatures': {'type': 'array', 'minItems': 4,
+                                                'items': {'$ref': '#/$defs/signature'}}}},
 }
 
 # (op, endpoint, direction, phase, description, required, properties)
 # direction: c2s client to service, s2c service to client, a2s admin to
-# service, s2a service to admin, link (approval link, section 9).
+# service, s2a service to admin; on the approval link (section 9.7) a2h approver
+# to host, h2a host to approver, both either side. `also` names further
+# endpoints a message is used on with the same members.
 MESSAGES = []
 
 
-def message(op, endpoint, direction, phase, description, required=(), **properties):
-    MESSAGES.append((op, endpoint, direction, phase, description, list(required), properties))
+def message(op, endpoint, direction, phase, description, required=(), also=(), **properties):
+    MESSAGES.append((op, endpoint, direction, phase, description, list(required), list(also),
+                     properties))
 
 
 # ---- client endpoint (section 5) ----------------------------------------
@@ -190,7 +228,7 @@ message('claim', 'admin', 'a2s', 'A', 'Sent instead of auth by an admin without 
 message('claimed', 'admin', 's2a', 'A', 'The new admin key after a successful claim.',
         ['adminKey'], adminKey=ref('base64_32'))
 message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing to return.',
-        ['id'], id=ref('id'))
+        ['id'], also=['link'], id=ref('id'))
 message('unlock', 'admin', 'a2s', 'A', 'Open the primary file and the stores (phase A), or '
         'a vault with a sealed key bundle (phase B).', ['id'], id=ref('id'),
         password=STR, keyFile=ref('base64'), vault=STR,
@@ -231,13 +269,13 @@ message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service t
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
-        ['id', 'approvalId', 'decision', 'secret'], id=ref('id'), approvalId=STR,
+        ['id', 'approvalId', 'decision', 'secret'], also=['link'], id=ref('id'), approvalId=STR,
         decision=ref('decision'), secret=ref('secretScope'), folder=STR, pin=ref('pin'))
 message('approval.redeem', 'admin', 'a2s', 'A', 'Redeem a one-time approval token.',
         ['id', 'token'], id=ref('id'),
         token={'type': 'string', 'pattern': '^[A-Z2-7]{26}$'})
 message('approval.issue', 'admin', 'a2s', 'A', 'Have the approver key make a token for a code.',
-        ['id', 'code', 'decision', 'secret'], id=ref('id'),
+        ['id', 'host', 'code', 'decision', 'secret'], id=ref('id'), host=STR,
         code={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'}, decision=ref('decision'),
         secret=ref('secretScope'), pin=ref('pin'))
 message('approvalToken', 'admin', 's2a', 'A', 'The answer to approval.issue.',
@@ -274,14 +312,14 @@ message('auditRecords', 'admin', 's2a', 'A', 'The answer to audit.query.', ['id'
 message('unlock_needed', 'admin', 's2a', 'A', 'A client waits for an unlock.', [],
         identity=ref('identity'))
 message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
-        ['approvalId', 'host', 'identity', 'refs', 'resolved'], approvalId=STR, host=STR,
+        ['approvalId', 'host', 'identity', 'refs', 'resolved'], also=['link'], approvalId=STR, host=STR,
         identity=ref('identity'), refs={'type': 'array', 'items': ref('reference')},
         resolved={'type': 'array', 'items': {
             'type': 'object', 'required': ['store', 'path', 'kind'],
             'properties': {'store': ref('storeName'), 'path': STR, 'kind': STR}}},
         hostHint=STR, approvalCode={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'})
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
-        ['approvalId', 'outcome'], approvalId=STR,
+        ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})
 message('locked', 'admin', 's2a', 'A', 'The service locked.')
 message('unlocked', 'admin', 's2a', 'A', 'The service unlocked.')
@@ -299,20 +337,38 @@ message('rate_limited', 'admin', 's2a', 'A', 'An identity is held back.',
 message('proposal', 'admin', 's2a', 'B', 'A login the browser host proposed.',
         ['url', 'userName', 'password'], url=STR, title=STR, userName=STR, password=STR)
 
+# ---- the approval link (section 9.7) -------------------------------------
+message('ready', 'link', 'a2h', 'A', 'The approver\'s first transport frame; confirms the '
+        'handshake.')
+message('rekey', 'link', 'both', 'A', 'The sender renews its sending key after this frame.')
+message('grant', 'link', 'a2h', 'A', 'A signed grant for the host to apply at once.',
+        ['id', 'grant'], id=ref('id'), grant=ref('grant'))
+message('revoke', 'link', 'a2h', 'A', 'A signed revocation for the host to apply at once.',
+        ['id', 'host', 'grantId', 'revoked', 'approver', 'signatures'], id=ref('id'), host=STR,
+        grantId=STR, revoked=ref('timestamp'), approver=STR, signatures=ref('signatures'))
+message('keychange', 'link', 'a2h', 'A', 'A key-change statement of the approver key.',
+        ['id', 'statement'], id=ref('id'), statement=ref('keyChange'))
+message('linkKey', 'link', 'both', 'A', 'The sender\'s new approval-link public key.',
+        ['id', 'device', 'x25519', 'mlKem768'], id=ref('id'), device=STR,
+        x25519=ref('base64_32'),
+        mlKem768={'description': '1,184 bytes, standard base64.', **ref('base64')})
 
-def schema_for(op, endpoint, direction, phase, description, required, properties):
+
+def schema_for(op, endpoint, direction, phase, description, required, also, properties):
     props = {'op': {'const': op}, **properties}
     return {
         '$schema': DRAFT,
         '$id': BASE + f'{op}.json',
         'title': op,
-        'description': f'{description} Endpoint: {endpoint}; direction: {direction}; '
+        'description': f'{description} Endpoint: {endpoint}'
+                       f'{"".join(", " + a for a in also)}; direction: {direction}; '
                        f'phase {phase}. Unknown members are ignored by the reader '
                        '(protocol.md section 8).',
         'type': 'object',
         'required': ['op', *required],
         'properties': props,
-        'x-tsm': {'endpoint': endpoint, 'direction': direction, 'phase': phase},
+        'x-tsm': {'endpoint': endpoint, 'direction': direction, 'phase': phase,
+                  **({'alsoOn': also} if also else {})},
     }
 
 

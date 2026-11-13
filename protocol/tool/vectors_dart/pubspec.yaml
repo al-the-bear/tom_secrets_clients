@@ -1,0 +1,22 @@
+name: tsm_protocol_vectors
+description: >-
+  Writes and checks the test vectors of the Tom Secrets Manager protocol
+  document's section 9 (signed objects and the approval link), which need
+  Ed25519, ML-DSA-65, X25519, ML-KEM-768 and ChaCha20-Poly1305. Tooling.
+  License: BSD-3-Clause.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # ML-DSA-65 and ML-KEM-768 (FIPS 204, FIPS 203).
+  tom_pqc: ^0.1.0
+  # Ed25519, X25519, ChaCha20-Poly1305, HMAC-SHA256.
+  cryptography: ^2.9.0
+  crypto: ^3.0.6
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

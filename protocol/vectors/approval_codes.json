@@ -1,0 +1,255 @@
+{
+ "note": "The approval code and the approval-code token of sections 9.5 and 9.6. requestDigestHex is the request digest, code the approval code, tagInputHex the HMAC input of the token. redeem: what host bigbeast does with a token while only a-17 waits (code VFGQMBJBCG) and only the token key of frames.json is recorded; outcome is [approvalId, decision] or null (refused). Keys are demo values derived from labels.",
+ "codes": [
+  {
+   "name": "the request of frames.json",
+   "host": "bigbeast",
+   "approvalId": "a-17",
+   "identity": {
+    "kind": "script",
+    "exe": "/usr/bin/bash",
+    "interpreter": "/usr/bin/bash",
+    "script": "/home/demo/deploy.sh",
+    "args": [
+     "bash",
+     "deploy.sh"
+    ],
+    "cwd": "/home/demo",
+    "parent": {
+     "exe": "/usr/bin/sshd"
+    },
+    "uid": 1000
+   },
+   "refs": [
+    "[env:prod]db.main"
+   ],
+   "canonicalRefs": [
+    "[env:prod]db.main"
+   ],
+   "requestDigestHex": "1852f4f0d0c535903d4bc3b2c012cce76e9ae23bb56c7466f722063e1c255084",
+   "code": "VFGQMBJBCG"
+  },
+  {
+   "name": "an executable, two references, one with an escape",
+   "host": "bigbeast",
+   "approvalId": "a-18",
+   "identity": {
+    "kind": "exe",
+    "exe": "/usr/local/bin/backup",
+    "args": [
+     "backup",
+     "--nightly"
+    ],
+    "cwd": "/srv",
+    "uid": 1000
+   },
+   "refs": [
+    "store-key.backup",
+    "fleet/Telegram/Bot%2FMain#Token"
+   ],
+   "canonicalRefs": [
+    "store-key.backup",
+    "fleet/Telegram/Bot%2FMain#Token"
+   ],
+   "requestDigestHex": "afef3116af16b81015269db53a80713a61094cb23010133e1d4114164e6bc8f2",
+   "code": "7WYWDMCGB6"
+  },
+  {
+   "name": "a reference that is not canonical as written",
+   "host": "legiondary01",
+   "approvalId": "a-1",
+   "identity": {
+    "kind": "interpreter",
+    "exe": "C:\\Python312\\python.exe",
+    "interpreter": "C:\\Python312\\python.exe",
+    "args": [
+     "python",
+     "-c",
+     "print(1)"
+    ],
+    "cwd": "C:\\Code",
+    "uid": "S-1-5-21-1004336348-1177238915-682003330-1001"
+   },
+   "refs": [
+    "[os:windows,env:dev]openai.api_key#Password"
+   ],
+   "canonicalRefs": [
+    "[env:dev,os:windows]openai.api_key"
+   ],
+   "requestDigestHex": "99e6bd8135a5d0c03047dd5dc756f84be70fbda7fc85e8c5b107bd5f165bb659",
+   "code": "RYW3OOGBIG"
+  },
+  {
+   "name": "no arguments, unicode in the path",
+   "host": "mbp",
+   "approvalId": "a-9",
+   "identity": {
+    "kind": "script",
+    "exe": "/usr/bin/python3",
+    "interpreter": "/usr/bin/python3",
+    "script": "/Users/demo/Überweisung.py",
+    "args": [],
+    "cwd": "/Users/demo",
+    "uid": 501
+   },
+   "refs": [
+    "banking.pin"
+   ],
+   "canonicalRefs": [
+    "banking.pin"
+   ],
+   "requestDigestHex": "f3503bd1c210a2a77b55df004afed12d15c67efedbd71f37499be801cdb28bfa",
+   "code": "FX6WD2QLGI"
+  }
+ ],
+ "tokens": [
+  {
+   "tokenKey": "Jiv2fHUOMxrCaZSQHiqaAj0S3+C+X+HIiM2z6qm+ylU=",
+   "host": "bigbeast",
+   "code": "VFGQMBJBCG",
+   "decision": "once",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a564647514d424a424347000000046f6e6365",
+   "token": "XQEYSK3NP5AW5BABSYBOC3WV6Y"
+  },
+  {
+   "tokenKey": "Jiv2fHUOMxrCaZSQHiqaAj0S3+C+X+HIiM2z6qm+ylU=",
+   "host": "bigbeast",
+   "code": "VFGQMBJBCG",
+   "decision": "always",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a564647514d424a42434700000006616c77617973",
+   "token": "VAICFFXU4OVRGJMXSTMO3XO7I4"
+  },
+  {
+   "tokenKey": "Jiv2fHUOMxrCaZSQHiqaAj0S3+C+X+HIiM2z6qm+ylU=",
+   "host": "bigbeast",
+   "code": "VFGQMBJBCG",
+   "decision": "folder",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a564647514d424a42434700000006666f6c646572",
+   "token": "7BBXBV4NC2XJB3HVTQD6LGWWZQ"
+  },
+  {
+   "tokenKey": "Jiv2fHUOMxrCaZSQHiqaAj0S3+C+X+HIiM2z6qm+ylU=",
+   "host": "bigbeast",
+   "code": "VFGQMBJBCG",
+   "decision": "never",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a564647514d424a424347000000056e65766572",
+   "token": "6YFRUCGO64GWY63OGSOHW6FVCM"
+  },
+  {
+   "tokenKey": "lBEtF+DWC1tmv+N2VBLZYajKopsQhSQ3akRnUhUH/ms=",
+   "host": "bigbeast",
+   "code": "7WYWDMCGB6",
+   "decision": "once",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a37575957444d43474236000000046f6e6365",
+   "token": "IK7L6JXHPZPBXKLGRY3DFB6U7A"
+  },
+  {
+   "tokenKey": "lBEtF+DWC1tmv+N2VBLZYajKopsQhSQ3akRnUhUH/ms=",
+   "host": "bigbeast",
+   "code": "7WYWDMCGB6",
+   "decision": "always",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a37575957444d4347423600000006616c77617973",
+   "token": "3AI7ENX6A5SLWWYVD33WITCFVA"
+  },
+  {
+   "tokenKey": "lBEtF+DWC1tmv+N2VBLZYajKopsQhSQ3akRnUhUH/ms=",
+   "host": "bigbeast",
+   "code": "7WYWDMCGB6",
+   "decision": "folder",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a37575957444d4347423600000006666f6c646572",
+   "token": "JVAPMMMYCQU7TH75WWDDX66T3Q"
+  },
+  {
+   "tokenKey": "lBEtF+DWC1tmv+N2VBLZYajKopsQhSQ3akRnUhUH/ms=",
+   "host": "bigbeast",
+   "code": "7WYWDMCGB6",
+   "decision": "never",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000862696762656173740000000a37575957444d43474236000000056e65766572",
+   "token": "UKXEIIYY4MGE7ZAE3JTR4MCGJE"
+  },
+  {
+   "tokenKey": "MEgVRPU1rsGRrAeo3lQZ9LpJe4vUhaKKvgDJ0ku+//c=",
+   "host": "legiondary01",
+   "code": "RYW3OOGBIG",
+   "decision": "once",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000c6c6567696f6e6461727930310000000a525957334f4f47424947000000046f6e6365",
+   "token": "6IFXJO6O7DZPE7MI5CUGZSJ7UM"
+  },
+  {
+   "tokenKey": "MEgVRPU1rsGRrAeo3lQZ9LpJe4vUhaKKvgDJ0ku+//c=",
+   "host": "legiondary01",
+   "code": "RYW3OOGBIG",
+   "decision": "always",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000c6c6567696f6e6461727930310000000a525957334f4f4742494700000006616c77617973",
+   "token": "NVTIFWNOIUGZML7IXXOMW344RY"
+  },
+  {
+   "tokenKey": "MEgVRPU1rsGRrAeo3lQZ9LpJe4vUhaKKvgDJ0ku+//c=",
+   "host": "legiondary01",
+   "code": "RYW3OOGBIG",
+   "decision": "folder",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000c6c6567696f6e6461727930310000000a525957334f4f4742494700000006666f6c646572",
+   "token": "YTQ3KJUVKWNJM6UN3ETUT6LRRI"
+  },
+  {
+   "tokenKey": "MEgVRPU1rsGRrAeo3lQZ9LpJe4vUhaKKvgDJ0ku+//c=",
+   "host": "legiondary01",
+   "code": "RYW3OOGBIG",
+   "decision": "never",
+   "tagInputHex": "0000001174736d2d636f64652d746f6b656e2d76310000000c6c6567696f6e6461727930310000000a525957334f4f47424947000000056e65766572",
+   "token": "7U7ZWKIFP3PVKLXB7HFBFRL2K4"
+  }
+ ],
+ "redeem": {
+  "host": "bigbeast",
+  "waiting": {
+   "VFGQMBJBCG": "a-17"
+  },
+  "tokenKeys": [
+   "Jiv2fHUOMxrCaZSQHiqaAj0S3+C+X+HIiM2z6qm+ylU="
+  ],
+  "cases": [
+   {
+    "name": "the token of frames.json answers a-17 once",
+    "token": "XQEYSK3NP5AW5BABSYBOC3WV6Y",
+    "outcome": [
+     "a-17",
+     "once"
+    ]
+   },
+   {
+    "name": "the same token typed in lower case, in groups",
+    "token": "xqey sk3n p5aw 5bab sybo c3wv 6y",
+    "outcome": [
+     "a-17",
+     "once"
+    ]
+   },
+   {
+    "name": "a token of 25 characters",
+    "token": "XQEYSK3NP5AW5BABSYBOC3WV6",
+    "outcome": null
+   },
+   {
+    "name": "a token for an ended request (no longer waiting)",
+    "token": "SAYYR2J5LYYDE75DOWC7HGSMVA",
+    "outcome": null
+   },
+   {
+    "name": "a token under a key the host did not record",
+    "token": "Q6LVXJ3GHWAPKJL37F7GY3JTWQ",
+    "outcome": null
+   },
+   {
+    "name": "a token made for another host",
+    "token": "BD4A77WQI4OYGEDK5JIUKDQY7U",
+    "outcome": null
+   },
+   {
+    "name": "a token with its last character changed",
+    "token": "XQEYSK3NP5AW5BABSYBOC3WV6A",
+    "outcome": null
+   }
+  ]
+ }
+}

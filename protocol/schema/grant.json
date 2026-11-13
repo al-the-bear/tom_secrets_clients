@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/grant.json",
+  "title": "grant",
+  "description": "A signed grant for the host to apply at once. Endpoint: link; direction: a2h; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "grant"
+  ],
+  "properties": {
+    "op": {
+      "const": "grant"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "grant": {
+      "$ref": "common.json#/$defs/grant"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "link",
+    "direction": "a2h",
+    "phase": "A"
+  }
+}

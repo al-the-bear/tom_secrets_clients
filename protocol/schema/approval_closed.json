@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approval_closed.json",
   "title": "approval_closed",
-  "description": "A prompt was answered or ended elsewhere. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "description": "A prompt was answered or ended elsewhere. Endpoint: admin, link; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",
   "required": [
     "op",
@@ -29,6 +29,9 @@
   "x-tsm": {
     "endpoint": "admin",
     "direction": "s2a",
-    "phase": "A"
+    "phase": "A",
+    "alsoOn": [
+      "link"
+    ]
   }
 }

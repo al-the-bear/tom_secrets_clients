@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approval_needed.json",
   "title": "approval_needed",
-  "description": "A request needs an approval. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "description": "A request needs an approval. Endpoint: admin, link; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",
   "required": [
     "op",
@@ -64,6 +64,9 @@
   "x-tsm": {
     "endpoint": "admin",
     "direction": "s2a",
-    "phase": "A"
+    "phase": "A",
+    "alsoOn": [
+      "link"
+    ]
   }
 }
