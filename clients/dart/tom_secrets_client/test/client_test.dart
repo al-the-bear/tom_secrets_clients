@@ -97,6 +97,25 @@ void main() {
       await expectLater(client.open(), _fails(TomSecretsErrorKind.notRunning));
     });
 
+    test('a service that hangs up before welcome is not_running, never a '
+        'socket error', () async {
+      await startWith((_, _) {});
+      await service.stop();
+      final path = '$_runtime/client.sock';
+      final server = await ServerSocket.bind(
+        InternetAddress(path, type: InternetAddressType.unix),
+        0,
+      );
+      addTearDown(server.close);
+      server.listen((s) => s.destroy());
+      for (var i = 0; i < 20; i++) {
+        await expectLater(
+          client.open(),
+          _fails(TomSecretsErrorKind.notRunning),
+        );
+      }
+    }, testOn: '!windows');
+
     test('no runtime directory on Windows is not_running', () async {
       await startWith((_, _) {});
       final windows = TomSecretsClient(

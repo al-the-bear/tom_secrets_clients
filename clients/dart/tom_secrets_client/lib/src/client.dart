@@ -384,6 +384,10 @@ final class TomSecretsClient {
     } on TimeoutException {
       await connection.close();
       throw _notRunning('no welcome within $connectTimeout');
+    } on SocketException {
+      // The service closed the connection before it answered hello.
+      await connection.close();
+      throw _notRunning('the service closed the connection');
     } on Object {
       await connection.close();
       rethrow;
@@ -437,6 +441,12 @@ final class _Connection {
       onError: (Object _) => _fail(_dropped()),
       onDone: () => _fail(_dropped()),
       cancelOnError: true,
+    );
+    // A write the peer did not take (it hung up) fails the socket's done
+    // future; taken here, it is the dropped connection, not an unhandled
+    // error.
+    unawaited(
+      _socket.done.then<void>((_) {}, onError: (Object _) => _fail(_dropped())),
     );
   }
 

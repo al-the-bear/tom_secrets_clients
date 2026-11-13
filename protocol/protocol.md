@@ -417,7 +417,9 @@ sends anything secret, so it never gives a master password to a process that
 only pretends to be the service. A wrong `mac` is answered `error` `denied`
 (reason `bad_mac`) and the connection closed; repeated failures are delayed,
 1 s, 2 s, 4 s … up to 60 s. The admin's measured executable must also be the
-manager app's or `tsm`'s; a wrong one is refused even with the right key.
+manager app's or `tsm`'s (beside the service's executable, or named in its
+bootstrap's `admin_executables`); a wrong one is refused even with the right
+key (`denied`, reason `wrong_executable`), before the key is checked.
 
 ### 6.2 Claim
 
@@ -515,7 +517,14 @@ After `subscribe` the service pushes events on that connection (no `id`):
 ### 7.1 The identity
 
 The service measures each connecting process once, when the connection is
-accepted, and never trusts what a client says about itself. The **identity**
+accepted, and never trusts what a client says about itself: the peer's PID
+(`SO_PEERCRED` on Linux, `LOCAL_PEERPID` on macOS, the owner of the
+localhost TCP connection on Windows), then its executable, arguments,
+working directory, start time and parent. A process of another OS user is
+refused (`denied`, reason `other_user`), and so is one that cannot be
+measured or changed under the measurement (`unidentifiable`): the service
+answers the refusal and closes the connection once the client's first frame
+has come. The **identity**
 object shown, matched and audited is:
 
 | Member | Content |
@@ -865,7 +874,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `stale_base` (a `save` of a revision the file has moved past, 6.4) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -1007,3 +1016,8 @@ part-service) leaves these open; this document fixes them:
     `baseRevision` is the service's held copy and refused (`stale_base`)
     otherwise; `statusReport.hardening` names `noCoreDumps`, `notDumpable`
     and `memoryAccessDenied`.
+23. The peer identity (7.1): a peer of another OS user is refused with
+    `other_user`, and a refused client gets its answer before the connection
+    closes (after its first frame); an admin's executable is checked before
+    its key, against `tsm` and the manager app beside the service and the
+    bootstrap's `admin_executables`.
