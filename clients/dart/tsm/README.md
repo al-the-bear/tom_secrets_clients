@@ -102,8 +102,11 @@ standard error.
 ## Building
 
 ```text
-dart build cli --target bin/tsm.dart -o build/tsm
+dart compile exe bin/tsm.dart -o build/tsm
 ```
+
+One file, no native library beside it: tsm links neither the core nor
+`tom_pqc`, so it has no build hook (the service is a `dart build cli` bundle).
 
 The command line is a `tom_build_base` tool (`prefixlessCommands`, `--` for
 `run`'s command).

@@ -8,7 +8,7 @@ version: 0.1.0
 # Published from a staged copy (_bin/publishing), which writes the path
 # dependency as a version; tsm_a22 publishes it.
 publish_to: none
-repository: https://github.com/al-the-bear/tom_secrets_clients
+homepage: https://enterprise-flutter.dev
 
 environment:
   sdk: ^3.10.0
@@ -22,7 +22,7 @@ dependencies:
   tom_secrets_client:
     path: ../tom_secrets_client
   # The command line: definitions, parsing, help, exit codes (workspace rule).
-  tom_build_base: ^2.35.0
+  tom_build_base: ^2.35.1
   # The OS keychain the admin key is kept in between invocations (DP-22).
   tom_core_storage: ^0.1.2
 
