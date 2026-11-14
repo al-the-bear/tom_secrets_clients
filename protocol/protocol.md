@@ -439,7 +439,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 
 | Request | Answer | What |
 | --- | --- | --- |
-| `unlock {id, password, keyFile?}` | `ok` | open the primary file and the stores it names |
+| `unlock {id, password, keyFile?}` | `ok` | open the primary file and the stores it names; without `keyFile` the service takes the primary's key file from the device keychain (`tsm.key-file.<id>`), and a `.tsmx` primary's repository key always comes from there (`tsm.repository-key.<id>`; the ids are the first 16 hex digits of SHA-256 over the vault's or the repository's identity, part-stores) |
 | **[B]** `unlock {id, vault, bundle{nonce, ciphertext}}` | `ok` | open a vault with the key bundle the app read from the OS-gated store (6.4) |
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
 | `lock {id}` | `ok` | lock: clear every secret from memory |
