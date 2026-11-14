@@ -481,6 +481,19 @@ The service takes a `save` when `bytes` open with the store's keys
 - any other `baseRevision`: `denied`, reason `stale_base`; the app reads the
   file again and edits that.
 
+A `github:` store is written as one commit on its branch, by this device
+(`<device>@tsm.invalid`), through the vault unit: when the branch moved since
+the copy the service holds, the new head is read and the app's copy merged
+three-way with it, the held copy as the base, and the commit tried again; the
+result goes into the offline cache. A branch rewritten without a compaction
+refuses the save (`denied`, reason `history_rewritten`), and so does a branch
+that moved during every attempt (reason `branch_moving`). A store served from
+its offline copy, or whose remote cannot be reached or refuses the token
+during the save, answers `offline` / `token_expired` with `stores`. The
+service's own writes of the primary (grants, their last use) go the same
+way; one that cannot be delivered stays in the held copy and is written by
+the next refresh.
+
 The store is then reopened from what was written and `store_changed` names
 the new revision. A store that is not open answers `not_found`,
 `needs_unlock` or `unavailable` as a `get` would.
@@ -897,7 +910,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt; save again) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
