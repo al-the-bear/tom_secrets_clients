@@ -246,7 +246,8 @@ STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPu
                                'source': ref('source'), 'fetchedAt': ref('timestamp'),
                                'notPushed': INT0}}
 EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
-                'properties': {'kind': {'enum': ['github_token', 'vault_keys']},
+                'properties': {'kind': {'enum': ['github_token', 'vault_keys',
+                                                 'approver_key', 'link_key']},
                                'key': STR, 'vault': ref('storeName'),
                                'expiresAt': ref('timestamp'),
                                'daysLeft': {'type': 'integer'}}}

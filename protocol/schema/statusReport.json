@@ -105,7 +105,9 @@
           "kind": {
             "enum": [
               "github_token",
-              "vault_keys"
+              "vault_keys",
+              "approver_key",
+              "link_key"
             ]
           },
           "key": {
