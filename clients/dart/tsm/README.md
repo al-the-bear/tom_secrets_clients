@@ -99,6 +99,18 @@ and claims the service, which issues a new key.
 Values go to standard output only. Messages, prompts and progress go to
 standard error.
 
+## Installing
+
+`tsm` runs as a native executable beside the service: the service takes admin
+commands only from the `tsm` (and the manager app) in its own folder, or from
+an executable its bootstrap names in `admin_executables`. Install the binary
+of your platform from `tom_binaries` with the service, or build it (below).
+
+The package is on pub.dev as `tom_secrets_tsm`.
+`dart pub global activate tom_secrets_tsm` gives a `tsm` that runs in the
+Dart VM: it reads secrets (`get`, `run`, `ref`), approved like any other
+interpreted client, but the service refuses its admin commands.
+
 ## Building
 
 ```text

@@ -4,6 +4,7 @@ description: >-
   speaks its client protocol (frames, hello, get, getMany, getFile) and parses
   and formats secret references.
 version: 0.1.0
+homepage: https://enterprise-flutter.dev
 
 environment:
   sdk: ^3.10.0

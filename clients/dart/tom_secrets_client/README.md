@@ -24,6 +24,15 @@ Future<void> main() async {
 }
 ```
 
+## Installing
+
+```yaml
+dependencies:
+  tom_secrets_client: ^0.1.0
+```
+
+Dart SDK `^3.10.0`; no native library and no KDBX code.
+
 ## Finding the service
 
 The library looks in the runtime directory of the OS user (protocol section
