@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The admin keys in the keychain are recorded (`tsm.admin.index`): keeping or
+  using a key removes those of services that are gone, and `tsm stop`
+  removes the stopped service's.
+
 ## 0.1.0
 
 - `tsm get`, `tsm run` (one `getMany`, the command after `--`, signals

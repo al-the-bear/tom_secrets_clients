@@ -183,11 +183,22 @@ void main() {
   group('administering', () {
     test('unlock, status, lock and stop with the keychain\'s admin key: '
         'no password asked but for the unlock', () async {
+      // Keys of two services that are gone, kept with their index.
+      final keyring = TomSecretsAdminKeyring(
+        read: keychain.read,
+        write: keychain.write,
+        delete: keychain.delete,
+      );
+      await keyring.keep(111, tomSecretsRandomBytes());
+      await keyring.keep(222, tomSecretsRandomBytes());
       await running(unlock: false);
       var r = await demo.tsm(['unlock'], keychain: keychain);
       expect(r.code, 0, reason: '$r');
       expect(r.text, 'unlocked\n');
       expect(demo.passwordPrompts, 1);
+      expect(await keychain.read(tomSecretsAdminKeyHandle(111)), isNull);
+      expect(await keychain.read(tomSecretsAdminKeyHandle(222)), isNull);
+      expect(await keyring.recorded(), isEmpty, reason: 'the gone pruned');
       r = await demo.tsm(['status'], keychain: keychain);
       expect(r.code, 0);
       expect(demo.passwordPrompts, 0);
@@ -204,9 +215,16 @@ void main() {
       r = await demo.tsm(['lock'], keychain: keychain);
       expect(r.text, 'locked\n');
       expect(service.isLocked, isTrue);
+      final start = service.startedAt;
+      expect(await keychain.read(tomSecretsAdminKeyHandle(start)), isNotNull);
       r = await demo.tsm(['stop'], keychain: keychain);
       expect(r.text, 'stopped\n');
       await service.done;
+      expect(
+        await keychain.read(tomSecretsAdminKeyHandle(start)),
+        isNull,
+        reason: 'stop removes the stopped service\'s key',
+      );
       r = await demo.tsm(['status'], keychain: keychain);
       expect(r.code, 3);
       expect(r.text, 'not running\n');
@@ -236,6 +254,11 @@ void main() {
       r = await demo.tsm(['status'], keychain: fresh);
       expect(r.code, 0);
       expect(demo.passwordPrompts, 0, reason: 'the kept key');
+      expect(
+        await fresh.read(tomSecretsAdminKeyIndexHandle),
+        '${service.startedAt}',
+        reason: 'a kept key is in the index',
+      );
     });
 
     test('keys, approvals, reload and approve without a token', () async {

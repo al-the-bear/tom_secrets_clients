@@ -54,7 +54,9 @@ tsm compact <owner/name>
   - The service executable is `TSM_SERVICE`, else `tom_secrets_service` beside
     tsm.
   - The admin key the service is handed goes into the OS keychain, under
-    `tsm.admin.<start>`.
+    `tsm.admin.<start>`, recorded in `tsm.admin.index`; keeping or using a
+    key removes those of services that are gone, and `tsm stop` removes the
+    stopped service's.
 - `status` shows the service and each store with its state and source. It
   shows how old the copy is, and why a store runs on it ("GitHub not
   reachable", "token expired: enter a new one"); after 7 days the copy is

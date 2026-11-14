@@ -7,7 +7,6 @@
 /// errors are told.
 library;
 
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -106,18 +105,19 @@ final class TsmContext {
     if (start is! int) {
       throw TsmFailure(TsmExit.of('not_running'), 'the service is not running');
     }
-    final handle = tomSecretsAdminKeyHandle(start);
-    final keychain = await io.keychain();
-    if (keychain != null) {
-      String? stored;
+    final keyring = await adminKeyring();
+    if (keyring != null) {
+      Uint8List? stored;
       try {
-        stored = await keychain.read(handle);
+        stored = await keyring.keyOf(start);
       } on TomSecretStoreException {
         stored = null;
       }
       if (stored != null) {
         try {
-          return await TomSecretsAdminClient.connect(rt, base64.decode(stored));
+          final client = await TomSecretsAdminClient.connect(rt, stored);
+          await _pruneOthers(keyring, start);
+          return client;
         } on TomSecretsAdminException catch (e) {
           // Another admin claimed the service since: claim again.
           if (e.kind == 'not_running') rethrow;
@@ -133,15 +133,49 @@ final class TsmContext {
     return client;
   }
 
-  /// Keeps [key], the admin key of the service started at [start], in the
-  /// keychain where there is one.
-  Future<void> keepAdminKey(int start, Uint8List key) async {
+  /// The admin keys in the keychain, or null where there is none.
+  Future<TomSecretsAdminKeyring?> adminKeyring() async {
     final keychain = await io.keychain();
-    if (keychain == null) return;
+    if (keychain == null) return null;
+    return TomSecretsAdminKeyring(
+      read: keychain.read,
+      write: keychain.write,
+      delete: keychain.delete,
+    );
+  }
+
+  /// Keeps [key], the admin key of the service started at [start], in the
+  /// keychain where there is one, and removes the keys of services that are
+  /// gone.
+  Future<void> keepAdminKey(int start, Uint8List key) async {
+    final keyring = await adminKeyring();
+    if (keyring == null) return;
     try {
-      await keychain.write(tomSecretsAdminKeyHandle(start), base64.encode(key));
+      await keyring.keep(start, key);
     } on TomSecretStoreException {
       // Without the keychain the next command claims again (DP-22).
+      return;
+    }
+    await _pruneOthers(keyring, start);
+  }
+
+  /// Removes the admin key of the service started at [start], which was
+  /// stopped.
+  Future<void> forgetAdminKey(int start) async {
+    final keyring = await adminKeyring();
+    if (keyring == null) return;
+    try {
+      await keyring.forget(start);
+    } on TomSecretStoreException {
+      // A key left behind is removed by the next prune.
+    }
+  }
+
+  Future<void> _pruneOthers(TomSecretsAdminKeyring keyring, int start) async {
+    try {
+      await keyring.pruneOthers(start);
+    } on TomSecretStoreException {
+      // Tried again the next time a key is kept or used.
     }
   }
 

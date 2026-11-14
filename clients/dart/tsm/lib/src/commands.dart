@@ -389,12 +389,18 @@ Future<int> tsmLock(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
   return TsmExit.ok;
 });
 
-/// `tsm stop`: locks and stops the service.
-Future<int> tsmStop(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
-  await admin.request('shutdown');
-  c.io.outln('stopped');
-  return TsmExit.ok;
-});
+/// `tsm stop`: locks and stops the service, and removes its admin key from
+/// the keychain.
+Future<int> tsmStop(TsmContext c, TsmArgs a) async {
+  final start = (await c.runtime.readInfo())?['start'];
+  final code = await _withAdmin(c, (admin) async {
+    await admin.request('shutdown');
+    c.io.outln('stopped');
+    return TsmExit.ok;
+  });
+  if (code == TsmExit.ok && start is int) await c.forgetAdminKey(start);
+  return code;
+}
 
 /// `tsm reload`: fetches every store now.
 Future<int> tsmReload(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {

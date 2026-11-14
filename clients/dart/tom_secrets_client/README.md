@@ -119,7 +119,11 @@ service itself; a client that only reads secrets needs none of it:
   `$XDG_DATA_HOME/tom-secrets-manager` or
   `~/.local/share/tom-secrets-manager` elsewhere);
 - the keychain names: the service `tom-secrets-manager`, the admin key's
-  handle `tsm.admin.<start>`.
+  handle `tsm.admin.<start>`;
+- `TomSecretsAdminKeyring`: the admin keys kept in the keychain with the
+  index of their starts (`tsm.admin.index`), so a key whose service is gone
+  is found and removed (`keep`, `forget` when the service is stopped,
+  `pruneOthers` when a key is kept or used).
 
 ## The protocol
 

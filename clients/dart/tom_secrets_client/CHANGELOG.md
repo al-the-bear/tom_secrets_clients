@@ -5,6 +5,9 @@
 - `distribution.dart` in the admin library: the layout of the manager app's
   distribution, which carries `tsm` and the service in its `tsm/bin` folder
   (`tomSecretsServiceCandidates`, `tomSecretsDistributionApp`).
+- `TomSecretsAdminKeyring` in the admin library: the admin keys in the
+  keychain with the index of their starts (`tsm.admin.index`); `keep`,
+  `forget`, `pruneOthers`.
 
 ## 0.1.0
 
