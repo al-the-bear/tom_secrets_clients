@@ -7,8 +7,12 @@ from phase B C, C++, Go, Java, Python and Rust — plus the command line `tsm`.
 Nothing here reaches KDBX: the clients are written from the protocol document
 and import no core code.
 
-In the workspace this repository is the submodule `tom_ai/secrets_clients`
-(repository id `TSMC`, GitHub `al-the-bear/tom_secrets_clients`, private).
+GitHub: `al-the-bear/tom_secrets_clients`. The product's other two
+repositories are `al-the-bear/tom_secrets_manager` (the core and the secrets
+service) and `al-the-bear/tom_app_secrets_manager` (the apps, the manual CI
+and the release build, with the install and first-run guide in its README).
+On pub.dev: `tom_secrets_client` (the Dart client) and `tom_secrets_tsm`
+(`tsm`); on npm: `@al-the-bear/tom-secrets-client`.
 
 ## Contents
 
@@ -22,7 +26,7 @@ In the workspace this repository is the submodule `tom_ai/secrets_clients`
 | the other six libraries | B | C, C++, Go, Java, Python, Rust |
 
 The protocol document, the Dart client, `tsm`, the TypeScript client and the
-conformance suite exist; the other packages are created by the quest's todos of their phase.
+conformance suite exist; the other packages follow in their phase.
 
 ## Checking the protocol
 
@@ -52,7 +56,8 @@ linked.
 
 ## Design
 
-The design is the idea document of the tom_core quest,
-`_ai/quests/tom_core/ideas/tom_secrets_manager/tom_secrets_manager.md`
-(sections `part-repositories`, `part-protocol`, `part-clients`); the work is
-tracked in the `tom_secrets_manager` quest.
+The protocol document (`protocol/protocol.md`) is the published contract
+between the service and its clients. The other design decisions the code
+and documents cite (`DP-`, `BP-`, `TD-` and `IDEA-` ids, the `part-…`
+sections) are recorded in the product's design document, which is not
+published with the source.

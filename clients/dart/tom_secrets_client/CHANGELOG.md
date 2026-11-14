@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `distribution.dart` in the admin library: the layout of the manager app's
+  distribution, which carries `tsm` and the service in its `tsm/bin` folder
+  (`tomSecretsServiceCandidates`, `tomSecretsDistributionApp`).
+
 ## 0.1.0
 
 - The admin side, in its own library `package:tom_secrets_client/admin.dart`

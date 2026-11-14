@@ -11,6 +11,7 @@ library;
 export 'src/admin/admin_auth.dart';
 export 'src/admin/admin_client.dart';
 export 'src/admin/data_directory.dart';
+export 'src/admin/distribution.dart';
 export 'src/admin/keychain_names.dart';
 export 'src/admin/runtime.dart';
 export 'src/admin/starter.dart';

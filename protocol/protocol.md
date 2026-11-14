@@ -954,7 +954,9 @@ Per measured identity, configurable in the service:
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
   host, `h2a`, `both` on the link) and phase, and `alsoOn` the further
-  endpoints a message is used on unchanged.
+  endpoints a message is used on unchanged. A schema's `$id` is where it is published,
+  `https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/<op>.json`,
+  so a validator resolves the `$ref`s into `common.json` from there.
 - [`vectors/frames.json`](vectors/frames.json): a frame for every message, as
   hex with its decoded JSON, a phase-B binary chunk, and the invalid frames of
   2.4 with their outcome.

@@ -103,8 +103,11 @@ standard error.
 
 `tsm` runs as a native executable beside the service: the service takes admin
 commands only from the `tsm` (and the manager app) in its own folder, or from
-an executable its bootstrap names in `admin_executables`. Install the binary
-of your platform from `tom_binaries` with the service, or build it (below).
+an executable its bootstrap names in `admin_executables`. The releases of
+the Tom Secrets Manager (GitHub, `al-the-bear/tom_binaries`, tag
+`tom_secrets_manager-v<version>`) carry `tsm` with the service: inside the
+manager app (its `tsm/bin` folder) and, for a server without a desktop, as
+`tom_secrets_tsm-<version>-<platform>` alone. Or build it (below).
 
 The package is on pub.dev as `tom_secrets_tsm`.
 `dart pub global activate tom_secrets_tsm` gives a `tsm` that runs in the

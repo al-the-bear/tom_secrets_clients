@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/ready.json",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/ready.json",
   "title": "ready",
   "description": "The approver's first transport frame; confirms the handshake. Endpoint: link; direction: a2h; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",

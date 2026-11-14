@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/values.json",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/values.json",
   "title": "values",
   "description": "The answer to getMany, results in request order. Endpoint: client; direction: s2c; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",

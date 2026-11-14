@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/ok.json",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/ok.json",
   "title": "ok",
   "description": "An admin request succeeded and has nothing to return. Endpoint: admin, link; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",

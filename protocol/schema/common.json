@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/common.json",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/common.json",
   "title": "common",
   "description": "Definitions shared by the message schemas.",
   "$defs": {

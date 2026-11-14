@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/grants.list.json",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/grants.list.json",
   "title": "grants.list",
   "description": "List the allow list, of one host or all. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",

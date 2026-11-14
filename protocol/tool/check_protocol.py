@@ -179,7 +179,7 @@ def main() -> int:
         check(tp.signed_bytes(case['label'], obj).hex() == case['signedBytesHex'],
               f"signatures.json {case['name']}: signed bytes")
         validator = Draft202012Validator(
-            {'$id': 'https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/x.json',
+            {'$id': 'https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/x.json',
              '$ref': f"common.json#/$defs/{object_def[case['label']]}"}, registry=registry)
         for error in validator.iter_errors(obj):
             failures.append(f"signatures.json {case['name']}: {error.json_path}: {error.message}")

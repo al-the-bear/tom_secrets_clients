@@ -16,7 +16,7 @@ import json
 import pathlib
 
 SCHEMA_DIR = pathlib.Path(__file__).resolve().parent.parent / 'schema'
-BASE = 'https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/'
+BASE = 'https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/'
 DRAFT = 'https://json-schema.org/draft/2020-12/schema'
 
 
