@@ -1,0 +1,10 @@
+{
+  "language": "javascript",
+  "toolchain": ["node", "--version"],
+  "build": [
+    ["npm", "ci", "--prefix", "../clients/typescript"],
+    ["npm", "run", "build", "--prefix", "../clients/typescript"]
+  ],
+  "run": ["node", "runners/javascript/runner.js"],
+  "actions": ["connect", "get", "getMany", "parse", "format", "concurrent", "sequence"]
+}

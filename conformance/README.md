@@ -10,7 +10,10 @@ does. A library is released only when its runner passes every table.
 conformance/
   fake_service/          the fake service (Dart): speaks the client endpoint from a script
   cases/*.json           the case tables; references.json is generated from the vectors
-  runners/<lang>/        one thin runner per language, with its runner.json
+  runners/<lang>/        one thin runner per language, with its runner.json:
+                         dart, typescript (the npm package from TypeScript),
+                         javascript (the same compiled package from plain
+                         JavaScript, DP-21)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -28,7 +31,9 @@ python3 conformance/tool/conformance.py gen # after the protocol's references.js
 ```
 
 It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
-`referencing`, and each runner's toolchain. A runner whose toolchain is
+`referencing`, and each runner's toolchain (Node.js 18+ with npm for
+`typescript` and `javascript`, whose build runs `npm ci` and the package's
+build in `clients/typescript`). A runner whose toolchain is
 missing is reported **NOT MEASURED**, never passed; `--strict` (and the CI's
 `:conformance` stage, `app_secrets_manager/tom_secrets_build`) makes that a
 failure. Scratch goes to `conformance/ztmp/` (the compiled fake service and

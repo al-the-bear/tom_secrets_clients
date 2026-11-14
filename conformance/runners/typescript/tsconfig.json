@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["node"],
+    "typeRoots": ["../../../clients/typescript/node_modules/@types"],
+    "rootDir": "src",
+    "outDir": "build"
+  },
+  "include": ["src/**/*.ts"]
+}
