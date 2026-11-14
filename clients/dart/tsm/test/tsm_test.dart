@@ -1,0 +1,340 @@
+// Copyright (c) 2026 Peter Nicolai Alexis Kyaw
+// SPDX-License-Identifier: BSD-3-Clause
+
+/// tsm against the service in this process (part-clients): reading (`get`,
+/// `run`, `ref`), the admin commands with the admin key from the keychain or
+/// a `claim` with the master password (DP-22), and the exit codes scripts
+/// tell the cases apart by. The integration suite runs the built service.
+/// Demo data only.
+@TestOn('vm')
+@Timeout(Duration(minutes: 2))
+library;
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:test/test.dart';
+import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
+import 'package:tom_secrets_service/tom_secrets_service.dart';
+
+import 'support/demo.dart';
+
+void main() {
+  late Demo demo;
+  late TomSecretsService service;
+  late TomInMemorySecretStore keychain;
+
+  /// A service, unlocked, its admin key in the keychain as `tsm start`
+  /// leaves it.
+  Future<void> running({bool unlock = true}) async {
+    final key = tomSecretsRandomBytes();
+    service = await demo.startInProcess(adminKey: key);
+    await keychain.write(
+      tomSecretsAdminKeyHandle(service.startedAt),
+      base64.encode(key),
+    );
+    if (unlock) {
+      expect((await demo.tsm(['unlock'], keychain: keychain)).code, 0);
+    }
+  }
+
+  setUp(() async {
+    demo = await Demo.create();
+    keychain = TomInMemorySecretStore();
+  });
+
+  group('reading', () {
+    test('get prints the value as it is, no line break unless -n', () async {
+      await running();
+      var r = await demo.tsm(['get', 'primary/Db/Main']);
+      expect(r.code, 0, reason: '$r');
+      expect(r.text, 'demo-db-pw');
+      r = await demo.tsm([
+        'get',
+        'primary/Db/Main',
+        '--field',
+        'UserName',
+        '-n',
+      ]);
+      expect(r.text, 'demo-user\n');
+      r = await demo.tsm(['get', 'team/Api/Token', '--base64']);
+      expect(utf8.decode(base64.decode(r.text)), 'demo-api-token');
+    });
+
+    test('the exit codes tell the cases apart', () async {
+      var r = await demo.tsm(['get', 'primary/Db/Main']);
+      expect(r.code, 3, reason: 'not_running');
+      expect(r.out, isEmpty);
+      await running(unlock: false);
+      r = await demo.tsm(['get', 'primary/Db/Main', '--no-wait']);
+      expect(r.code, 4, reason: 'locked: $r');
+      expect(r.err, contains('locked'));
+      await demo.tsm(['unlock'], keychain: keychain);
+      r = await demo.tsm(['get', 'primary/Db/Nothing']);
+      expect(r.code, 6, reason: 'not_found');
+      r = await demo.tsm(['get', 'not a ref']);
+      expect(r.code, 8, reason: 'malformed');
+      r = await demo.tsm(['get']);
+      expect(r.code, 2, reason: 'usage');
+      r = await demo.tsm(['get', 'primary/Db/Main', '--timeout', 'soon']);
+      expect(r.code, 2);
+    });
+
+    test('run fetches every reference at once and starts the command with '
+        'them in its environment; its exit code is tsm\'s', () async {
+      await running();
+      final envFile = File('${demo.dir}/app.env')
+        ..writeAsStringSync('# no secrets here\nTEAM_TOKEN=team/Api/Token\n');
+      List<String>? command;
+      Map<String, String>? environment;
+      final r = await demo.tsm(
+        [
+          'run',
+          '--map',
+          'DB_PW=primary/Db/Main',
+          '--env-file',
+          envFile.path,
+          '--',
+          'deploy',
+          '-v',
+          '--prod',
+        ],
+        run: (cmd, env) async {
+          command = cmd;
+          environment = env;
+          return 142;
+        },
+      );
+      expect(r.code, 142, reason: 'the command\'s own, above 125 too');
+      expect(command, ['deploy', '-v', '--prod']);
+      expect(environment, {
+        'DB_PW': 'demo-db-pw',
+        'TEAM_TOKEN': 'demo-api-token',
+      });
+      expect(r.out, isEmpty);
+    });
+
+    test('run does not start the command when a reference fails', () async {
+      await running();
+      var started = false;
+      var r = await demo.tsm(
+        [
+          'run',
+          '--map',
+          'A=primary/Db/Main',
+          '--map',
+          'B=primary/X',
+          '--',
+          'x',
+        ],
+        run: (_, _) async {
+          started = true;
+          return 0;
+        },
+      );
+      expect(r.code, 6);
+      expect(started, isFalse);
+      expect(r.err, contains('B:'));
+      r = await demo.tsm(['run', '--map', 'A=primary/Db/Main']);
+      expect(r.code, 2, reason: 'no command after --');
+      r = await demo.tsm(['run', '--map', '1A=primary/Db/Main', '--', 'x']);
+      expect(r.code, 2, reason: 'no variable name');
+      r = await demo.tsm(['run', '--file', 'A=x/y', '--', 'x']);
+      expect(r.code, 10, reason: 'phase B');
+    });
+
+    test('ref parse and ref format', () async {
+      var r = await demo.tsm([
+        'ref',
+        'parse',
+        '[env:prod]fleet/Db/Main#UserName',
+      ]);
+      expect(r.code, 0);
+      final parsed = jsonDecode(r.text) as Map;
+      expect(parsed['canonical'], '[env:prod]fleet/Db/Main#UserName');
+      expect(parsed['target'], {
+        'kind': 'path',
+        'store': 'fleet',
+        'segments': ['Db', 'Main'],
+      });
+      expect(parsed['qualifiers'], [
+        {'dimension': 'env', 'value': 'prod'},
+      ]);
+      r = await demo.tsm([
+        'ref',
+        'format',
+        '--store',
+        'fleet',
+        '--path',
+        'Db',
+        '--path',
+        'Main#1',
+        '--field',
+        'UserName',
+      ]);
+      expect(r.text, 'fleet/Db/Main%231#UserName\n');
+      r = await demo.tsm(['ref', 'format', '--key', 'telegram.bot_token']);
+      expect(r.text, 'telegram.bot_token\n');
+      expect((await demo.tsm(['ref', 'parse', 'a//b'])).code, 8);
+      expect((await demo.tsm(['ref', 'nonsense'])).code, 2);
+    });
+  });
+
+  group('administering', () {
+    test('unlock, status, lock and stop with the keychain\'s admin key: '
+        'no password asked but for the unlock', () async {
+      await running(unlock: false);
+      var r = await demo.tsm(['unlock'], keychain: keychain);
+      expect(r.code, 0, reason: '$r');
+      expect(r.text, 'unlocked\n');
+      expect(demo.passwordPrompts, 1);
+      r = await demo.tsm(['status'], keychain: keychain);
+      expect(r.code, 0);
+      expect(demo.passwordPrompts, 0);
+      expect(r.text, contains('service  running, unlocked'));
+      expect(r.text, contains('store    primary  current  file'));
+      expect(r.text, contains('store    team  current  file'));
+      final json =
+          jsonDecode(
+                (await demo.tsm(['status', '--json'], keychain: keychain)).text,
+              )
+              as Map;
+      expect(json['locked'], isFalse);
+      expect((json['stores'] as List).length, 2);
+      r = await demo.tsm(['lock'], keychain: keychain);
+      expect(r.text, 'locked\n');
+      expect(service.isLocked, isTrue);
+      r = await demo.tsm(['stop'], keychain: keychain);
+      expect(r.text, 'stopped\n');
+      await service.done;
+      r = await demo.tsm(['status'], keychain: keychain);
+      expect(r.code, 3);
+      expect(r.text, 'not running\n');
+    });
+
+    test('without a keychain each admin command claims with the master '
+        'password (asked once); with one the claimed key is kept', () async {
+      await running(unlock: false);
+      var r = await demo.tsm(['unlock']);
+      expect(r.code, 0, reason: '$r');
+      expect(demo.passwordPrompts, 1, reason: 'one password: claim + unlock');
+      r = await demo.tsm(['status']);
+      expect(demo.passwordPrompts, 1, reason: 'claimed again');
+      r = await demo.tsm(['status'], password: 'wrong');
+      expect(r.code, 5, reason: 'denied: $r');
+      r = await demo.tsm(
+        ['--password-stdin', 'lock'],
+        password: null,
+        stdinLines: [primaryPassword],
+      );
+      expect(r.code, 0, reason: '$r');
+      expect(demo.passwordPrompts, 0);
+      // The keychain's key was revoked by the claims: claim, keep the new one.
+      final fresh = TomInMemorySecretStore();
+      r = await demo.tsm(['status'], keychain: fresh);
+      expect(demo.passwordPrompts, 1);
+      r = await demo.tsm(['status'], keychain: fresh);
+      expect(r.code, 0);
+      expect(demo.passwordPrompts, 0, reason: 'the kept key');
+    });
+
+    test('keys, approvals, reload and approve without a token', () async {
+      await running();
+      var r = await demo.tsm(['keys'], keychain: keychain);
+      expect(r.code, 0);
+      expect(r.text, contains('approver-key:demo-host  approver_key'));
+      final keys =
+          jsonDecode(
+                (await demo.tsm(['keys', '--json'], keychain: keychain)).text,
+              )
+              as List;
+      expect(keys.map((k) => (k as Map)['kind']), contains('link_key'));
+      r = await demo.tsm(['approvals'], keychain: keychain);
+      expect(r.text, 'no request waits\n');
+      r = await demo.tsm(['reload'], keychain: keychain);
+      expect(r.text, 'reloaded\n');
+      r = await demo.tsm(['approve'], keychain: keychain);
+      expect(r.code, 0);
+      expect(r.text, contains('reloaded'));
+    });
+
+    test('approve takes a 26-character base32 token, or - for standard '
+        'input; a token for no waiting request is denied', () async {
+      await running();
+      var r = await demo.tsm(['approve', 'short'], keychain: keychain);
+      expect(r.code, 2);
+      r = await demo.tsm([
+        'approve',
+        'abcd-efgh ijkl-mnop-qrst-uvwx-yz',
+      ], keychain: keychain);
+      expect(r.code, 5, reason: 'normalised, then denied: $r');
+      expect(r.err, contains('bad_token'));
+      r = await demo.tsm(
+        ['approve', '-'],
+        keychain: keychain,
+        stdinLines: ['ABCDEFGHIJKLMNOPQRSTUVWXYZ'],
+      );
+      expect(r.code, 5);
+    });
+
+    test('grants: allow, list, revoke', () async {
+      await running();
+      var r = await demo.tsm([
+        'allow',
+        'bigbeast',
+        'exe /usr/bin/demo',
+        'primary/Db/Main',
+      ], keychain: keychain);
+      expect(r.code, 0, reason: '$r');
+      final grants =
+          jsonDecode(
+                (await demo.tsm([
+                  'grants',
+                  '--json',
+                  '--host',
+                  'bigbeast',
+                ], keychain: keychain)).text,
+              )
+              as List;
+      final grant = grants.single as Map;
+      expect(grant['subject'], 'exe /usr/bin/demo');
+      r = await demo.tsm(['grants'], keychain: keychain);
+      expect(r.text, contains('bigbeast  allow  exe /usr/bin/demo'));
+      r = await demo.tsm([
+        'grants',
+        'revoke',
+        'bigbeast',
+        grant['id'] as String,
+      ], keychain: keychain);
+      expect(r.text, 'revoked\n');
+      expect(
+        (await demo.tsm(['grants', 'nonsense'], keychain: keychain)).code,
+        2,
+      );
+    });
+
+    test('audit, compact and start report what they cannot do', () async {
+      await running();
+      var r = await demo.tsm(['audit', '--json'], keychain: keychain);
+      expect(r.code, 0, reason: '$r');
+      expect(jsonDecode(r.text), isA<List>());
+      r = await demo.tsm(['compact', 'al-the-bear/vaults'], keychain: keychain);
+      expect(r.code, 6, reason: 'no github: vault there');
+      r = await demo.tsm(['start'], keychain: keychain);
+      expect(r.code, 6, reason: 'no service executable: $r');
+      expect(r.err, contains('no service executable'));
+      File(demo.bootstrapPath).deleteSync();
+      r = await demo.tsm(['start'], keychain: keychain);
+      expect(r.code, 6);
+      expect(r.err, contains('no bootstrap file'));
+    });
+
+    test('help names the commands as they are typed', () async {
+      final r = await demo.tsm(['--help']);
+      expect(r.err, contains('tsm [global-options] command'));
+      expect(r.err, contains('  get\n'));
+      expect(r.err, isNot(contains(':get')));
+      expect(r.out, isEmpty);
+    });
+  });
+}

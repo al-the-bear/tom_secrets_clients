@@ -2,6 +2,13 @@
 
 ## 0.1.0
 
+- The admin side, in its own library `package:tom_secrets_client/admin.dart`
+  for the manager app, `tsm` and the service: `TomSecretsAdminClient` (the
+  mutual challenge and `claim`), `TomSecretsRuntime` (the runtime directory),
+  `tomSecretsStartService` with the admin-key handover,
+  `tomSecretsDataDirectory` / `tomSecretsBootstrapPath` (`TSM_DATA_DIR`, else
+  the OS's application-data folder), and the keychain names
+  (`tomSecretsKeychainService`, `tomSecretsAdminKeyHandle`).
 - The client endpoint of the Tom Secrets Manager protocol, version 1: finding
   the service (runtime directory, Unix socket, or on Windows the localhost
   port and the client token re-read at every connect), frames with their

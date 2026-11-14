@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/approvalList.json",
+  "title": "approvalList",
+  "description": "The answer to approvals.list. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "approvals"
+  ],
+  "properties": {
+    "op": {
+      "const": "approvalList"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "approvalId",
+          "host",
+          "identity",
+          "refs"
+        ],
+        "properties": {
+          "approvalId": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "identity": {
+            "$ref": "common.json#/$defs/identity"
+          },
+          "refs": {
+            "type": "array",
+            "items": {
+              "$ref": "common.json#/$defs/reference"
+            }
+          },
+          "approvalCode": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

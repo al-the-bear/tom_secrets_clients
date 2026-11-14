@@ -309,6 +309,27 @@ message('grants.revoke', 'admin', 'a2s', 'A', 'Revoke a grant of any host.',
         ['id', 'host', 'grantId'], id=ref('id'), host=STR, grantId=STR)
 message('approvers.cliSwitch', 'admin', 'a2s', 'A', 'Switch command-line approvals on or off.',
         ['id', 'on'], id=ref('id'), on=BOOL)
+message('approvals.list', 'admin', 'a2s', 'A', 'List the requests waiting on this host.',
+        ['id'], id=ref('id'))
+message('approvalList', 'admin', 's2a', 'A', 'The answer to approvals.list.',
+        ['id', 'approvals'], id=ref('id'),
+        approvals={'type': 'array', 'items': {
+            'type': 'object', 'required': ['approvalId', 'host', 'identity', 'refs'],
+            'properties': {'approvalId': STR, 'host': STR, 'identity': ref('identity'),
+                           'refs': {'type': 'array', 'items': ref('reference')},
+                           'approvalCode': STR}}})
+message('keys', 'admin', 'a2s', 'A', 'List every key with its due date.', ['id'], id=ref('id'))
+message('keyList', 'admin', 's2a', 'A', 'The answer to keys.', ['id', 'keys'], id=ref('id'),
+        keys={'type': 'array', 'items': {
+            'type': 'object',
+            'required': ['kind', 'key', 'expiresAt', 'daysLeft', 'reminding'],
+            'properties': {**EXPIRING_KEY['properties'], 'reminding': BOOL}}})
+message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository now.',
+        ['id', 'repository'], id=ref('id'),
+        repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'})
+message('compacted', 'admin', 's2a', 'A', 'The answer to compact.',
+        ['id', 'repository', 'compacted', 'oldHead', 'newHead', 'kept'], id=ref('id'),
+        repository=STR, compacted=BOOL, oldHead=STR, newHead=STR, kept=INT0)
 message('audit.query', 'admin', 'a2s', 'A', 'Read the audit log.', ['id', 'from', 'to'],
         id=ref('id'), **{'from': ref('timestamp')}, to=ref('timestamp'), subject=STR,
         ref=ref('reference'))

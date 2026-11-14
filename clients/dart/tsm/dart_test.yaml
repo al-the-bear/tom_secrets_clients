@@ -1,0 +1,5 @@
+tags:
+  # The integration suite against the real service: it builds the service
+  # binary, so `tom_secrets_build :integration` runs it and `:test` leaves it
+  # out.
+  integration:

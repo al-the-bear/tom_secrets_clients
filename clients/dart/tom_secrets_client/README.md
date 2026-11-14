@@ -91,6 +91,27 @@ breaks the protocol (an oversized or malformed frame closes the connection).
 waited out only with `waitOnRateLimit: true`. The library logs nothing: no
 value, token or payload.
 
+## The admin side
+
+`package:tom_secrets_client/admin.dart` is for the manager app, `tsm` and the
+service itself; a client that only reads secrets needs none of it:
+
+- `TomSecretsAdminClient`: the admin endpoint with the mutual challenge
+  (HMAC-SHA256 under the admin key, protocol.md 6.1), `claim` with the master
+  password (a new admin key), `request`, `unlock` and the event stream;
+- `TomSecretsRuntime`: the runtime directory and its files (`service.json`
+  names the start time);
+- `tomSecretsStartService`: starts the service detached and hands it the
+  admin key on its standard input;
+- `tomSecretsDataDirectory` / `tomSecretsBootstrapPath`: where the product
+  keeps its data and its `bootstrap.yaml` (`TSM_DATA_DIR`; else
+  `~/Library/Application Support/TomSecretsManager` on macOS,
+  `%LOCALAPPDATA%\TomSecretsManager` on Windows,
+  `$XDG_DATA_HOME/tom-secrets-manager` or
+  `~/.local/share/tom-secrets-manager` elsewhere);
+- the keychain names: the service `tom-secrets-manager`, the admin key's
+  handle `tsm.admin.<start>`.
+
 ## The protocol
 
 The library follows the Tom Secrets Manager protocol document, version 1, and

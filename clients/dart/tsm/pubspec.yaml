@@ -1,0 +1,40 @@
+name: tom_secrets_tsm
+description: >-
+  tsm, the Tom Secrets Manager on the command line: reads secrets from the
+  local secrets service (get, run), starts, unlocks and administers it
+  (start, unlock, lock, status, approvals, grants, keys, compact).
+  License: BSD-3-Clause.
+version: 0.1.0
+# Published from a staged copy (_bin/publishing), which writes the path
+# dependency as a version; tsm_a22 publishes it.
+publish_to: none
+repository: https://github.com/al-the-bear/tom_secrets_clients
+
+environment:
+  sdk: ^3.10.0
+
+executables:
+  tsm: tsm
+
+dependencies:
+  # The client protocol (get, getMany, references) and the admin side (admin
+  # client, runtime directory, starter, data directory).
+  tom_secrets_client:
+    path: ../tom_secrets_client
+  # The command line: definitions, parsing, help, exit codes (workspace rule).
+  tom_build_base: ^2.35.0
+  # The OS keychain the admin key is kept in between invocations (DP-22).
+  tom_core_storage: ^0.1.2
+
+dev_dependencies:
+  # Tests run tsm against the real service in-process and as a built binary,
+  # with demo vaults (dev dependencies are not linked: the licence boundary
+  # keeps tsm off the core and the KDBX layer).
+  tom_secrets_service:
+    path: ../../../../secrets_manager/tom_secrets_service
+  tom_secrets_core:
+    path: ../../../../secrets_manager/tom_secrets_core
+  # The demo vaults' light Argon2id.
+  tom_kdbx_store: ^0.2.3
+  lints: ^6.0.0
+  test: ^1.25.6

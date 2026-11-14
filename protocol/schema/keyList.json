@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/keyList.json",
+  "title": "keyList",
+  "description": "The answer to keys. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "keys"
+  ],
+  "properties": {
+    "op": {
+      "const": "keyList"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "expiresAt",
+          "daysLeft",
+          "reminding"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "github_token",
+              "vault_keys",
+              "approver_key",
+              "link_key"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "vault": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "expiresAt": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "daysLeft": {
+            "type": "integer"
+          },
+          "reminding": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

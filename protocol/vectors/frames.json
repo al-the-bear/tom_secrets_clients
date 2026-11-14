@@ -656,6 +656,107 @@
    "hex": "00000016007b226f70223a2272656c6f6164222c226964223a377d"
   },
   {
+   "name": "approvals.list",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approvals.list",
+    "id": 31
+   },
+   "hex": "0000001f007b226f70223a22617070726f76616c732e6c697374222c226964223a33317d"
+  },
+  {
+   "name": "approvalList",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "approvalList",
+    "id": 31,
+    "approvals": [
+     {
+      "approvalId": "a-17",
+      "host": "bigbeast",
+      "identity": {
+       "kind": "exe",
+       "exe": "/usr/bin/deploy",
+       "args": [
+        "--prod"
+       ],
+       "cwd": "/srv/app",
+       "uid": 1000
+      },
+      "refs": [
+       "telegram/bot_token"
+      ],
+      "approvalCode": "K7Q-4M2"
+     }
+    ]
+   },
+   "hex": "000000ea007b226f70223a22617070726f76616c4c697374222c226964223a33312c22617070726f76616c73223a5b7b22617070726f76616c4964223a22612d3137222c22686f7374223a226269676265617374222c226964656e74697479223a7b226b696e64223a22657865222c22657865223a222f7573722f62696e2f6465706c6f79222c2261726773223a5b222d2d70726f64225d2c22637764223a222f7372762f617070222c22756964223a313030307d2c2272656673223a5b2274656c656772616d2f626f745f746f6b656e225d2c22617070726f76616c436f6465223a224b37512d344d32227d5d7d"
+  },
+  {
+   "name": "keys",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "keys",
+    "id": 32
+   },
+   "hex": "00000015007b226f70223a226b657973222c226964223a33327d"
+  },
+  {
+   "name": "keyList",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "keyList",
+    "id": 32,
+    "keys": [
+     {
+      "kind": "github_token",
+      "key": "github-token:al-the-bear/demo-vaults",
+      "expiresAt": "2026-11-20T09:00:00Z",
+      "daysLeft": 6,
+      "reminding": true
+     },
+     {
+      "kind": "approver_key",
+      "key": "approver-key:bigbeast",
+      "expiresAt": "2028-11-13T09:00:00Z",
+      "daysLeft": 730,
+      "reminding": false
+     }
+    ]
+   },
+   "hex": "00000121007b226f70223a226b65794c697374222c226964223a33322c226b657973223a5b7b226b696e64223a226769746875625f746f6b656e222c226b6579223a226769746875622d746f6b656e3a616c2d7468652d626561722f64656d6f2d7661756c7473222c22657870697265734174223a22323032362d31312d32305430393a30303a30305a222c22646179734c656674223a362c2272656d696e64696e67223a747275657d2c7b226b696e64223a22617070726f7665725f6b6579222c226b6579223a22617070726f7665722d6b65793a6269676265617374222c22657870697265734174223a22323032382d31312d31335430393a30303a30305a222c22646179734c656674223a3733302c2272656d696e64696e67223a66616c73657d5d7d"
+  },
+  {
+   "name": "compact",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "compact",
+    "id": 33,
+    "repository": "al-the-bear/demo-vaults"
+   },
+   "hex": "0000003f007b226f70223a22636f6d70616374222c226964223a33332c227265706f7369746f7279223a22616c2d7468652d626561722f64656d6f2d7661756c7473227d"
+  },
+  {
+   "name": "compacted",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "compacted",
+    "id": 33,
+    "repository": "al-the-bear/demo-vaults",
+    "compacted": true,
+    "oldHead": "9f2c1e0b7a6d5c4b3a291807f6e5d4c3b2a19087",
+    "newHead": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567",
+    "kept": 2
+   },
+   "hex": "000000c5007b226f70223a22636f6d706163746564222c226964223a33332c227265706f7369746f7279223a22616c2d7468652d626561722f64656d6f2d7661756c7473222c22636f6d706163746564223a747275652c226f6c6448656164223a2239663263316530623761366435633462336132393138303766366535643463336232613139303837222c226e657748656164223a2230613162326333643465356636303731383239336134623563366437653866393031323334353637222c226b657074223a327d"
+  },
+  {
    "name": "error: reload offline",
    "endpoint": "admin",
    "type": 0,
