@@ -447,6 +447,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}]}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key); `tsm status` shows it where no app is attached |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, keys}]}` | the keys of the open vaults, for the app's editing path (6.4) |
+| `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, bytes}`, or `error` `not_found` (no open store of that name), `unsupported` reason `too_large` | the copy of an open store the service holds, for the app's editing path (6.4) |
 | `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
@@ -464,9 +465,16 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 ### 6.4 Editing and key material
 
 The service owns every vault file and every write to GitHub on its device.
-To edit, the app asks for `vaultKeys`, opens the vaults in its own memory and
+To edit, the app asks for `vaultKeys` and, per store, for `vaultFile`: the
+copy the service holds, as the store keeps it (`bytes`, base64), with its
+`location` and its `revision`. It opens the vaults in its own memory and
 hands each saved file back with `save` (`bytes` the whole file,
-`baseRevision` the revision it edited). A store's `keys` object carries what
+`baseRevision` the `revision` it edited). Because the app edits the
+service's own copy, it needs no access to the store itself (no GitHub token,
+no clone) and edits the same copy the service serves, from its offline copy
+too. A `vaultFileData` frame is an answer frame and holds at most 1 MiB
+(2.3): a larger file is refused `unsupported` (reason `too_large`, `details.size`
+its byte count) until phase B's binary chunks (2.5) carry it. A store's `keys` object carries what
 opens it, each member when the store has one: `password` (its master
 password), `keyFile` (the key file's bytes, base64) and `outerKey` (the
 repository's outer key of a `.tsmx` file, base64). They travel only in
@@ -941,7 +949,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 65 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 67 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1090,3 +1098,9 @@ part-service) leaves these open; this document fixes them:
     approvalId}`); `approval_needed` says `wantClientToken` and carries no
     token id; the host keeps the hash and the identities a token came with;
     an approval code issues no token.
+26. The app edits the copy of a store the service holds (`vaultFile`, 6.4),
+    not a copy it fetches itself: the `revision` it saves against is then
+    always one the service accepts, the app needs no GitHub token or clone,
+    and editing works while a store is served from its offline copy. Until
+    phase B's binary chunks, such a file is limited to what one answer frame
+    holds.

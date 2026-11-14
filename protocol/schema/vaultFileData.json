@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/al-the-bear/tom_secrets_clients/protocol/schema/vaultFileData.json",
+  "title": "vaultFileData",
+  "description": "The answer to vaultFile. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "location",
+    "revision",
+    "bytes"
+  ],
+  "properties": {
+    "op": {
+      "const": "vaultFileData"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "location": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

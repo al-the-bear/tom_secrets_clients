@@ -276,6 +276,11 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
                                     'properties': {'password': STR,
                                                    'keyFile': ref('base64'),
                                                    'outerKey': ref('base64')}}}}})
+message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of an open store the service holds, for editing.',
+        ['id', 'store'], id=ref('id'), store=ref('storeName'))
+message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile.',
+        ['id', 'store', 'location', 'revision', 'bytes'], id=ref('id'), store=ref('storeName'),
+        location=STR, revision=STR, bytes=ref('base64'))
 message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write.',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
         baseRevision=STR)
