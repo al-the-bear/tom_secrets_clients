@@ -358,6 +358,13 @@ message('history.resolve', 'admin', 'a2s', 'A',
         'Answer a branch rewritten without a compaction (the manager app only).',
         ['id', 'store', 'take'], id=ref('id'), store=ref('storeName'),
         take={'enum': ['remote', 'merge']})
+message('token.set', 'admin', 'a2s', 'A',
+        'Renew the GitHub token of a vault repository (the manager app only).',
+        ['id', 'repository', 'token'], id=ref('id'),
+        repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'}, token=STR)
+message('tokenSet', 'admin', 's2a', 'A', 'The answer to token.set.',
+        ['id', 'repository', 'where'], id=ref('id'), repository=STR,
+        where={'enum': ['keychain', 'primary']}, expiresAt=STR)
 message('settings.get', 'admin', 'a2s', 'A', 'Read the device settings.', ['id'],
         id=ref('id'))
 message('deviceSettings', 'admin', 's2a', 'A', 'The answer to settings.get.',

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/token.set.json",
+  "title": "token.set",
+  "description": "Renew the GitHub token of a vault repository (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "repository",
+    "token"
+  ],
+  "properties": {
+    "op": {
+      "const": "token.set"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[^/\\s]+/[^/\\s]+$"
+    },
+    "token": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

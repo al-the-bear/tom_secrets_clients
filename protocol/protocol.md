@@ -458,6 +458,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `grants.revoke {id, host, grantId}` | `ok` | revoke a grant of any host |
 | `approvers.cliSwitch {id, on}` | `ok` | switch command-line approvals on this device on or off; accepted only from the manager app's executable |
 | `history.resolve {id, store, take}` | `ok {id, revision, conflicts}`, or `error` `not_found` (no rewritten branch waits on that store), `offline` / `token_expired` (`stores`), `denied` (reason `history_rewritten` when rewritten again, `branch_moving`, or `wrong_executable`), `malformed` (reason `history`) | answer a branch rewritten without a compaction (6.4): `take` `remote` takes the remote file as it is and drops the refused edit; `merge` merges the held copy over the remote file (nothing taken as deleted) and commits it on top of the rewritten head, `conflicts` counting the records it wrote; accepted only from the manager app's executable |
+| `token.set {id, repository, token}` | `tokenSet {id, repository, where, expiresAt?}`, or `error` `denied` (reason `token_refused` when GitHub answers 401, `token_no_access` when the token does not see the repository, `token_read_only` when it may not write there, `wrong_executable`), `not_found` (no vault in that repository), `offline` (GitHub could not be reached), `unsupported` (reason `no_keychain`: nowhere to keep the token of the primary's own repository), `malformed` (reason `token`) | renew the GitHub token of a vault repository (`owner/name`, part-key-rotation §3); accepted only from the manager app's executable. The service first checks the token: it reads the repository and its default branch, creates the branch `tsm-token-check-<12 hex digits>` at the default branch's head and deletes it again (a vault repository's only workflow runs on a schedule or by hand, so the branch starts nothing), and takes the expiry GitHub reports (`GitHub-Authentication-Token-Expiration`). Then it replaces the token where the old one lives — the device keychain (`tsm.github-token.<owner>:<repository>`, its expiry in `tsm.github-token-expiry.<owner>:<repository>`, `where` `keychain`), else the primary's vault entries that keep a token for that repository (never for the primary's own repository; `where` `primary`, the primary written) — and fetches every store again; a repository with no token yet takes the keychain, else the vault list. `expiresAt` is the expiry GitHub reported, absent for a token without one. The token is never logged |
 | `settings.get {id}` | `deviceSettings {id, device, cliApprovals, stores[]}` | the device settings (`device`: `serviceLock{mode, idleSeconds, maxUnlockedSeconds?, lockOnSleep}`, `appLock`, `defaultEnvironment?`, `servedStores?` (absent: every store), `refreshMinutes` (0: no refresh), `offlineCache`, `keyExpiryWarningDays`, `approvalTimeoutSeconds`, `codeTimeoutSeconds`, `approvalLink?`, and the rotation ages and reminder start of DP-85: `otherKeyWarningDays` (30), `keyPairAgeMonths` (24), `primaryKeyAgeMonths` (24), `vaultKeyAgeMonths` (12)), whether command-line approvals are on, and the stores the primary names (the primary first); `locked` while locked |
 | `settings.set {id, device}` | `ok {id, nextUnlock[]}`, or `error` `malformed` (reason `settings`), `denied` (reason `wrong_executable`) | write the whole device settings; accepted only from the manager app's executable; the lock policy, the refresh, the timeouts, the cache and the reminder period apply at once, `nextUnlock` names those that apply at the next unlock (`servedStores`, `defaultEnvironment`, `approvalLink`) |
 | `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?}]}` | the audit log |
@@ -968,7 +969,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt; save again) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt; save again), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -978,7 +979,7 @@ type and adds `not_running` (section 3).
 | `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4) |
 | `timeout` | an approval was not answered in time | — |
 | `rate_limited` | the identity is held back (section 11) | `retryAfterMs` |
-| `unsupported` | an unknown `op`, or a protocol the service does not speak | `op`, or `protocols` |
+| `unsupported` | an unknown `op`, or a protocol the service does not speak; a `token.set` whose token has nowhere to be kept | `op`, or `protocols`; `reason` `no_keychain` |
 | `internal` | a failure of the service | `code`, never a value |
 
 ## 11. Rate limits
@@ -996,7 +997,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 71 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 73 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1159,3 +1160,8 @@ part-service) leaves these open; this document fixes them:
     vault's keys are kept, a failed re-keyed save is made again with the
     keys listed, and the old keys stay in the primary entry's history.
     A re-keyed file is never merged, since a merge would need both key sets.
+28. A renewed GitHub token (`token.set`, 6.3) is checked before it replaces
+    the old one, by a write the vaults do not see: a branch created at the
+    default branch's head and deleted again. A fine-grained token's
+    permissions are not reported on the wire, and a token that can only read
+    would otherwise be found out at the next save.
