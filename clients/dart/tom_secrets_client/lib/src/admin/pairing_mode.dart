@@ -1,0 +1,249 @@
+// Copyright (c) 2026 Peter Nicolai Alexis Kyaw
+// SPDX-License-Identifier: BSD-3-Clause
+
+/// The service's pairing mode (part-sharing, 1. Pairing): `tsm pair` sets a
+/// headless machine up by pairing without linking the core itself. It
+/// starts the service executable (attached, not detached) and talks to it
+/// in JSON lines:
+///
+/// 1. tsm writes the handover, `{"mode":"pair","dataDirectory","address",
+///    "port","code","device","deviceKey"?}`.
+/// 2. The service receives the pairing and answers `{"status":"received",
+///    "giver","vaults":[{"name","locator","primary"}],"config","tokens"}`
+///    (nothing stored yet), or `{"status":"error","code","message",
+///    "failure"?}` and ends.
+/// 3. tsm writes `{"password"}`; the service sets the machine up and
+///    answers `{"status":"setUp","bootstrap"}` and ends, or
+///    `{"status":"error","code":"wrong_password",…}` and waits for another
+///    password (three in all), or another error and ends.
+///
+/// Then tsm starts the service as `tsm start` does and unlocks it.
+library;
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+/// The code of a wrong master password; another may be sent.
+const String tomSecretsPairingWrongPassword = 'wrong_password';
+
+/// How many master passwords the pairing mode takes.
+const int tomSecretsPairingPasswordTries = 3;
+
+/// The pairing mode's handover line.
+final class TomSecretsPairingHandover {
+  /// A handover: set the machine up in [dataDirectory] by receiving the
+  /// pairing at [address]:[port] with [code], as [device]; [deviceKey]
+  /// names where the device settings container's key is kept (default
+  /// `auto`).
+  const TomSecretsPairingHandover({
+    required this.dataDirectory,
+    required this.address,
+    required this.port,
+    required this.code,
+    required this.device,
+    this.deviceKey,
+  });
+
+  /// The handover in [json], or null when it is not a pairing handover.
+  /// Throws [FormatException] for a pairing handover that misses a member.
+  static TomSecretsPairingHandover? fromJson(Object? json) {
+    if (json is! Map || json['mode'] != 'pair') return null;
+    final port = json['port'];
+    for (final key in ['dataDirectory', 'address', 'code', 'device']) {
+      if (json[key] is! String || (json[key] as String).isEmpty) {
+        throw FormatException('the pairing handover names $key');
+      }
+    }
+    if (port is! int || port < 1 || port > 65535) {
+      throw const FormatException('the pairing handover names a port');
+    }
+    return TomSecretsPairingHandover(
+      dataDirectory: json['dataDirectory'] as String,
+      address: json['address'] as String,
+      port: port,
+      code: json['code'] as String,
+      device: json['device'] as String,
+      deviceKey: json['deviceKey'] as String?,
+    );
+  }
+
+  /// The data directory the machine is set up in.
+  final String dataDirectory;
+
+  /// The giving machine's address.
+  final String address;
+
+  /// Its pairing window's port.
+  final int port;
+
+  /// The code its Pairing screen shows.
+  final String code;
+
+  /// This machine's name.
+  final String device;
+
+  /// Where the device settings container's key is kept, or null (`auto`).
+  final String? deviceKey;
+
+  /// The JSON line.
+  String toLine() => jsonEncode({
+    'mode': 'pair',
+    'dataDirectory': dataDirectory,
+    'address': address,
+    'port': port,
+    'code': code,
+    'device': device,
+    'deviceKey': ?deviceKey,
+  });
+}
+
+/// One vault a pairing gave, as the pairing mode reports it.
+typedef TomSecretsPairedVault = ({String name, String locator, bool primary});
+
+/// What a pairing gave, as the pairing mode reports it (no key, no token).
+final class TomSecretsPairingReport {
+  /// A report.
+  const TomSecretsPairingReport({
+    required this.giver,
+    required this.vaults,
+    required this.config,
+    required this.tokens,
+  });
+
+  /// From the `received` line.
+  factory TomSecretsPairingReport.fromJson(Map<String, Object?> json) =>
+      TomSecretsPairingReport(
+        giver: json['giver']! as String,
+        vaults: [
+          for (final v in (json['vaults'] as List? ?? const []).cast<Map>())
+            (
+              name: v['name']! as String,
+              locator: v['locator']! as String,
+              primary: v['primary'] == true,
+            ),
+        ],
+        config: json['config'] == true,
+        tokens: [for (final t in (json['tokens'] as List? ?? const [])) '$t'],
+      );
+
+  /// The giving device's name.
+  final String giver;
+
+  /// The vaults it gave.
+  final List<TomSecretsPairedVault> vaults;
+
+  /// Whether it gave the shared configuration.
+  final bool config;
+
+  /// The repositories it gave a token for.
+  final List<String> tokens;
+
+  /// The `received` line.
+  Map<String, Object?> toJson() => {
+    'status': 'received',
+    'giver': giver,
+    'vaults': [
+      for (final v in vaults)
+        {'name': v.name, 'locator': v.locator, 'primary': v.primary},
+    ],
+    'config': config,
+    'tokens': tokens,
+  };
+}
+
+/// The pairing mode answered an error.
+final class TomSecretsPairingModeException implements Exception {
+  /// An error of [code] with [message]; [failure] names the pairing's
+  /// failure (`wrongCode`, `refused`, …) when the pairing failed.
+  const TomSecretsPairingModeException(this.code, this.message, {this.failure});
+
+  /// The error's code (`pairing`, `wrong_password`, `setup`, `handover`,
+  /// `ended`).
+  final String code;
+
+  /// What happened, for the user.
+  final String message;
+
+  /// The pairing's failure, when [code] is `pairing`.
+  final String? failure;
+
+  @override
+  String toString() => 'TomSecretsPairingModeException($code): $message';
+}
+
+/// A conversation with the service in its pairing mode.
+final class TomSecretsServicePairing {
+  TomSecretsServicePairing._(this._process, this._lines);
+
+  /// Starts [executable] (with [arguments]) and hands it [handover].
+  static Future<TomSecretsServicePairing> start({
+    required String executable,
+    List<String> arguments = const [],
+    required TomSecretsPairingHandover handover,
+    Map<String, String>? environment,
+  }) async {
+    final process = await Process.start(
+      executable,
+      arguments,
+      environment: environment,
+    );
+    unawaited(process.stderr.drain<void>());
+    process.stdin.writeln(handover.toLine());
+    await process.stdin.flush();
+    return TomSecretsServicePairing._(
+      process,
+      StreamIterator(
+        process.stdout.transform(utf8.decoder).transform(const LineSplitter()),
+      ),
+    );
+  }
+
+  final Process _process;
+  final StreamIterator<String> _lines;
+
+  Future<Map<String, Object?>> _answer(String expected) async {
+    if (!await _lines.moveNext()) {
+      throw const TomSecretsPairingModeException(
+        'ended',
+        'the service ended without an answer',
+      );
+    }
+    final json = jsonDecode(_lines.current);
+    if (json is! Map) {
+      throw const TomSecretsPairingModeException('ended', 'not an answer');
+    }
+    final m = json.cast<String, Object?>();
+    if (m['status'] == expected) return m;
+    throw TomSecretsPairingModeException(
+      '${m['code'] ?? 'error'}',
+      '${m['message'] ?? ''}',
+      failure: m['failure'] as String?,
+    );
+  }
+
+  /// Waits for the pairing: what it gave. Throws
+  /// [TomSecretsPairingModeException] (the service has ended then).
+  Future<TomSecretsPairingReport> received() async =>
+      TomSecretsPairingReport.fromJson(await _answer('received'));
+
+  /// Sets the machine up with [password]: the bootstrap file written.
+  /// Throws [TomSecretsPairingModeException]; after
+  /// [tomSecretsPairingWrongPassword] another password may be sent.
+  Future<String> setUp(String password) async {
+    _process.stdin.writeln(jsonEncode({'password': password}));
+    await _process.stdin.flush();
+    return (await _answer('setUp'))['bootstrap']! as String;
+  }
+
+  /// Ends the conversation; the service ends too. Its exit code.
+  Future<int> close() async {
+    try {
+      await _process.stdin.close();
+    } on Object {
+      // Already closed by the service.
+    }
+    await _lines.cancel();
+    return _process.exitCode;
+  }
+}

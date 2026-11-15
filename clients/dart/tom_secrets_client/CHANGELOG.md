@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- `pairing_mode.dart` in the admin library: the service's pairing mode as
+  `tsm pair` drives it — the handover (`TomSecretsPairingHandover`), what
+  the pairing gave (`TomSecretsPairingReport`) and the conversation
+  (`TomSecretsServicePairing`: `received`, `setUp`, `close`).
+
 ## 0.2.0
 
 - `distribution.dart` in the admin library: the layout of the manager app's

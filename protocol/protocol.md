@@ -1009,17 +1009,23 @@ length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
    approver or link key, a master password, the allow list or the audit
    log.
 5. A answers `{"op":"done","keys"}` with its own public keys (`linkKey`,
-   `approverKey` when it approves, `linkAddress`). Both derive the
-   approval-token key, HKDF-SHA-256(session key, info
-   `tsm-pair-token-key-v1`, 32 bytes).
+   `approverKey` when it approves, `linkAddress`), or
+   `{"op":"refused","reason"}` when it cannot take the bundle (a machine
+   being set up needs the primary, and a `github:` primary its token); then
+   both sides end and nothing is stored. Both derive the approval-token key,
+   HKDF-SHA-256(session key, info `tsm-pair-token-key-v1`, 32 bytes).
 
 The frames of steps 3 to 5 are XChaCha20-Poly1305 boxes (nonce, ciphertext,
 tag) with the sender's role and a counter per role as associated data
 (`A0`, `A1`, … / `B0`, …). The receiving side stores nothing before step 5
-is done. Each side then hands the service what it keeps (`pair.record`,
-6.3): the receiving host records the giving device as its approver; the
-giving device records the receiving one as a host it approves for (and as
-an approver when it was made one) with its device record in the primary.
+is done. The giving side then hands its service what it keeps
+(`pair.record`, 6.3): the receiving device as a host it approves for (and
+as an approver when it sent an approver key), with its device record in the
+primary. A machine set up by the pairing (the First run, or `tsm pair`
+through the service's pairing mode) writes its new trust material with
+the giving device recorded as its approver and, when it approves too, as a
+host it approves for; a running service records the same through
+`pair.record`.
 
 ### 9.9 Test vectors
 

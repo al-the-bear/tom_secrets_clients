@@ -112,6 +112,11 @@ service itself; a client that only reads secrets needs none of it:
   names the start time);
 - `tomSecretsStartService`: starts the service detached and hands it the
   admin key on its standard input;
+- `TomSecretsServicePairing`: the service's pairing mode, which sets a
+  headless machine up by pairing for `tsm pair` (the handover
+  `TomSecretsPairingHandover`, what the pairing gave
+  `TomSecretsPairingReport`, then the master password and the bootstrap
+  file written);
 - `tomSecretsDataDirectory` / `tomSecretsBootstrapPath`: where the product
   keeps its data and its `bootstrap.yaml` (`TSM_DATA_DIR`; else
   `~/Library/Application Support/TomSecretsManager` on macOS,

@@ -3,7 +3,7 @@ description: >-
   The Dart client of the Tom Secrets Manager: finds the local secrets service,
   speaks its client protocol (frames, hello, get, getMany, getFile) and parses
   and formats secret references.
-version: 0.2.0
+version: 0.2.1
 homepage: https://enterprise-flutter.dev
 repository: https://github.com/al-the-bear/tom_secrets_clients
 
