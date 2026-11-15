@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - `distribution.dart` in the admin library: the layout of the manager app's
   distribution, which carries `tsm` and the service in its `tsm/bin` folder
