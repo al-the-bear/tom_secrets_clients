@@ -35,6 +35,7 @@ tsm ref format (--key K | --store S --path SEG… | --store S --uuid ~HEX) [--fi
 ## Administering
 
 ```text
+tsm pair <host:port> <code> [--device NAME] [--device-key MODE] [--service EXE]
 tsm start [--unlock] [--bootstrap FILE] [--service EXE] [--key-file F]
 tsm unlock [--key-file F] | lock | stop | reload
 tsm status [--json] | keys [--json] | approvals [--json]
@@ -46,6 +47,23 @@ tsm audit [--since T] [--until T] [--subject S] [--ref R] [--json]
 tsm compact <owner/name>
 ```
 
+- `pair` sets a new machine (a headless one: bigbeast, bomber) up by
+  pairing with a desktop whose Pairing screen shows the address and the
+  code.
+  - tsm runs the service executable in its pairing mode, which receives
+    the pairing; tsm links no core and no KDBX itself. It prints what the
+    other machine gave (the vaults, the shared configuration, the GitHub
+    tokens pasted for this machine), then asks for the master password
+    (three tries; one with `--password-stdin`).
+  - The service sets the machine up from what it received: the keys and
+    tokens in the keychain, the device settings container with this
+    machine's approval keys and the other machine recorded, and
+    `bootstrap.yaml` in the data directory. Then tsm starts the service and
+    unlocks it.
+  - `--device` names this machine (default: its host name); `--device-key`
+    says where the device settings container's key is kept (`auto`,
+    `keychain`, `vault`, `keyfile`). A machine set up already (a
+    `bootstrap.yaml` there) is refused.
 - `start` starts the service.
   - The bootstrap file is `bootstrap.yaml` in the data directory:
     `TSM_DATA_DIR`, else `~/Library/Application Support/TomSecretsManager` on
@@ -139,7 +157,9 @@ The integration suite builds the service binary (`dart build cli`). It starts
 the binary through `tsm start` on demo vaults in a scratch data directory,
 with the default approvals in force. Then it reads with tsm and the Dart
 client, waits on a locked service, runs a real child process, stops the
-service and starts it again. `tom_secrets_build :integration` runs it;
+service and starts it again. It also sets a machine up with `tsm pair`
+through the binary's pairing mode against a pairing window on loopback,
+which then starts and unlocks. `tom_secrets_build :integration` runs it;
 `:test` leaves it out. The tests take the service and the core as dev
 dependencies, which are not linked.
 

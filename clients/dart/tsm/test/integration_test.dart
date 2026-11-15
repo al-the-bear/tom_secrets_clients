@@ -23,6 +23,14 @@ import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
+import 'package:tom_secrets_core/tom_secrets_core.dart'
+    show
+        TomSecretsPairingBundle,
+        TomSecretsPairingCode,
+        TomSecretsPairingPeerKeys,
+        TomSecretsPairingVault,
+        TomSecretsPairingWindow,
+        TomSecretsTrust;
 import 'package:tom_secrets_service/tom_secrets_service.dart'
     show tomSecretsIdentityOf, tomSecretsProcessInfo;
 import 'package:tom_secrets_tsm/tom_secrets_tsm.dart' show tsmRunInheriting;
@@ -212,6 +220,85 @@ void main() {
     expect(r.code, 0, reason: '$r');
     expect((await client.get('primary/Db/Main')).text, 'demo-db-pw');
   });
+
+  test('tsm pair sets a machine up through the service\'s pairing mode, '
+      'then starts and unlocks the service', () async {
+    // The test process administers the service it starts: a `tsm` beside
+    // the service that resolves to this process's executable.
+    final self = tomSecretsIdentityOf(tomSecretsProcessInfo(pid)!);
+    final beside = Link('${File(serviceExe).parent.path}/tsm');
+    if (!beside.existsSync()) beside.createSync(self.exe);
+    final demo = await Demo.create();
+    File(demo.bootstrapPath).deleteSync();
+    final keychain = TomInMemorySecretStore();
+    Future<TsmRun> tsm(List<String> args) =>
+        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+    addTearDown(() async {
+      await tsm(['stop']);
+      await _gone(demo);
+    });
+
+    final giver = TomSecretsTrust.create('mbp');
+    final code = TomSecretsPairingCode.generate();
+    final window = await TomSecretsPairingWindow.open(
+      addresses: [InternetAddress.loopbackIPv4],
+      allowLoopback: true,
+      code: code,
+      device: 'mbp',
+      bundleFor: (_) async => TomSecretsPairingBundle(
+        vaults: [
+          TomSecretsPairingVault(
+            name: 'primary',
+            locator: 'file:${demo.primaryPath}',
+            primary: true,
+          ),
+        ],
+        giverKeys: TomSecretsPairingPeerKeys(
+          linkKey: (await giver.linkKey()).publicKey,
+          approverKey: (await giver.approverKey()).publicKey,
+        ),
+      ),
+    );
+
+    final r = await tsm([
+      'pair',
+      '127.0.0.1:${window.port}',
+      code.text,
+      '--service',
+      serviceExe,
+      '--device',
+      'bigbeast',
+      '--device-key',
+      'keyfile',
+    ]);
+    expect(r.code, 0, reason: '$r');
+    expect(
+      r.text,
+      'paired with mbp; it gave:\n'
+      '  primary (primary)  file:${demo.primaryPath}\n'
+      'set up (${demo.bootstrapPath})\n'
+      'started\n'
+      'unlocked\n',
+    );
+    expect((await window.result).receiver, 'bigbeast');
+    expect(
+      File(demo.bootstrapPath).readAsStringSync(),
+      contains('host: "bigbeast"'),
+    );
+    final status = await tsm(['status']);
+    expect(status.text, contains('service  running, unlocked'));
+
+    // Set up already: a second pairing is refused before anything runs.
+    final again = await tsm([
+      'pair',
+      '127.0.0.1:${window.port}',
+      code.text,
+      '--service',
+      serviceExe,
+    ]);
+    expect(again.code, 5);
+    expect(again.err, contains('set up already'));
+  }, testOn: '!windows');
 }
 
 /// Waits until the service's runtime files are gone.

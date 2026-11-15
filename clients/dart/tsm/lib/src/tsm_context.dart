@@ -95,6 +95,10 @@ final class TsmContext {
     return _password = text;
   }
 
+  /// Forgets the master password read, so the next [password] asks again
+  /// (a wrong one).
+  void forgetPassword() => _password = null;
+
   /// Connects to the admin endpoint: with the admin key the keychain keeps
   /// for this start of the service, else by `claim` with the master
   /// password, keeping the new key in the keychain where there is one.

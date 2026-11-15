@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 /// tsm's commands (part-clients): reading (`get`, `run`, `ref`) on the
-/// client endpoint, administering (`start`, `unlock`, `lock`, `stop`,
+/// client endpoint, setting a machine up by pairing (`pair`), administering
+/// (`start`, `unlock`, `lock`, `stop`,
 /// `status`, `reload`, `keys`, `approvals`, `approve`, `approve-code`,
 /// `grants`, `allow`, `audit`, `compact`) on the admin endpoint. Each answers
 /// its exit code ([TsmExit]); values go to standard output as they are,
@@ -330,6 +331,22 @@ Future<int> _withAdmin(
 void _json(TsmContext c, Object? value) =>
     c.io.outln(const JsonEncoder.withIndent('  ').convert(value));
 
+/// The service executable: `--service`, else `TSM_SERVICE`, else
+/// `tom_secrets_service` beside tsm; null (told) when it is not there.
+Future<String?> _serviceExecutable(TsmContext c, TsmArgs a) async {
+  final exe = Platform.isWindows ? '.exe' : '';
+  final service =
+      a.option('service') ??
+      c.io.environment['TSM_SERVICE'] ??
+      '${c.io.executableDirectory}${Platform.pathSeparator}'
+          'tom_secrets_service$exe';
+  if (!await File(service).exists()) {
+    c.io.err.writeln('tsm: no service executable at $service');
+    return null;
+  }
+  return service;
+}
+
 /// `tsm start [--unlock] [--bootstrap FILE] [--service EXE] [--key-file
 /// F]`: starts the service (its admin key kept in the keychain) and with
 /// `--unlock` unlocks it.
@@ -341,20 +358,18 @@ Future<int> tsmStart(TsmContext c, TsmArgs a) async {
     c.io.err.writeln('tsm: no bootstrap file at $bootstrap');
     return TsmExit.of('not_found');
   }
-  final exe = Platform.isWindows ? '.exe' : '';
-  final service =
-      a.option('service') ??
-      env['TSM_SERVICE'] ??
-      '${c.io.executableDirectory}${Platform.pathSeparator}'
-          'tom_secrets_service$exe';
-  if (!await File(service).exists()) {
-    c.io.err.writeln('tsm: no service executable at $service');
-    return TsmExit.of('not_found');
-  }
+  final service = await _serviceExecutable(c, a);
+  if (service == null) return TsmExit.of('not_found');
+  final started = await _start(c, service, bootstrap);
+  if (started != TsmExit.ok || !a.flag('unlock')) return started;
+  return tsmUnlock(c, a);
+}
+
+Future<int> _start(TsmContext c, String service, String bootstrap) async {
   final result = await tomSecretsStartService(
     executable: service,
     bootstrap: bootstrap,
-    environment: env,
+    environment: c.io.environment,
   );
   switch (result) {
     case TomSecretsStarted(:final adminKey):
@@ -367,8 +382,106 @@ Future<int> tsmStart(TsmContext c, TsmArgs a) async {
       c.io.err.writeln('tsm: the service did not start: $code $message');
       return TsmExit.of('internal');
   }
-  if (!a.flag('unlock')) return TsmExit.ok;
-  return tsmUnlock(c, a);
+  return TsmExit.ok;
+}
+
+/// `host:port` as the giving machine's Pairing screen shows it (an IPv6
+/// address in brackets), or null.
+(String, int)? tsmPairingAddress(String text) {
+  final t = text.trim();
+  final at = t.lastIndexOf(':');
+  final port = at < 0 ? null : int.tryParse(t.substring(at + 1));
+  if (at <= 0 || port == null || port < 1 || port > 65535) return null;
+  var host = t.substring(0, at);
+  if (host.startsWith('[') && host.endsWith(']')) {
+    host = host.substring(1, host.length - 1);
+  }
+  if (host.isEmpty || host.contains(RegExp(r'[\s/]'))) return null;
+  return (host, port);
+}
+
+/// `tsm pair <host:port> <code> [--device NAME] [--device-key MODE]
+/// [--service EXE]`: sets this machine up by pairing (part-sharing, BP-13).
+/// The service executable receives the pairing in its pairing mode (tsm
+/// links no core); tsm shows what the other machine gave, asks for the
+/// master password, then starts the service and unlocks it.
+Future<int> tsmPair(TsmContext c, TsmArgs a) async {
+  final shown = a.positionalAt(0, "the other machine's address (host:port)");
+  final code = a.positionalAt(1, 'the code its Pairing screen shows');
+  final address = tsmPairingAddress(shown);
+  if (address == null) {
+    throw TsmFailure.usage('not an address and port (host:port): $shown');
+  }
+  final env = c.io.environment;
+  final bootstrap = tomSecretsBootstrapPath(environment: env);
+  if (await File(bootstrap).exists()) {
+    c.io.err.writeln('tsm: this machine is set up already ($bootstrap)');
+    return TsmExit.of('denied');
+  }
+  final service = await _serviceExecutable(c, a);
+  if (service == null) return TsmExit.of('not_found');
+  final device =
+      a.option('device') ??
+      Platform.localHostname.split('.').first.toLowerCase();
+  final pairing = await TomSecretsServicePairing.start(
+    executable: service,
+    environment: env,
+    handover: TomSecretsPairingHandover(
+      dataDirectory: tomSecretsDataDirectory(environment: env),
+      address: address.$1,
+      port: address.$2,
+      code: code.trim(),
+      device: device,
+      deviceKey: a.option('device-key'),
+    ),
+  );
+  final String written;
+  try {
+    c.io.err.writeln(
+      'tsm: pairing with ${address.$1}:${address.$2} as $device',
+    );
+    final report = await pairing.received();
+    c.io.outln('paired with ${report.giver}; it gave:');
+    for (final v in report.vaults) {
+      c.io.outln('  ${v.name}${v.primary ? ' (primary)' : ''}  ${v.locator}');
+    }
+    if (report.config) c.io.outln('  the shared configuration');
+    for (final t in report.tokens) {
+      c.io.outln('  a GitHub token for $t');
+    }
+    String? path;
+    for (var tried = 1; path == null; tried++) {
+      try {
+        path = await pairing.setUp(await c.password());
+      } on TomSecretsPairingModeException catch (e) {
+        if (e.code != tomSecretsPairingWrongPassword ||
+            tried >= tomSecretsPairingPasswordTries ||
+            c.passwordFromStdin) {
+          rethrow;
+        }
+        c.io.err.writeln('tsm: wrong master password, try again');
+        c.forgetPassword();
+      }
+    }
+    written = path;
+  } on TomSecretsPairingModeException catch (e) {
+    c.io.err.writeln('tsm: ${e.code}: ${e.message}');
+    return switch (e.code) {
+      'pairing' || tomSecretsPairingWrongPassword => TsmExit.of('denied'),
+      'handover' => TsmExit.usage,
+      _ => TsmExit.of('internal'),
+    };
+  } finally {
+    await pairing.close();
+  }
+  c.io.outln('set up ($written)');
+  final started = await _start(c, service, written);
+  if (started != TsmExit.ok) return started;
+  return _withAdmin(c, (admin) async {
+    await admin.unlock(await c.password());
+    c.io.outln('unlocked');
+    return TsmExit.ok;
+  });
 }
 
 /// `tsm unlock [--key-file F]`: unlocks with the master password.

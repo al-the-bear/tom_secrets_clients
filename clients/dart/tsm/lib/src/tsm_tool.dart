@@ -18,7 +18,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.0';
+const String tsmVersion = '0.2.1';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -176,6 +176,34 @@ final ToolDefinition tsmTool = ToolDefinition(
       ],
     ),
     _command(
+      'pair',
+      "Set this machine up by pairing: pair <host:port> <code>, as the other "
+          "machine's Pairing screen shows them; then the master password, "
+          'and the service is started and unlocked.',
+      options: const [
+        OptionDefinition.option(
+          name: 'device',
+          description: "This machine's name (default: its host name).",
+          valueName: 'name',
+        ),
+        OptionDefinition.option(
+          name: 'device-key',
+          description:
+              'Where the device settings key is kept: auto (default), '
+              'keychain, vault or keyfile.',
+          valueName: 'mode',
+        ),
+        OptionDefinition.option(
+          name: 'service',
+          description:
+              'The service executable (default: TSM_SERVICE, else '
+              'tom_secrets_service beside tsm).',
+          valueName: 'path',
+        ),
+      ],
+      examples: const ['tsm pair 10.8.0.7:47900 7-guitar-orbit'],
+    ),
+    _command(
       'unlock',
       'Unlock with the master password.',
       options: const [_keyFile],
@@ -267,6 +295,7 @@ const Map<String, _Command> _commands = {
   'run': tsmRun,
   'ref': tsmRef,
   'start': tsmStart,
+  'pair': tsmPair,
   'unlock': tsmUnlock,
   'lock': tsmLock,
   'stop': tsmStop,

@@ -3,7 +3,7 @@ description: >-
   tsm, the Tom Secrets Manager on the command line: reads secrets from the
   local secrets service (get, run) and starts, unlocks and administers it.
   License: BSD-3-Clause.
-version: 0.2.0
+version: 0.2.1
 homepage: https://enterprise-flutter.dev
 repository: https://github.com/al-the-bear/tom_secrets_clients
 
@@ -16,7 +16,7 @@ executables:
 dependencies:
   # The client protocol (get, getMany, references) and the admin side (admin
   # client, runtime directory, starter, data directory).
-  tom_secrets_client: ^0.2.0
+  tom_secrets_client: ^0.2.1
   # The command line: definitions, parsing, help, exit codes (workspace rule).
   tom_build_base: ^2.35.1
   # The OS keychain the admin key is kept in between invocations (DP-22).
@@ -26,8 +26,8 @@ dev_dependencies:
   # Tests run tsm against the real service in-process and as a built binary,
   # with demo vaults (dev dependencies are not linked: the licence boundary
   # keeps tsm off the core and the KDBX layer).
-  tom_secrets_service: ^0.11.0
-  tom_secrets_core: ^0.2.0
+  tom_secrets_service: ^0.11.1
+  tom_secrets_core: ^0.2.1
   # The demo vaults' light Argon2id.
   tom_kdbx_store: ^0.2.4
   lints: ^6.0.0

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- `tsm pair <host:port> <code>`: sets a new machine up by pairing, through
+  the service executable's pairing mode (tsm links no core); then the
+  master password, and the service is started and unlocked.
+
 ## 0.2.0
 
 - The admin keys in the keychain are recorded (`tsm.admin.index`): keeping or

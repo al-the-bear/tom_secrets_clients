@@ -16,6 +16,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
 import 'package:tom_secrets_service/tom_secrets_service.dart';
+import 'package:tom_secrets_tsm/tom_secrets_tsm.dart' show tsmPairingAddress;
 
 import 'support/demo.dart';
 
@@ -350,6 +351,26 @@ void main() {
       r = await demo.tsm(['start'], keychain: keychain);
       expect(r.code, 6);
       expect(r.err, contains('no bootstrap file'));
+    });
+
+    test('pair reports what it cannot do before anything runs', () async {
+      var r = await demo.tsm(['pair', '10.8.0.7', '7-guitar-orbit']);
+      expect(r.code, 2, reason: 'no port: $r');
+      expect(r.err, contains('host:port'));
+      r = await demo.tsm(['pair', '10.8.0.7:47900']);
+      expect(r.code, 2, reason: 'no code: $r');
+      r = await demo.tsm(['pair', '10.8.0.7:47900', '7-guitar-orbit']);
+      expect(r.code, 5, reason: 'set up already: $r');
+      expect(r.err, contains('set up already'));
+      File(demo.bootstrapPath).deleteSync();
+      r = await demo.tsm(['pair', '10.8.0.7:47900', '7-guitar-orbit']);
+      expect(r.code, 6, reason: 'no service executable: $r');
+      expect(r.err, contains('no service executable'));
+      expect(tsmPairingAddress('[fd00::7]:47900'), ('fd00::7', 47900));
+      expect(tsmPairingAddress('mbp.local:1'), ('mbp.local', 1));
+      for (final bad in [':1', 'a:0', 'a:65536', 'a b:1', '10.8.0.7']) {
+        expect(tsmPairingAddress(bad), isNull, reason: bad);
+      }
     });
 
     test('help names the commands as they are typed', () async {
