@@ -765,10 +765,10 @@ packages:
     dependency: "direct dev"
     description:
       name: tom_secrets_service
-      sha256: "3edfd2f7264441dddc31b4a14db97182ca3aa82d4a57a6afa8bdf318d89a05ac"
+      sha256: "1650a39222650043a3ea47ba7560fd7809535eed611971d4d320f50c18c69bae"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.0"
+    version: "0.7.0"
   typed_data:
     dependency: transitive
     description:
