@@ -457,6 +457,8 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `grants.add {id, grant{host, subject, secret, decision, pin?}}` | `ok` | add a grant, for another host a pre-approval; the service fills in `id`, `created` and `approver` and signs it |
 | `grants.revoke {id, host, grantId}` | `ok` | revoke a grant of any host |
 | `approvers.cliSwitch {id, on}` | `ok` | switch command-line approvals on this device on or off; accepted only from the manager app's executable |
+| `settings.get {id}` | `deviceSettings {id, device, cliApprovals, stores[]}` | the device settings (`device`: `serviceLock{mode, idleSeconds, maxUnlockedSeconds?, lockOnSleep}`, `appLock`, `defaultEnvironment?`, `servedStores?` (absent: every store), `refreshMinutes` (0: no refresh), `offlineCache`, `keyExpiryWarningDays`, `approvalTimeoutSeconds`, `codeTimeoutSeconds`, `approvalLink?`), whether command-line approvals are on, and the stores the primary names (the primary first); `locked` while locked |
+| `settings.set {id, device}` | `ok {id, nextUnlock[]}`, or `error` `malformed` (reason `settings`), `denied` (reason `wrong_executable`) | write the whole device settings; accepted only from the manager app's executable; the lock policy, the refresh, the timeouts, the cache and the reminder period apply at once, `nextUnlock` names those that apply at the next unlock (`servedStores`, `defaultEnvironment`, `approvalLink`) |
 | `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?}]}` | the audit log |
 | `approvals.list {id}` | `approvalList {id, approvals[]}` | the requests waiting on this host (`tsm approvals`), each as its `approval_needed` event reads without `op`: `approvalId`, `host`, `identity`, `refs`, `resolved`, `approvalCode?`, … (6.5, 7.2) |
 | `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now |
@@ -962,7 +964,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 67 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 70 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to

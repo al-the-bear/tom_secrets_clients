@@ -824,6 +824,78 @@
    "hex": "0000002a007b226f70223a227661756c7446696c65222c226964223a33342c2273746f7265223a22666c656574227d"
   },
   {
+   "name": "settings.get",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "settings.get",
+    "id": 37
+   },
+   "hex": "0000001d007b226f70223a2273657474696e67732e676574222c226964223a33377d"
+  },
+  {
+   "name": "deviceSettings",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "deviceSettings",
+    "id": 37,
+    "cliApprovals": false,
+    "stores": [
+     "primary",
+     "fleet"
+    ],
+    "device": {
+     "serviceLock": {
+      "mode": "idle",
+      "idleSeconds": 1800,
+      "lockOnSleep": false
+     },
+     "refreshMinutes": 5,
+     "offlineCache": true,
+     "keyExpiryWarningDays": 14,
+     "approvalTimeoutSeconds": 60,
+     "codeTimeoutSeconds": 300
+    }
+   },
+   "hex": "00000117007b226f70223a2264657669636553657474696e6773222c226964223a33372c22636c69417070726f76616c73223a66616c73652c2273746f726573223a5b227072696d617279222c22666c656574225d2c22646576696365223a7b22736572766963654c6f636b223a7b226d6f6465223a2269646c65222c2269646c655365636f6e6473223a313830302c226c6f636b4f6e536c656570223a66616c73657d2c22726566726573684d696e75746573223a352c226f66666c696e654361636865223a747275652c226b65794578706972795761726e696e6744617973223a31342c22617070726f76616c54696d656f75745365636f6e6473223a36302c22636f646554696d656f75745365636f6e6473223a3330307d7d"
+  },
+  {
+   "name": "settings.set",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "settings.set",
+    "id": 38,
+    "device": {
+     "serviceLock": {
+      "mode": "never",
+      "idleSeconds": 1800
+     },
+     "refreshMinutes": 10,
+     "servedStores": [
+      "fleet"
+     ],
+     "defaultEnvironment": "prod"
+    }
+   },
+   "hex": "000000a3007b226f70223a2273657474696e67732e736574222c226964223a33382c22646576696365223a7b22736572766963654c6f636b223a7b226d6f6465223a226e65766572222c2269646c655365636f6e6473223a313830307d2c22726566726573684d696e75746573223a31302c2273657276656453746f726573223a5b22666c656574225d2c2264656661756c74456e7669726f6e6d656e74223a2270726f64227d7d"
+  },
+  {
+   "name": "ok of settings.set",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "ok",
+    "id": 38,
+    "nextUnlock": [
+     "servedStores",
+     "defaultEnvironment"
+    ]
+   },
+   "hex": "00000046007b226f70223a226f6b222c226964223a33382c226e657874556e6c6f636b223a5b2273657276656453746f726573222c2264656661756c74456e7669726f6e6d656e74225d7d"
+  },
+  {
    "name": "vaultKeys of a vault not served",
    "endpoint": "admin",
    "type": 0,

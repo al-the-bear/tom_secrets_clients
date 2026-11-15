@@ -345,6 +345,17 @@ message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository n
 message('compacted', 'admin', 's2a', 'A', 'The answer to compact.',
         ['id', 'repository', 'compacted', 'oldHead', 'newHead', 'kept'], id=ref('id'),
         repository=STR, compacted=BOOL, oldHead=STR, newHead=STR, kept=INT0)
+message('settings.get', 'admin', 'a2s', 'A', 'Read the device settings.', ['id'],
+        id=ref('id'))
+message('deviceSettings', 'admin', 's2a', 'A', 'The answer to settings.get.',
+        ['id', 'device', 'cliApprovals', 'stores'], id=ref('id'),
+        device={'description': 'The device settings (section 6.3), each member when set.',
+                'type': 'object'},
+        cliApprovals=BOOL,
+        stores={'type': 'array', 'items': ref('storeName')})
+message('settings.set', 'admin', 'a2s', 'A', 'Write the device settings (the manager app only).',
+        ['id', 'device'], id=ref('id'),
+        device={'description': 'The whole device settings (section 6.3).', 'type': 'object'})
 message('audit.query', 'admin', 'a2s', 'A', 'Read the audit log.', ['id', 'from', 'to'],
         id=ref('id'), **{'from': ref('timestamp')}, to=ref('timestamp'), subject=STR,
         ref=ref('reference'))
