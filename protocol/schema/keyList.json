@@ -50,6 +50,9 @@
           },
           "reminding": {
             "type": "boolean"
+          },
+          "own": {
+            "type": "boolean"
           }
         }
       }

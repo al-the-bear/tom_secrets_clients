@@ -345,7 +345,15 @@ message('keyList', 'admin', 's2a', 'A', 'The answer to keys.', ['id', 'keys'], i
         keys={'type': 'array', 'items': {
             'type': 'object',
             'required': ['kind', 'key', 'expiresAt', 'daysLeft', 'reminding'],
-            'properties': {**EXPIRING_KEY['properties'], 'reminding': BOOL}}})
+            'properties': {**EXPIRING_KEY['properties'], 'reminding': BOOL,
+                           'own': BOOL}}})
+message('keys.rotate', 'admin', 'a2s', 'A',
+        'Rotate this device\'s own key pairs (the manager app only).',
+        ['id'], id=ref('id'), approver=BOOL, link=BOOL)
+message('keysRotated', 'admin', 's2a', 'A', 'The answer to keys.rotate.',
+        ['id', 'resigned', 'delivered', 'pending'], id=ref('id'), approverKeyId=STR,
+        resigned=INT0, delivered={'type': 'array', 'items': STR},
+        pending={'type': 'array', 'items': STR})
 message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository now.',
         ['id', 'repository'], id=ref('id'),
         repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'},

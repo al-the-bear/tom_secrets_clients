@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/keysRotated.json",
+  "title": "keysRotated",
+  "description": "The answer to keys.rotate. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "resigned",
+    "delivered",
+    "pending"
+  ],
+  "properties": {
+    "op": {
+      "const": "keysRotated"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "approverKeyId": {
+      "type": "string"
+    },
+    "resigned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "delivered": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pending": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

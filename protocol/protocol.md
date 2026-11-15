@@ -463,7 +463,8 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `settings.set {id, device}` | `ok {id, nextUnlock[]}`, or `error` `malformed` (reason `settings`), `denied` (reason `wrong_executable`) | write the whole device settings; accepted only from the manager app's executable; the lock policy, the refresh, the timeouts, the cache and the reminder period apply at once, `nextUnlock` names those that apply at the next unlock (`servedStores`, `defaultEnvironment`, `approvalLink`) |
 | `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?}]}` | the audit log |
 | `approvals.list {id}` | `approvalList {id, approvals[]}` | the requests waiting on this host (`tsm approvals`), each as its `approval_needed` event reads without `op`: `approvalId`, `host`, `identity`, `refs`, `resolved`, `approvalCode?`, … (6.5, 7.2) |
-| `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now |
+| `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding, own?}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now; `own` true marks this device's own approver and link key pairs, which `keys.rotate` rotates |
+| `keys.rotate {id, approver?, link?}` | `keysRotated {id, approverKeyId?, resigned, delivered[], pending[]}`, or `error` `malformed` (reason `keys`: both false), `denied` (reason `wrong_executable`) | rotate this device's own key pairs by hand (part-key-rotation §4; both by default, as an approver device does); accepted only from the manager app's executable. `approver`: a new hybrid approver pair (Ed25519 + ML-DSA-65); every grant and revocation this device signed is signed again with it, in every host's group of the primary vault, and its key-change statement (9.4, signed by the old and the new pair) is written into the group of every host it approves for, where a host the link does not reach takes it at its next refresh (`resigned` counts the objects signed again). `link`: a new approval-link pair; the previous one stays in use for 14 days for the hosts the new key has not reached (this device connects to them with it) and for the approvers that connect here (this device's link answers them under it). Both are then sent to every recorded host with a link address over a session under the keys that host knows (`keychange`, `linkKey`, 9.7): `delivered` names the hosts that took them, `pending` those not reached; the new link key is sent to them again at each refresh, at most every 15 minutes |
 | `compact {id, repository, retentionDays?}` | `compacted {id, repository, compacted, oldHead, newHead, kept}`, or `error` `not_found` (no open vault in it), `offline` / `token_expired` (`stores`), `denied` reason `branch_moving`, `malformed` reason `retentionDays` | cut the history of a `github:` vault repository (`owner/name`) now (`tsm compact`): the cut the compaction workflow makes, with the repository's own `.tsm/compaction.yaml` retention, or `retentionDays` instead (0 after a key change, 6.4), pushed by this device; `compacted` false when there was nothing to cut |
 
 ### 6.4 Editing and key material
@@ -931,7 +932,7 @@ the link. The messages are the JSON messages of section 2.2, each with `op`:
 | host | `approval_closed` | — | the prompt was answered or ended |
 | approver | `grant {id, grant, clientToken?, approvalId?}` | `ok` or `error` | a signed grant (9.4) for the host to apply at once, before the vault copy arrives; with `approvalId` it answers that waiting request, with `clientToken` it brings the token its `exe-token` subject names (7.4) |
 | approver | `revoke {id, host, grantId, revoked, approver, signatures}` | `ok` or `error` | a signed revocation (9.4), applied at once |
-| approver | `keychange {id, statement}` | `ok` or `error` | a key-change statement (9.4) |
+| approver | `keychange {id, statement}` | `ok` or `error` | a key-change statement (9.4); one the host took already (from the vault) is answered `ok` |
 | either | `linkKey {id, device, x25519, mlKem768}` | `ok` or `error` | the sender's new link public key; the peer records it, authenticated by this session under the old keys, and accepts the old key for the migration period |
 | either | `rekey` | — | after sending it the sender replaces its sending key `k` by Noise's REKEY (the first 32 bytes of ChaCha20-Poly1305(`k`, 2^64 − 1, empty ad, 32 zero bytes)); the receiver does the same to its receiving key after decrypting it. The counter goes on. Each side sends it after 2^20 frames or an hour |
 
@@ -997,7 +998,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 73 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 75 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1165,3 +1166,10 @@ part-service) leaves these open; this document fixes them:
     default branch's head and deleted again. A fine-grained token's
     permissions are not reported on the wire, and a token that can only read
     would otherwise be found out at the next save.
+29. A device rotates its own key pairs together (`keys.rotate`, 6.3) and
+    keeps its previous link key for 14 days, in both of its link roles: as
+    the approver it connects with it to the hosts the new key has not
+    reached, as a host it answers the approvers that still hold it. The
+    key-change statement also goes into the vault, so a host the link does
+    not reach takes it at its next refresh, and a host that took it there
+    answers the same statement over the link `ok`.
