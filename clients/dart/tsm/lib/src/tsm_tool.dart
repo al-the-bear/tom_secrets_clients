@@ -18,7 +18,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.1.0';
+const String tsmVersion = '0.2.0';
 
 const _json = OptionDefinition.flag(
   name: 'json',

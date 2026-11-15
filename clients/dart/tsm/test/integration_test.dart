@@ -17,6 +17,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
@@ -28,10 +29,30 @@ import 'package:tom_secrets_tsm/tom_secrets_tsm.dart' show tsmRunInheriting;
 
 import 'support/demo.dart';
 
-/// The service's package, beside this one's repository.
-final String _servicePackage = Directory(
-  '../../../../secrets_manager/tom_secrets_service',
-).absolute.path;
+/// The root of the service package this package resolves (its dev
+/// dependency `tom_secrets_service`, from pub.dev).
+Future<Directory> _servicePackage() async {
+  final lib = await Isolate.resolvePackageUri(
+    Uri.parse('package:tom_secrets_service/tom_secrets_service.dart'),
+  );
+  return File.fromUri(lib!).parent.parent;
+}
+
+/// [from] copied into [to], without a resolution of its own (`.dart_tool`),
+/// so a package from the pub cache is built where it may write.
+void _copyPackage(Directory from, Directory to) {
+  for (final e in from.listSync(recursive: true)) {
+    final relative = e.path.substring(from.path.length + 1);
+    if (relative.split(Platform.pathSeparator).first == '.dart_tool') continue;
+    final target = '${to.path}${Platform.pathSeparator}$relative';
+    if (e is Directory) {
+      Directory(target).createSync(recursive: true);
+    } else if (e is File) {
+      File(target).parent.createSync(recursive: true);
+      e.copySync(target);
+    }
+  }
+}
 
 void main() {
   late String serviceExe;
@@ -39,17 +60,26 @@ void main() {
 
   setUpAll(() async {
     build = Directory.systemTemp.createTempSync('tsm_service_build');
+    final source = Directory('${build.path}${Platform.pathSeparator}source')
+      ..createSync();
+    _copyPackage(await _servicePackage(), source);
+    final got = await Process.run(Platform.resolvedExecutable, [
+      'pub',
+      'get',
+    ], workingDirectory: source.path);
+    expect(got.exitCode, 0, reason: '${got.stdout}\n${got.stderr}');
     final result = await Process.run(Platform.resolvedExecutable, [
       'build',
       'cli',
       '--target',
       'bin/tom_secrets_service.dart',
       '-o',
-      build.path,
-    ], workingDirectory: _servicePackage);
+      // Its own folder: the build deletes the output folder first.
+      '${build.path}${Platform.pathSeparator}out',
+    ], workingDirectory: source.path);
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
     serviceExe =
-        '${build.path}/bundle/bin/tom_secrets_service'
+        '${build.path}/out/bundle/bin/tom_secrets_service'
         '${Platform.isWindows ? '.exe' : ''}';
     expect(File(serviceExe).existsSync(), isTrue);
   });
