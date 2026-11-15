@@ -448,7 +448,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
-| `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
+| `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`) |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
@@ -463,7 +463,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?}]}` | the audit log |
 | `approvals.list {id}` | `approvalList {id, approvals[]}` | the requests waiting on this host (`tsm approvals`), each as its `approval_needed` event reads without `op`: `approvalId`, `host`, `identity`, `refs`, `resolved`, `approvalCode?`, … (6.5, 7.2) |
 | `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now |
-| `compact {id, repository}` | `compacted {id, repository, compacted, oldHead, newHead, kept}`, or `error` `not_found` (no open vault in it), `offline` / `token_expired` (`stores`), `denied` reason `branch_moving` | cut the history of a `github:` vault repository (`owner/name`) now (`tsm compact`): the cut the compaction workflow makes, with the repository's own `.tsm/compaction.yaml` retention, pushed by this device; `compacted` false when there was nothing to cut |
+| `compact {id, repository, retentionDays?}` | `compacted {id, repository, compacted, oldHead, newHead, kept}`, or `error` `not_found` (no open vault in it), `offline` / `token_expired` (`stores`), `denied` reason `branch_moving`, `malformed` reason `retentionDays` | cut the history of a `github:` vault repository (`owner/name`) now (`tsm compact`): the cut the compaction workflow makes, with the repository's own `.tsm/compaction.yaml` retention, or `retentionDays` instead (0 after a key change, 6.4), pushed by this device; `compacted` false when there was nothing to cut |
 
 ### 6.4 Editing and key material
 
@@ -526,6 +526,31 @@ during the save, answers `offline` / `token_expired` with `stores`. The
 service's own writes of the primary (grants, their last use) go the same
 way; one that cannot be delivered stays in the held copy and is written by
 the next refresh.
+
+**A re-keyed file** (part-key-rotation). The app rotates a vault's keys by
+writing the new keys into the primary first (the vault's entry; the primary's
+own in its metadata and the save's `keys`) and then saving the vault re-keyed:
+
+- a further vault's `bytes` that do not open with the keys the service holds
+  but do with the keys the primary lists for it now are taken as re-keyed;
+- the primary's re-keyed file carries its new keys in `keys` (`password`,
+  `keyFile` base64, `outerKey` the repository key, base64); the service
+  holds them from then on and keeps the new key file and repository key in
+  the device keychain (`tsm.key-file.<id>`, `tsm.repository-key.<id>`),
+  where the next `unlock` takes them;
+- a re-keyed file is written as it is and never merged: `baseRevision` must
+  be the copy the service holds (or none), and a file that has moved since
+  is refused (`denied`, reason `stale_base`; nothing changes, the app reads
+  it again and re-keys that);
+- until the re-keyed file arrives, a vault whose listed keys do not open it
+  while the keys held still do stays served with the keys held (a refresh
+  does not take it to `needs_unlock`), and so does the copy of a vault not
+  served, as long as its file has not moved. A failed re-keyed save can
+  therefore be made again.
+
+After a key change of a `github:` vault the app cuts the repository's
+history with `compact` `retentionDays: 0`, so no commit keeps a file under
+the old keys.
 
 The store is then reopened from what was written and `store_changed` names
 the new revision. A store that is not open answers `not_found`,
@@ -1128,3 +1153,9 @@ part-service) leaves these open; this document fixes them:
     and editing works while a store is served from its offline copy. Until
     phase B's binary chunks, such a file is limited to what one answer frame
     holds.
+27. A key rotation (6.4) writes the new keys into the primary before the
+    re-keyed vault, and the service takes a further vault's new keys from
+    the primary rather than from the save: the primary is the one place a
+    vault's keys are kept, a failed re-keyed save is made again with the
+    keys listed, and the old keys stay in the primary entry's history.
+    A re-keyed file is never merged, since a merge would need both key sets.

@@ -296,7 +296,11 @@ message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile.',
                 'type': 'boolean'})
 message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write.',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
-        baseRevision=STR)
+        baseRevision=STR,
+        keys={'description': 'The primary\'s new keys when its file is re-keyed (section 6.4).',
+              'type': 'object', 'required': ['password'],
+              'properties': {'password': STR, 'keyFile': ref('base64'),
+                             'outerKey': ref('base64')}})
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
@@ -344,7 +348,9 @@ message('keyList', 'admin', 's2a', 'A', 'The answer to keys.', ['id', 'keys'], i
             'properties': {**EXPIRING_KEY['properties'], 'reminding': BOOL}}})
 message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository now.',
         ['id', 'repository'], id=ref('id'),
-        repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'})
+        repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'},
+        retentionDays={'description': 'Replaces the repository\'s retention: 0 after a key '
+                       'change (section 6.4).', **INT0})
 message('compacted', 'admin', 's2a', 'A', 'The answer to compact.',
         ['id', 'repository', 'compacted', 'oldHead', 'newHead', 'kept'], id=ref('id'),
         repository=STR, compacted=BOOL, oldHead=STR, newHead=STR, kept=INT0)

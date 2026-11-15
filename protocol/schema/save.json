@@ -25,6 +25,24 @@
     },
     "baseRevision": {
       "type": "string"
+    },
+    "keys": {
+      "description": "The primary's new keys when its file is re-keyed (section 6.4).",
+      "type": "object",
+      "required": [
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "keyFile": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "outerKey": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
     }
   },
   "x-tsm": {
