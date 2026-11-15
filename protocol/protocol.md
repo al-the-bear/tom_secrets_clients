@@ -959,7 +959,7 @@ the link. The messages are the JSON messages of section 2.2, each with `op`:
 | approver | `grant {id, grant, clientToken?, approvalId?}` | `ok` or `error` | a signed grant (9.4) for the host to apply at once, before the vault copy arrives; with `approvalId` it answers that waiting request, with `clientToken` it brings the token its `exe-token` subject names (7.4) |
 | approver | `revoke {id, host, grantId, revoked, approver, signatures}` | `ok` or `error` | a signed revocation (9.4), applied at once |
 | approver | `keychange {id, statement}` | `ok` or `error` | a key-change statement (9.4); one the host took already (from the vault) is answered `ok` |
-| either | `linkKey {id, device, x25519, mlKem768}` | `ok` or `error` | the sender's new link public key; the peer records it, authenticated by this session under the old keys, and accepts the old key for the migration period |
+| either | `linkKey {id, device, x25519, mlKem768}` | `ok` or `error` | the sender's new link public key; the peer records it, authenticated by this session under the old keys, and accepts the old key for the migration period. A host that rotated its own link key and is reached by an approver under its previous key sends its new key first in that session (`id` `host-link-key`, before it answers anything); the approver records it for that host and answers `ok` (`error` when `device` is not the host it connected to) |
 | either | `rekey` | — | after sending it the sender replaces its sending key `k` by Noise's REKEY (the first 32 bytes of ChaCha20-Poly1305(`k`, 2^64 − 1, empty ad, 32 zero bytes)); the receiver does the same to its receiving key after decrypting it. The counter goes on. Each side sends it after 2^20 frames or an hour |
 
 The answers are `ok {id}` and `error {id, kind, message, details?}` of
@@ -1195,7 +1195,8 @@ part-service) leaves these open; this document fixes them:
 29. A device rotates its own key pairs together (`keys.rotate`, 6.3) and
     keeps its previous link key for 14 days, in both of its link roles: as
     the approver it connects with it to the hosts the new key has not
-    reached, as a host it answers the approvers that still hold it. The
+    reached, as a host it answers the approvers that still hold it and
+    passes them its new key in that session (`linkKey`, 9.7). The
     key-change statement also goes into the vault, so a host the link does
     not reach takes it at its next refresh, and a host that took it there
     answers the same statement over the link `ok`.
