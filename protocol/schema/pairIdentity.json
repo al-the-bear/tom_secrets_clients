@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/pairIdentity.json",
+  "title": "pairIdentity",
+  "description": "The answer to pair.identity. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "device",
+    "approverKey",
+    "linkKey"
+  ],
+  "properties": {
+    "op": {
+      "const": "pairIdentity"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "device": {
+      "type": "string"
+    },
+    "approverKey": {
+      "type": "object",
+      "required": [
+        "ed25519",
+        "mlDsa65"
+      ],
+      "properties": {
+        "ed25519": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "mlDsa65": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    },
+    "linkKey": {
+      "type": "object",
+      "required": [
+        "x25519",
+        "mlKem768"
+      ],
+      "properties": {
+        "x25519": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "mlKem768": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    },
+    "linkAddress": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

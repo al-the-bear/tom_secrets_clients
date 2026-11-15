@@ -308,6 +308,39 @@ message('vault.move', 'admin', 'a2s', 'A',
         keys={'type': 'object', 'required': ['password'],
               'properties': {'password': STR, 'keyFile': ref('base64'),
                              'outerKey': ref('base64')}})
+APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
+                'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
+LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],
+            'properties': {'x25519': ref('base64'), 'mlKem768': ref('base64')}}
+message('pair.identity', 'admin', 'a2s', 'A',
+        'This device\'s public keys for a pairing (the manager app only).',
+        ['id'], id=ref('id'))
+message('pairIdentity', 'admin', 's2a', 'A', 'The answer to pair.identity.',
+        ['id', 'device', 'approverKey', 'linkKey'], id=ref('id'), device=STR,
+        approverKey=APPROVER_KEY, linkKey=LINK_KEY, linkAddress=STR)
+message('pair.record', 'admin', 'a2s', 'A',
+        'Keep what a pairing gave (the manager app only).',
+        ['id', 'device', 'tokenKey'], id=ref('id'), device=STR, tokenKey=ref('base64'),
+        approver={'type': 'object', 'required': ['approverKey'],
+                  'properties': {'approverKey': APPROVER_KEY, 'linkKey': LINK_KEY}},
+        host={'type': 'object', 'required': ['linkKey'],
+              'properties': {'linkKey': LINK_KEY, 'address': STR}},
+        record={'type': 'object',
+                'properties': {'platform': STR,
+                               'keyIds': {'type': 'array', 'items': STR}}})
+message('pair.revoke', 'admin', 'a2s', 'A', 'Revoke a paired device (the manager app only).',
+        ['id', 'device'], id=ref('id'), device=STR)
+message('pair.list', 'admin', 'a2s', 'A', 'The device records (the manager app only).',
+        ['id'], id=ref('id'))
+message('pairedDevices', 'admin', 's2a', 'A', 'The answer to pair.list.',
+        ['id', 'devices'], id=ref('id'),
+        devices={'type': 'array', 'items': {
+            'type': 'object', 'required': ['device', 'paired', 'keyIds'],
+            'properties': {'device': STR, 'platform': STR, 'paired': ref('timestamp'),
+                           'pairedBy': STR, 'keyIds': {'type': 'array', 'items': STR},
+                           'approverKeyId': STR, 'approverKeySince': ref('timestamp'),
+                           'linkKeySince': ref('timestamp'),
+                           'revoked': ref('timestamp')}}})
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',

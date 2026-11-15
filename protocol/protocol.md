@@ -450,6 +450,10 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
 | `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`) |
 | `vault.move {id, store, location, bytes, baseRevision?, keys{password, keyFile?, outerKey?}}` | `ok {id, location, revision}`, or `error` `malformed` (reason `location`: not the store's locator with `.tsmx` added or removed; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`; `move`), `denied` (reason `stale_base`, `target_exists`, `branch_moving`, `wrong_executable`), `not_found` (no open store), `offline` / `token_expired` (`stores`) | add or remove a store's outer encryption, which moves it to its locator with `.kdbx.tsmx` or `.kdbx` (6.4); accepted only from the manager app's executable |
+| `pair.identity {id}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?}` | this device's public keys for a pairing (9.8); accepted only from the manager app's executable |
+| `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); accepted only from the manager app's executable |
+| `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
+| `pair.list {id}` | `pairedDevices {id, devices[{device, platform?, paired, pairedBy?, keyIds, approverKeyId?, approverKeySince?, linkKeySince?, revoked?}]}` | the device records of the primary; accepted only from the manager app's executable |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
@@ -966,7 +970,58 @@ The answers are `ok {id}` and `error {id, kind, message, details?}` of
 sections 6 and 10 (`denied` for an object whose signatures are not accepted).
 Any other message closes the link. A new connection makes a new handshake.
 
-### 9.8 Test vectors
+### 9.8 Pairing
+
+Pairing brings a machine into the user's fleet (part-sharing, DP-60–DP-64,
+DP-177). It runs between the two machines, not on the service's endpoints:
+the giving side's app opens a pairing window, a TCP port bound to its LAN
+and VPN addresses only (private IPv4, IPv6 unique local) for at most five
+minutes, and shows a one-time code `<number>-<word>-<word>` (the number
+1..999, the words from tom_secrets_core's fixed list of 256). The receiving
+side connects. The window takes the first connection only and closes after
+that one attempt, right or wrong. The frames are the approval link's (4-byte
+length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
+
+1. The receiving side (SPAKE2's A) sends `{"op":"hello","version":1,
+   "device"}`; the giving side (B) answers `{"op":"hello","version":1,
+   "device","message":pB}`; A then sends `{"op":"message","message":pA}`.
+   SPAKE2 is RFC 9382's P256-SHA256-HKDF-HMAC with the RFC's M and N, the
+   device names as the identities A and B, the AAD `tsm-pair-v1`, and w =
+   HKDF-SHA-256(the code, salt `tsm-pair-code-v1`, 40 bytes) mod the group
+   order. A point that is not an uncompressed point of P-256 is refused.
+2. A sends `{"op":"confirm","mac":cA}`; B checks it and answers
+   `{"op":"confirm","mac":cB}`, or `{"op":"error","reason":"wrong_code"}`
+   and ends (the code is burnt).
+3. Under the SPAKE2 key (HKDF-SHA-256(Ke, info `tsm-pair-channel-v1`)), A
+   sends `{"op":"kem","encapsulationKey"}` (a fresh ML-KEM-768 key) and B
+   answers `{"op":"kem","ciphertext"}`. The session key is HKDF-SHA-256 over
+   Ke || the ML-KEM shared secret, salt SHA-256(TT || encapsulation key ||
+   ciphertext), info `tsm-pair-session-v1`. A sends `{"op":"confirm","mac"}`
+   = HMAC(session key, `tsm-pair-confirm-A` || that hash), B answers with
+   `tsm-pair-confirm-B`.
+4. The giving side shows the receiving device's name and what it may get;
+   the user confirms. B sends `{"op":"bundle","bundle"}` or
+   `{"op":"declined"}`. The bundle carries the vaults chosen (`name`,
+   `locator`, `primary`, `keyFile`, `repositoryKey`), the shared
+   configuration (`configYaml`), tokens pasted for this device
+   (`repository`, `token`, `expires`), and the giving device's public keys
+   (`giverKeys`: `approverKey`, `linkKey`, `linkAddress`). Never a private
+   approver or link key, a master password, the allow list or the audit
+   log.
+5. A answers `{"op":"done","keys"}` with its own public keys (`linkKey`,
+   `approverKey` when it approves, `linkAddress`). Both derive the
+   approval-token key, HKDF-SHA-256(session key, info
+   `tsm-pair-token-key-v1`, 32 bytes).
+
+The frames of steps 3 to 5 are XChaCha20-Poly1305 boxes (nonce, ciphertext,
+tag) with the sender's role and a counter per role as associated data
+(`A0`, `A1`, … / `B0`, …). The receiving side stores nothing before step 5
+is done. Each side then hands the service what it keeps (`pair.record`,
+6.3): the receiving host records the giving device as its approver; the
+giving device records the receiving one as a host it approves for (and as
+an approver when it was made one) with its device record in the primary.
+
+### 9.9 Test vectors
 
 - [`vectors/signatures.json`](vectors/signatures.json): three approver keys
   from seeds, with their key ids; a grant, a grant with a relaxed pin, a
@@ -1024,7 +1079,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 76 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 82 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1045,7 +1100,7 @@ Per measured identity, configurable in the service:
 - [`vectors/signatures.json`](vectors/signatures.json),
   [`vectors/approval_codes.json`](vectors/approval_codes.json) and
   [`vectors/link_handshake.json`](vectors/link_handshake.json): section 9's
-  signed objects, approval codes and tokens, and the approval link (9.8).
+  signed objects, approval codes and tokens, and the approval link (9.9).
 - [`tool/`](tool/): `tsm_protocol.py`, the reference implementation of the
   computable parts (references, frames, the MAC, discovery);
   `gen_schemas.py` and `gen_vectors.py`, which write `schema/` and
@@ -1205,3 +1260,8 @@ part-service) leaves these open; this document fixes them:
     a `github:` vault in one commit, so a failed move leaves the old file;
     the vault's entry in the primary, or for the primary its bootstrap file
     and keychain handles, follow on the device that moves it.
+31. Pairing (9.8) runs between the two machines' apps over a pairing
+    window, not on the service's endpoints; the services keep only its
+    result (`pair.record`). The receiving side is SPAKE2's A because it
+    connects; its SPAKE2 message follows the giving side's hello, since both
+    identities enter the transcript.

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/pair.record.json",
+  "title": "pair.record",
+  "description": "Keep what a pairing gave (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "device",
+    "tokenKey"
+  ],
+  "properties": {
+    "op": {
+      "const": "pair.record"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "device": {
+      "type": "string"
+    },
+    "tokenKey": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "approver": {
+      "type": "object",
+      "required": [
+        "approverKey"
+      ],
+      "properties": {
+        "approverKey": {
+          "type": "object",
+          "required": [
+            "ed25519",
+            "mlDsa65"
+          ],
+          "properties": {
+            "ed25519": {
+              "$ref": "common.json#/$defs/base64"
+            },
+            "mlDsa65": {
+              "$ref": "common.json#/$defs/base64"
+            }
+          }
+        },
+        "linkKey": {
+          "type": "object",
+          "required": [
+            "x25519",
+            "mlKem768"
+          ],
+          "properties": {
+            "x25519": {
+              "$ref": "common.json#/$defs/base64"
+            },
+            "mlKem768": {
+              "$ref": "common.json#/$defs/base64"
+            }
+          }
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": [
+        "linkKey"
+      ],
+      "properties": {
+        "linkKey": {
+          "type": "object",
+          "required": [
+            "x25519",
+            "mlKem768"
+          ],
+          "properties": {
+            "x25519": {
+              "$ref": "common.json#/$defs/base64"
+            },
+            "mlKem768": {
+              "$ref": "common.json#/$defs/base64"
+            }
+          }
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "keyIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

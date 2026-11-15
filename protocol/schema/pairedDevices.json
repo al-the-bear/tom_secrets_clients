@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/pairedDevices.json",
+  "title": "pairedDevices",
+  "description": "The answer to pair.list. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "devices"
+  ],
+  "properties": {
+    "op": {
+      "const": "pairedDevices"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "device",
+          "paired",
+          "keyIds"
+        ],
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "paired": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "pairedBy": {
+            "type": "string"
+          },
+          "keyIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approverKeyId": {
+            "type": "string"
+          },
+          "approverKeySince": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "linkKeySince": {
+            "$ref": "common.json#/$defs/timestamp"
+          },
+          "revoked": {
+            "$ref": "common.json#/$defs/timestamp"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}
