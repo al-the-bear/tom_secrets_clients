@@ -449,6 +449,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
 | `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`) |
+| `vault.move {id, store, location, bytes, baseRevision?, keys{password, keyFile?, outerKey?}}` | `ok {id, location, revision}`, or `error` `malformed` (reason `location`: not the store's locator with `.tsmx` added or removed; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`; `move`), `denied` (reason `stale_base`, `target_exists`, `branch_moving`, `wrong_executable`), `not_found` (no open store), `offline` / `token_expired` (`stores`) | add or remove a store's outer encryption, which moves it to its locator with `.kdbx.tsmx` or `.kdbx` (6.4); accepted only from the manager app's executable |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
@@ -553,6 +554,31 @@ own in its metadata and the save's `keys`) and then saving the vault re-keyed:
 After a key change of a `github:` vault the app cuts the repository's
 history with `compact` `retentionDays: 0`, so no commit keeps a file under
 the old keys.
+
+**A moved store** (`vault.move`, the outer encryption added or removed). The
+outer layer is chosen by the file name, so adding it moves `v.kdbx` to
+`v.kdbx.tsmx` and removing it moves it back; `location` must be the store's
+locator with the suffix added or removed and nothing else. `bytes` is the
+file as `location` keeps it and must open with `keys` (`outerKey` exactly
+when `location` is a `.tsmx` file). The file at the old locator must still
+be the copy the service holds (`stale_base` otherwise) and nothing may be at
+the new one (`target_exists`). A `file:` store is written at the new path
+and then the old file removed; a `github:` store moves in one commit that
+adds the new file and removes the old one, put on the branch without force
+(`branch_moving` when the branch moved meanwhile). A refused or failed move
+leaves the old file in place. Then:
+
+- a further vault's entry in the primary takes the new locator and keys,
+  and the primary is written;
+- the primary itself takes the new keys; the bootstrap file's `primary:`
+  names the new locator, and the device keychain keeps its key file and,
+  for a `.tsmx` primary, its repository key under the new locator's handles
+  (the key file's handle names the vault's path). Other devices name the
+  primary in their own bootstrap files and are told by hand or by pairing.
+
+The store is served from the new place, and the app cuts the repository's
+history (`compact` `retentionDays: 0`), so no commit keeps the file without
+the outer layer.
 
 The store is then reopened from what was written and `store_changed` names
 the new revision. A store that is not open answers `not_found`,
@@ -970,7 +996,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt; save again), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -998,7 +1024,7 @@ Per measured identity, configurable in the service:
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 75 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 76 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1173,3 +1199,8 @@ part-service) leaves these open; this document fixes them:
     key-change statement also goes into the vault, so a host the link does
     not reach takes it at its next refresh, and a host that took it there
     answers the same statement over the link `ok`.
+30. Adding or removing a vault's outer encryption moves it (`vault.move`,
+    6.4): the service writes the new file and only then removes the old one,
+    a `github:` vault in one commit, so a failed move leaves the old file;
+    the vault's entry in the primary, or for the primary its bootstrap file
+    and keychain handles, follow on the device that moves it.

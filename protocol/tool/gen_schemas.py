@@ -301,6 +301,13 @@ message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service t
               'type': 'object', 'required': ['password'],
               'properties': {'password': STR, 'keyFile': ref('base64'),
                              'outerKey': ref('base64')}})
+message('vault.move', 'admin', 'a2s', 'A',
+        'Add or remove a store\'s outer encryption, moving it (the manager app only).',
+        ['id', 'store', 'location', 'bytes', 'keys'], id=ref('id'), store=ref('storeName'),
+        location=STR, bytes=ref('base64'), baseRevision=STR,
+        keys={'type': 'object', 'required': ['password'],
+              'properties': {'password': STR, 'keyFile': ref('base64'),
+                             'outerKey': ref('base64')}})
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',

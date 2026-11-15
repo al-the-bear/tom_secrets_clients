@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/vault.move.json",
+  "title": "vault.move",
+  "description": "Add or remove a store's outer encryption, moving it (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "location",
+    "bytes",
+    "keys"
+  ],
+  "properties": {
+    "op": {
+      "const": "vault.move"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "location": {
+      "type": "string"
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "baseRevision": {
+      "type": "string"
+    },
+    "keys": {
+      "type": "object",
+      "required": [
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "keyFile": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "outerKey": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}
