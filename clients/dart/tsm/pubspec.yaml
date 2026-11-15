@@ -27,7 +27,7 @@ dev_dependencies:
   # with demo vaults (dev dependencies are not linked: the licence boundary
   # keeps tsm off the core and the KDBX layer).
   tom_secrets_service: ^0.2.0
-  tom_secrets_core: ^0.1.0
+  tom_secrets_core: ^0.1.1
   # The demo vaults' light Argon2id.
   tom_kdbx_store: ^0.2.4
   lints: ^6.0.0

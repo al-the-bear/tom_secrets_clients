@@ -669,10 +669,10 @@ packages:
     dependency: "direct main"
     description:
       name: tom_build_base
-      sha256: f34f799c64a6d0fefb110c3600e9add81cfc364482f05f6df389261e58759810
+      sha256: "4eebf9f62f3102ade2d81f254eee1ca8f5b9c6e92f5d3b514b4cb4fd161f30aa"
       url: "https://pub.dev"
     source: hosted
-    version: "2.37.0"
+    version: "2.38.0"
   tom_core_storage:
     dependency: "direct main"
     description:
@@ -757,10 +757,10 @@ packages:
     dependency: "direct dev"
     description:
       name: tom_secrets_core
-      sha256: "2fb949520c4fbea6ca2f74cc685be964cf38f300c3ebdc4b5e720886fe81fd12"
+      sha256: "31b853c2107260783f4895b1a971cad33f959d3eeb7a5964d014dd4ccffd4cd7"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.1.1"
   tom_secrets_service:
     dependency: "direct dev"
     description:
