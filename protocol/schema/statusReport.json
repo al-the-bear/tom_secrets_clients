@@ -77,6 +77,18 @@
           "notPushed": {
             "type": "integer",
             "minimum": 0
+          },
+          "rewritten": {
+            "description": "The branch was rewritten without a compaction: the head of the rewritten branch, until the manager app answers with history.resolve (section 6.4).",
+            "type": "object",
+            "required": [
+              "head"
+            ],
+            "properties": {
+              "head": {
+                "type": "string"
+              }
+            }
           }
         }
       }

@@ -241,10 +241,13 @@ message('unlockStore', 'admin', 'a2s', 'A', 'Open a store that has its own passw
         keyFile=ref('base64'))
 message('lock', 'admin', 'a2s', 'A', 'Lock: clear every secret from memory.', ['id'], id=ref('id'))
 message('shutdown', 'admin', 'a2s', 'A', 'Lock and stop the service.', ['id'], id=ref('id'))
+REWRITTEN = {'description': 'The branch was rewritten without a compaction: the head of the '
+             'rewritten branch, until the manager app answers with history.resolve (section 6.4).',
+             'type': 'object', 'required': ['head'], 'properties': {'head': STR}}
 STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPushed'],
                 'properties': {'name': ref('storeName'), 'state': ref('storeState'),
                                'source': ref('source'), 'fetchedAt': ref('timestamp'),
-                               'notPushed': INT0}}
+                               'notPushed': INT0, 'rewritten': REWRITTEN}}
 EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
                 'properties': {'kind': {'enum': ['github_token', 'vault_keys',
                                                  'approver_key', 'link_key']},
@@ -345,6 +348,10 @@ message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository n
 message('compacted', 'admin', 's2a', 'A', 'The answer to compact.',
         ['id', 'repository', 'compacted', 'oldHead', 'newHead', 'kept'], id=ref('id'),
         repository=STR, compacted=BOOL, oldHead=STR, newHead=STR, kept=INT0)
+message('history.resolve', 'admin', 'a2s', 'A',
+        'Answer a branch rewritten without a compaction (the manager app only).',
+        ['id', 'store', 'take'], id=ref('id'), store=ref('storeName'),
+        take={'enum': ['remote', 'merge']})
 message('settings.get', 'admin', 'a2s', 'A', 'Read the device settings.', ['id'],
         id=ref('id'))
 message('deviceSettings', 'admin', 's2a', 'A', 'The answer to settings.get.',
@@ -390,7 +397,7 @@ message('store_changed', 'admin', 's2a', 'A', 'A store was reopened with new con
 message('store_state', 'admin', 's2a', 'A', 'A store changed state.',
         ['store', 'state', 'source', 'notPushed'], store=ref('storeName'),
         state=ref('storeState'), source=ref('source'), fetchedAt=ref('timestamp'),
-        notPushed=INT0)
+        notPushed=INT0, rewritten=REWRITTEN)
 message('key_expiry', 'admin', 's2a', 'A', 'A key the product rotates expires soon.',
         ['key', 'expiresAt', 'daysLeft'], key=STR, expiresAt=ref('timestamp'),
         daysLeft={'type': 'integer'})

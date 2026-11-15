@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/history.resolve.json",
+  "title": "history.resolve",
+  "description": "Answer a branch rewritten without a compaction (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "take"
+  ],
+  "properties": {
+    "op": {
+      "const": "history.resolve"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "take": {
+      "enum": [
+        "remote",
+        "merge"
+      ]
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}
