@@ -26,8 +26,8 @@ dev_dependencies:
   # Tests run tsm against the real service in-process and as a built binary,
   # with demo vaults (dev dependencies are not linked: the licence boundary
   # keeps tsm off the core and the KDBX layer).
-  tom_secrets_service: ^0.7.0
-  tom_secrets_core: ^0.1.4
+  tom_secrets_service: ^0.8.0
+  tom_secrets_core: ^0.1.5
   # The demo vaults' light Argon2id.
   tom_kdbx_store: ^0.2.4
   lints: ^6.0.0
