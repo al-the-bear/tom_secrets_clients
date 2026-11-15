@@ -824,6 +824,60 @@
    "hex": "0000002a007b226f70223a227661756c7446696c65222c226964223a33342c2273746f7265223a22666c656574227d"
   },
   {
+   "name": "vaultKeys of a vault not served",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "vaultKeys",
+    "id": 35,
+    "stores": [
+     "prod"
+    ]
+   },
+   "hex": "0000002c007b226f70223a227661756c744b657973222c226964223a33352c2273746f726573223a5b2270726f64225d7d"
+  },
+  {
+   "name": "vaultKeySet of a vault not served",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "vaultKeySet",
+    "id": 35,
+    "stores": [
+     {
+      "store": "prod",
+      "location": "github:al-the-bear/demo-vault/prod.kdbx",
+      "served": false,
+      "keys": {
+       "password": "demo-prod-password"
+      }
+     }
+    ],
+    "unserved": [
+     {
+      "store": "prod",
+      "location": "github:al-the-bear/demo-vault/prod.kdbx"
+     }
+    ]
+   },
+   "hex": "000000f8007b226f70223a227661756c744b6579536574222c226964223a33352c2273746f726573223a5b7b2273746f7265223a2270726f64222c226c6f636174696f6e223a226769746875623a616c2d7468652d626561722f64656d6f2d7661756c742f70726f642e6b646278222c22736572766564223a66616c73652c226b657973223a7b2270617373776f7264223a2264656d6f2d70726f642d70617373776f7264227d7d5d2c22756e736572766564223a5b7b2273746f7265223a2270726f64222c226c6f636174696f6e223a226769746875623a616c2d7468652d626561722f64656d6f2d7661756c742f70726f642e6b646278227d5d7d"
+  },
+  {
+   "name": "vaultFileData of a vault not served",
+   "endpoint": "admin",
+   "type": 0,
+   "json": {
+    "op": "vaultFileData",
+    "id": 36,
+    "store": "prod",
+    "location": "github:al-the-bear/demo-vault/prod.kdbx",
+    "revision": "6e3f0c1d2b7a90418c55",
+    "served": false,
+    "bytes": "R7baiRqcCmdYLSWYMpCCe3rvly6L71k++BKrKQJoK/IiJOvVzPEMgFqHmaFfb85hiEsbDr12yzPrtQhDeMSAXKlBy+SFr0AV1ZalzkdbXhHMj2ofE6OPerh4J9KFpUzE"
+   },
+   "hex": "0000011e007b226f70223a227661756c7446696c6544617461222c226964223a33362c2273746f7265223a2270726f64222c226c6f636174696f6e223a226769746875623a616c2d7468652d626561722f64656d6f2d7661756c742f70726f642e6b646278222c227265766973696f6e223a223665336630633164326237613930343138633535222c22736572766564223a66616c73652c226279746573223a225237626169527163436d64594c5357594d704343653372766c79364c37316b2b2b424b724b514a6f4b2f49694a4f76567a50454d674671486d614666623835686945736244723132797a507274516844654d5341584b6c42792b534672304156315a616c7a6b64625868484d6a326f6645364f50657268344a394b4670557a45227d"
+  },
+  {
    "name": "vaultFileData",
    "endpoint": "admin",
    "type": 0,

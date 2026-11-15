@@ -16,6 +16,25 @@
     "id": {
       "$ref": "common.json#/$defs/id"
     },
+    "unserved": {
+      "description": "The further vaults the primary lists that this machine does not serve (section 6.4): editable by name, never served to clients.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "store",
+          "location"
+        ],
+        "properties": {
+          "store": {
+            "$ref": "common.json#/$defs/storeName"
+          },
+          "location": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "stores": {
       "type": "array",
       "items": {
@@ -31,6 +50,10 @@
           },
           "location": {
             "type": "string"
+          },
+          "served": {
+            "description": "false for a vault this machine does not serve, opened for editing only (section 6.4).",
+            "type": "boolean"
           },
           "keys": {
             "description": "The store key material (section 6.4): its master password, key file and repository outer key, each when the store has one.",

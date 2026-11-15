@@ -30,6 +30,10 @@
     },
     "bytes": {
       "$ref": "common.json#/$defs/base64"
+    },
+    "served": {
+      "description": "false for a vault this machine does not serve (section 6.4).",
+      "type": "boolean"
     }
   },
   "x-tsm": {

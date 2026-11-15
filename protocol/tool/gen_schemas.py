@@ -266,9 +266,17 @@ message('vaultKeys', 'admin', 'a2s', 'A', 'Get the keys of the open vaults for e
         ['id'], id=ref('id'), stores={'type': 'array', 'items': ref('storeName')})
 message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', 'stores'],
         id=ref('id'),
+        unserved={'description': 'The further vaults the primary lists that this machine does '
+                  'not serve (section 6.4): editable by name, never served to clients.',
+                  'type': 'array', 'items': {
+                      'type': 'object', 'required': ['store', 'location'],
+                      'properties': {'store': ref('storeName'), 'location': STR}}},
         stores={'type': 'array', 'items': {
             'type': 'object', 'required': ['store', 'location', 'keys'],
             'properties': {'store': ref('storeName'), 'location': STR,
+                           'served': {'description': 'false for a vault this machine does '
+                                      'not serve, opened for editing only (section 6.4).',
+                                      'type': 'boolean'},
                            'keys': {'description': 'The store key material (section 6.4): '
                                     'its master password, key file and repository outer key, '
                                     'each when the store has one.',
@@ -276,11 +284,13 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
                                     'properties': {'password': STR,
                                                    'keyFile': ref('base64'),
                                                    'outerKey': ref('base64')}}}}})
-message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of an open store the service holds, for editing.',
+message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of a store the service holds, for editing: an open store, or a vault the primary lists that this machine does not serve.',
         ['id', 'store'], id=ref('id'), store=ref('storeName'))
 message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile.',
         ['id', 'store', 'location', 'revision', 'bytes'], id=ref('id'), store=ref('storeName'),
-        location=STR, revision=STR, bytes=ref('base64'))
+        location=STR, revision=STR, bytes=ref('base64'),
+        served={'description': 'false for a vault this machine does not serve (section 6.4).',
+                'type': 'boolean'})
 message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write.',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
         baseRevision=STR)

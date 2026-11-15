@@ -446,8 +446,8 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
 | `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed}], admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}]}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key); `tsm status` shows it where no app is attached |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
-| `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, keys}]}` | the keys of the open vaults, for the app's editing path (6.4) |
-| `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, bytes}`, or `error` `not_found` (no open store of that name), `unsupported` reason `too_large` | the copy of an open store the service holds, for the app's editing path (6.4) |
+| `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
+| `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
 | `save {id, store, bytes, baseRevision?}` | `ok` | hand an edited store file to the service, which writes it (6.4) |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
 | `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
@@ -480,6 +480,19 @@ password), `keyFile` (the key file's bytes, base64) and `outerKey` (the
 repository's outer key of a `.tsmx` file, base64). They travel only in
 `vaultKeySet` over an authenticated admin connection; `location` is where
 the store's file is (its locator).
+
+**A vault this machine does not serve** (BP-15): the primary lists every
+further vault with its keys, and the machine serves those its device
+settings name. The others are edited through the same path: `vaultKeySet`
+names them in `unserved` (store and location, no keys); `vaultKeys` naming
+one answers its keys from the primary with `served` false; `vaultFile`
+naming one makes the service read the file from its location, with the
+listed keys and the repository's GitHub token as for a served store, and
+hold the copy for editing until the lock (`served` false in the answer).
+`save` writes it as below, a `github:` one as a commit by this device. Such
+a vault is never resolved, never served to clients and not refreshed on its
+own; `status` does not list it. A vault the primary does not list is
+`not_found`: the service has no keys for it.
 
 The service takes a `save` when `bytes` open with the store's keys
 (otherwise `malformed`, reason `bytes`):
