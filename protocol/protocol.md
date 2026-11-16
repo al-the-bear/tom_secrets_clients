@@ -977,8 +977,13 @@ DP-177). It runs between the two machines, not on the service's endpoints:
 the giving side's app opens a pairing window, a TCP port bound to its LAN
 and VPN addresses only (private IPv4, IPv6 unique local) for at most five
 minutes, and shows a one-time code `<number>-<word>-<word>` (the number
-1..999, the words from tom_secrets_core's fixed list of 256). The receiving
-side connects. The window takes the first connection only and closes after
+1..999, the words from tom_secrets_core's fixed list of 256). While the
+window is open the giving side announces it on the LAN by mDNS (DNS-SD) as
+a service of type `_tsm-pair._tcp`, named by its device, with the TXT keys
+`v` (`1`), `n` (the code's number) and `a` (the window's addresses, comma
+separated); the receiving side browses and takes the one window whose
+number the user typed, else (none or several, or over the VPN, which mDNS
+does not cross) the user types the address. The receiving side connects. The window takes the first connection only and closes after
 that one attempt, right or wrong. The frames are the approval link's (4-byte
 length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
 

@@ -49,7 +49,9 @@ tsm compact <owner/name>
 
 - `pair` sets a new machine (a headless one: bigbeast, bomber) up by
   pairing with a desktop whose Pairing screen shows the address and the
-  code.
+  code. The address is always given: headless machines pair over the VPN,
+  which mDNS does not cross, so tsm does not browse for it (the desktop
+  app finds a window on the same network by the code alone).
   - tsm runs the service executable in its pairing mode, which receives
     the pairing; tsm links no core and no KDBX itself. It prints what the
     other machine gave (the vaults, the shared configuration, the GitHub
