@@ -651,7 +651,24 @@ whole `getMany`), `always`, `folder` (with `folder`, covering everything below
 it) or `never`; `secret` is `ref` (this reference, canonical), `store` (every
 secret of the resolved store) or `all`; `pin` is `hash`, `off` or
 `{relaxedUntil}`. For a decision other than `once`, the approving app writes a
-signed grant (7.3). Unanswered within the approval timeout the request ends
+signed grant (7.3).
+
+**A paired host's prompts.** The service of an approver device keeps the
+approval link (9.7) open to every paired host it approves for while it is
+unlocked, as the initiator (it holds the private link and approver keys; the
+app holds neither), and opens it again when it ends (after a pause doubling
+from 5 s to 5 minutes). It passes the host's `approval_needed` and
+`approval_closed` to its attached app with `approvalId` qualified as
+`<host>/<approvalId>` (a host's own ids contain no `/`), and ends them
+(`approval_closed`, `outcome` `unreachable` or `abandoned`) when the link ends
+or it locks; the host sends what still waits when the link is open again.
+The app answers with `approve` and the qualified id as for its own host's
+prompts; the service carries it over the link: `once` as `approve`, a lasting
+decision as grants it signs and writes into the host's group, sent as
+`grant` to apply at once and followed by `approve`, an `always` with a
+client token as its `exe-token` grant with `clientToken` and `approvalId`
+(7.4), which answers the request. A host it cannot reach answers
+`unavailable` with `host`. `approvals.list` stays this host's. Unanswered within the approval timeout the request ends
 `timeout`; with no approver connected it falls back to the approval code
 (7.5) and ends `denied` (reason `no_approver`) when no token comes in time.
 
@@ -889,8 +906,8 @@ The service redeems a token (`approval.redeem`, `tsm approve <token>`):
 
 ### 9.7 The approval link
 
-The approval link joins a host's service and the manager app of a paired
-approver device. The app connects; the host listens on its VPN or LAN address
+The approval link joins a host's service and the service of a paired
+approver device, on behalf of its manager app (7.2). The approver connects; the host listens on its VPN or LAN address
 only (phase A). The link runs over an `ApprovalChannel`, a bidirectional byte
 stream (`incoming`, `send`, `close`) that a TCP connection implements in
 phase A and the relay in phase C. On the channel every message is a **frame**:
