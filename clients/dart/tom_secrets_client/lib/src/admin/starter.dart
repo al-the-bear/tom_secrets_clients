@@ -135,7 +135,22 @@ Future<TomSecretsStartResult> tomSecretsStartService({
   } finally {
     unawaited(process.stderr.drain<void>());
   }
-  final answer = jsonDecode(line) as Map;
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(line);
+  } on FormatException {
+    return const TomSecretsStartFailed(
+      'no_answer',
+      'the service answered something that is not its status line',
+    );
+  }
+  if (decoded is! Map) {
+    return const TomSecretsStartFailed(
+      'no_answer',
+      'the service answered something that is not its status line',
+    );
+  }
+  final answer = decoded;
   return switch (answer['status']) {
     'ready' => TomSecretsStarted(key),
     'already_running' => const TomSecretsAlreadyStarted(),

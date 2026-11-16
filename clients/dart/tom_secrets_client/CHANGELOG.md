@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- The README rewritten as the package's manual; API summaries of the client and the admin library in `doc/api/`.
+- `tomSecretsStartService`: a status line that is not JSON or not an object is a failed start (`no_answer`), not an exception.
+
 ## 0.2.1
 
 - `pairing_mode.dart` in the admin library: the service's pairing mode as

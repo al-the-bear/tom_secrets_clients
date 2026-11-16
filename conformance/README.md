@@ -1,10 +1,28 @@
 # Conformance suite
 
+> Part of the **Tom Secrets Manager** by al-the-bear.
+> © 2026 Peter Nicolai Alexis Kyaw — BSD-3-Clause, see [LICENSE](../LICENSE).
+
 Every client library of the Tom Secrets Manager runs the same case tables
 against the same fake service. The fake service proves that a library keeps
-to the protocol document (`../protocol/protocol.md`); the integration suite
-against the real service (with `tom_secrets_service`) proves the service
-does. A library is released only when its runner passes every table.
+to the [protocol document](../protocol/protocol.md): what it sends, frame by
+frame, and what it makes of every answer, error and broken frame. That the
+real service keeps to it is proved by `tsm`'s integration suite, which runs
+the real [`tom_secrets_service`](https://github.com/al-the-bear/tom_secrets_manager/blob/main/tom_secrets_service/README.md).
+A library is released only when its runner passes every table.
+
+## What it checks
+
+- the connection: finding the service in the runtime directory, `hello` and
+  `welcome`, the Windows client token, a service that restarts or drops the
+  connection;
+- `get`, `getMany` and `getFile`: the frames the library sends, the values,
+  `progress` while it waits for an unlock or an approval, client tokens,
+  rate limits, every error kind;
+- the reference grammar: parsing and formatting against the protocol's
+  reference vectors;
+- concurrency and sequences on one client;
+- what every library must report when the service breaks the protocol.
 
 ```text
 conformance/
@@ -13,7 +31,7 @@ conformance/
   runners/<lang>/        one thin runner per language, with its runner.json:
                          dart, typescript (the npm package from TypeScript),
                          javascript (the same compiled package from plain
-                         JavaScript, DP-21)
+                         JavaScript: one package serves both languages)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -28,16 +46,22 @@ conformance/tool/run_all.sh --runner dart -v
 conformance/tool/parity_gate.sh
 python3 conformance/tool/conformance.py run --table get --case 'error locked becomes its kind'
 python3 conformance/tool/conformance.py gen # after the protocol's references.json changed
+python3 conformance/tool/conformance.py all # self-test, gen --check, coverage, run --strict
+(cd conformance/fake_service && testkit :test)  # the fake service's own tests
 ```
+
+Run from the repository root.
 
 It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
 `referencing`, and each runner's toolchain (Node.js 18+ with npm for
 `typescript` and `javascript`, whose build runs `npm ci` and the package's
 build in `clients/typescript`). A runner whose toolchain is
-missing is reported **NOT MEASURED**, never passed; `--strict` (and the CI's
-`:conformance` stage, `app_secrets_manager/tom_secrets_build`) makes that a
-failure. Scratch goes to `conformance/ztmp/` (the compiled fake service and
-runners in `ztmp/bin/`, one runtime directory per case in `ztmp/rt/`).
+missing is reported **NOT MEASURED**, never passed; `--strict` (and the
+`:conformance` stage of the product's build in
+[`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
+makes that a failure. Scratch goes to `conformance/ztmp/` (the compiled fake
+service and runners in `ztmp/bin/`, one runtime directory per case in
+`ztmp/rt/`).
 
 ## How a case runs
 
@@ -154,18 +178,44 @@ request over 64 KiB are refused locally as `malformed` with the reasons
 
 ## Adding a runner
 
-`runners/<lang>/runner.json`:
+A new client library joins the suite with a runner of its own:
 
-```json
-{
-  "language": "<lang>",
-  "toolchain": ["<cmd>", "--version"],
-  "build": [["<cmd>", "..."]],
-  "run": ["<cmd>", "..."],
-  "actions": ["connect", "get", "getMany", "parse", "format", "concurrent", "sequence"]
-}
-```
+1. Write the runner in the library's language, in `runners/<lang>/`. It reads
+   one case per line on its standard input,
+   `{"case": name, "runtimeDir": dir, "action": {...}}`, runs the action with
+   the library against the service in `runtimeDir` (by setting
+   `TSM_RUNTIME_DIR` for the library, or the library's own option), names its
+   client `conformance-runner`, and writes one result line per case,
+   `{"case": name, "result": {...}}`, as canonical JSON (keys sorted,
+   compact). The actions and result shapes are the tables above; the runners
+   of [`dart`](runners/dart/bin/runner.dart),
+   [`typescript`](runners/typescript/src/runner.ts) and
+   [`javascript`](runners/javascript/runner.js) are the models.
+2. Describe it in `runners/<lang>/runner.json`:
 
-Commands run in `conformance/`; `{exe}` becomes `.exe` on Windows. A case
-whose action the library does not offer (`getFile` before phase B) is
-reported as not offered, apart from passes and failures.
+   ```json
+   {
+     "language": "<lang>",
+     "toolchain": ["<cmd>", "--version"],
+     "build": [["<cmd>", "..."]],
+     "run": ["<cmd>", "..."],
+     "actions": ["connect", "get", "getMany", "parse", "format", "concurrent", "sequence"]
+   }
+   ```
+
+   `toolchain` is the command whose failure makes the runner NOT MEASURED;
+   `build` the commands that build the library and the runner; `run` the
+   command that starts it; `actions` the actions the library offers. Commands
+   run in `conformance/`; `{exe}` becomes `.exe` on Windows. Build output goes
+   to `ztmp/bin/`.
+3. Run `conformance/tool/run_all.sh --runner <lang> -v` until every table
+   passes, then `conformance/tool/parity_gate.sh --runner <lang>`, which must
+   turn it red.
+
+The driver finds every `runners/*/runner.json` by itself; nothing else is
+registered. A case whose action the library does not offer (`getFile` before
+phase B) is reported as not offered, apart from passes and failures.
+
+## Licence
+
+BSD-3-Clause, see the repository's [LICENSE](../LICENSE).

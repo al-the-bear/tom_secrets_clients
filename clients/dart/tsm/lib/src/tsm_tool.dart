@@ -18,7 +18,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.1';
+const String tsmVersion = '0.2.2';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -139,7 +139,7 @@ final ToolDefinition tsmTool = ToolDefinition(
     _command(
       'ref',
       'Parse a reference (ref parse <ref>) or format one (ref format --key K '
-          '| --store S --path SEG… | --store S --uuid ~HEX, --field, '
+          '| --store S --path SEG… | --store S --uuid HEX, --field, '
           '--qualifier name:value).',
       options: const [
         OptionDefinition.option(name: 'key', description: 'A key.'),
@@ -201,7 +201,7 @@ final ToolDefinition tsmTool = ToolDefinition(
           valueName: 'path',
         ),
       ],
-      examples: const ['tsm pair 10.8.0.7:47900 7-guitar-orbit'],
+      examples: const ['tsm pair 192.168.1.20:47900 7-guitar-orbit'],
     ),
     _command(
       'unlock',
@@ -266,7 +266,7 @@ final ToolDefinition tsmTool = ToolDefinition(
         OptionDefinition.flag(name: 'never', description: 'A never grant.'),
         OptionDefinition.option(
           name: 'pin',
-          description: 'A pin (off, auto, …).',
+          description: 'The pin: hash (the file as it is now) or off.',
         ),
       ],
     ),

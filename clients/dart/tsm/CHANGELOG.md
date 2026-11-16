@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- The README rewritten and a user guide, `doc/tsm_user_guide.md`; the help of `ref format --uuid` (the 32 hex digits) and `allow --pin` (`hash` or `off`) says what they take.
+
 ## 0.2.1
 
 - `tsm pair <host:port> <code>`: sets a new machine up by pairing, through

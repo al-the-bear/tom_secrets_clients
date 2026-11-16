@@ -1,0 +1,562 @@
+# Tom Secrets Client API Reference: Admin Module
+
+<!-- markdownlint-configure-file { "MD024": { "siblings_only": true } } -->
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Class Hierarchy](#class-hierarchy)
+- [Classes](#classes)
+  - [TomSecretsAdminClient](#tomsecretsadminclient)
+  - [TomSecretsAdminException](#tomsecretsadminexception)
+  - [TomSecretsAdminKeyring](#tomsecretsadminkeyring)
+  - [TomSecretsRuntime](#tomsecretsruntime)
+  - [TomSecretsRuntimeException](#tomsecretsruntimeexception)
+  - [TomSecretsAlreadyRunning](#tomsecretsalreadyrunning)
+  - [TomSecretsHandover](#tomsecretshandover)
+  - [TomSecretsStartResult](#tomsecretsstartresult)
+  - [TomSecretsStarted](#tomsecretsstarted)
+  - [TomSecretsAlreadyStarted](#tomsecretsalreadystarted)
+  - [TomSecretsStartFailed](#tomsecretsstartfailed)
+  - [TomSecretsPairingHandover](#tomsecretspairinghandover)
+  - [TomSecretsPairingReport](#tomsecretspairingreport)
+  - [TomSecretsPairingModeException](#tomsecretspairingmodeexception)
+  - [TomSecretsServicePairing](#tomsecretsservicepairing)
+- [Enums](#enums)
+  - [TomSecretsTransport](#tomsecretstransport)
+- [Typedefs](#typedefs)
+- [Global Functions and Constants](#global-functions-and-constants)
+
+---
+
+## Overview
+
+The admin module is `package:tom_secrets_client/admin.dart`: the admin side
+of the Tom Secrets Manager's local protocol, used by the manager app, `tsm`
+and the service itself. It holds the admin client with its mutual challenge
+and `claim`, the runtime directory, starting the service with its admin-key
+handover, the service's pairing mode, the admin keys in the OS keychain,
+where the product keeps its data, the keychain names and the layout of the
+app's distribution. A program that only reads secrets needs none of it.
+
+---
+
+## Class Hierarchy
+
+```text
+Object
+├── TomSecretsAdminClient
+├── TomSecretsAdminKeyring
+├── TomSecretsRuntime
+├── TomSecretsHandover
+├── TomSecretsStartResult (sealed)
+│   ├── TomSecretsStarted
+│   ├── TomSecretsAlreadyStarted
+│   └── TomSecretsStartFailed
+├── TomSecretsPairingHandover
+├── TomSecretsPairingReport
+├── TomSecretsServicePairing
+└── (implements Exception)
+    ├── TomSecretsAdminException
+    ├── TomSecretsRuntimeException
+    ├── TomSecretsAlreadyRunning
+    └── TomSecretsPairingModeException
+```
+
+---
+
+## Classes
+
+### TomSecretsAdminClient
+
+An authenticated admin connection: requests by id and the pushed events.
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `connect(TomSecretsRuntime runtime, List<int> adminKey, {Map<String, Object?> client = const {'name': 'tsm'}})` | `Future<TomSecretsAdminClient>` | Connects to the admin endpoint and runs the mutual challenge; throws `service_impostor` when the service's proof is wrong, `denied` when the service refuses the key, `not_running` when no service answers |
+| `claim(TomSecretsRuntime runtime, {required String password, List<int>? keyFile, Map<String, Object?> client = const {'name': 'tsm'}})` | `Future<(TomSecretsAdminClient, Uint8List)>` | Takes the service over with the master password; answers the connection and the new admin key. The service cannot prove itself here, so the caller warns the user first |
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `serviceStart` | `int` | The service's start time |
+| `events` | `Stream<Map<String, Object?>>` | The pushed events, after a `subscribe` request |
+| `isClosed` | `bool` | Whether the connection has ended |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `request(String op, [Map<String, Object?> fields = const {}])` | `Future<Map<String, Object?>>` | Sends an admin request with an id; answers the answer, or throws `TomSecretsAdminException` for an `error` |
+| `unlock(String password, {List<int>? keyFile})` | `Future<void>` | Unlocks with the master password (and key file) |
+| `close()` | `Future<void>` | Ends the connection |
+
+---
+
+### TomSecretsAdminException
+
+The admin endpoint refused or broke the conversation.
+
+**Implements:** `Exception`
+
+#### Constructors
+
+```dart
+TomSecretsAdminException(
+  String kind,
+  String message, {
+  Map<String, Object?> details = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `kind` | `String` | The error kind (`denied`, `locked`, ...) or `closed`, `not_running`, `service_impostor` |
+| `message` | `String` | What happened |
+| `details` | `Map<String, Object?>` | The error's details |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toString()` | `String` | `TomSecretsAdminException(<kind>): <message>` |
+
+---
+
+### TomSecretsAdminKeyring
+
+The admin keys the app and `tsm` keep in the OS keychain, one per start of
+the service, and the index of the starts they were kept for. An OS keychain
+cannot be listed, so the index is what lets a key whose service is gone be
+found and removed. The keychain's own failures pass through.
+
+#### Constructors
+
+```dart
+TomSecretsAdminKeyring({
+  required Future<String?> Function(String handle) read,
+  required Future<void> Function(String handle, String value) write,
+  required Future<void> Function(String handle) delete,
+})
+```
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `keyOf(int start)` | `Future<Uint8List?>` | The admin key kept for the service started at `start`, or null |
+| `keep(int start, Uint8List key)` | `Future<void>` | Keeps the key and records the start in the index |
+| `forget(int start)` | `Future<void>` | Removes the key of a stopped service and its index entry |
+| `pruneOthers(int? running)` | `Future<List<int>>` | Removes every recorded key but the running service's (null: every key); answers the starts whose key was removed |
+| `recorded()` | `Future<Set<int>>` | The starts the index records |
+
+---
+
+### TomSecretsRuntime
+
+The runtime directory of this OS user: its check, the single-instance lock
+`service.lock`, `service.json` and the endpoint files.
+
+#### Constructors
+
+```dart
+TomSecretsRuntime(String directory, {required TomSecretsTransport transport})
+```
+
+#### Factory Constructors
+
+```dart
+factory TomSecretsRuntime.current({
+  Map<String, String>? environment,
+  String? operatingSystem,
+})
+```
+
+The runtime directory the client discovery names for this process (or the
+given environment and OS); Unix sockets except on Windows. Throws
+`TomSecretsRuntimeException` when no directory can be named.
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `directory` | `String` | The directory |
+| `transport` | `TomSecretsTransport` | How the endpoints are offered |
+| `clientSocket` | `String` | `client.sock` |
+| `adminSocket` | `String` | `admin.sock` |
+| `clientPortFile` | `String` | `client.port` |
+| `clientTokenFile` | `String` | `client.token` |
+| `adminPortFile` | `String` | `admin.port` |
+| `lockFile` | `String` | `service.lock` |
+| `infoFile` | `String` | `service.json` |
+| `endpointFiles` | `List<String>` | The endpoint files of the transport, every one a start writes |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `prepare()` | `Future<void>` | Makes the directory the user's alone when missing (mode 0700; on Windows only the user and SYSTEM), then checks it |
+| `check()` | `Future<void>` | Checks owner and mode; a directory of someone else, or one others can read, is refused |
+| `acquire()` | `Future<void>` | Takes the exclusive single-instance lock; throws `TomSecretsAlreadyRunning` when another service holds it |
+| `release()` | `Future<void>` | Releases the lock |
+| `removeStaleEndpoints()` | `Future<void>` | Deletes the endpoint files a dead instance left (only after `acquire`) |
+| `removeEndpoints()` | `Future<void>` | Deletes the endpoint files and `service.json` (a stop) |
+| `writeInfo({required int start, required Map<String, Object?> client, required Map<String, Object?> admin})` | `Future<void>` | Writes `service.json`: PID, start, protocol, the endpoints; no secret |
+| `readInfo()` | `Future<Map<String, Object?>?>` | `service.json`, or null |
+| `writePort(String path, int port)` | `Future<void>` | Writes a port file |
+| `writeToken(String token)` | `Future<void>` | Writes the client token |
+
+---
+
+### TomSecretsRuntimeException
+
+A runtime directory that is not the user's alone, or cannot be made.
+
+**Implements:** `Exception`
+
+#### Constructors
+
+```dart
+TomSecretsRuntimeException(String message)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `message` | `String` | What is wrong |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toString()` | `String` | `TomSecretsRuntimeException: <message>` |
+
+---
+
+### TomSecretsAlreadyRunning
+
+Another service already holds the lock: the starter attaches to it.
+
+**Implements:** `Exception`
+
+#### Constructors
+
+```dart
+TomSecretsAlreadyRunning(Map<String, Object?>? info)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `info` | `Map<String, Object?>?` | `service.json` of the running service, or null |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toString()` | `String` | `TomSecretsAlreadyRunning` |
+
+---
+
+### TomSecretsHandover
+
+The handover line a starting service reads from its standard input: the
+admin key, the bootstrap file, the starter's PID.
+
+#### Constructors
+
+```dart
+const TomSecretsHandover({
+  required Uint8List adminKey,
+  required String bootstrap,
+  required int starterPid,
+})
+```
+
+#### Factory Constructors
+
+```dart
+factory TomSecretsHandover.parse(String line)
+```
+
+From the JSON line; throws `FormatException` when it lacks `adminKey` or
+`bootstrap`, or the key is not 32 bytes.
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `adminKey` | `Uint8List` | The admin key |
+| `bootstrap` | `String` | The bootstrap file's path |
+| `starterPid` | `int` | The starter's PID |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toLine()` | `String` | The JSON line |
+
+---
+
+### TomSecretsStartResult
+
+What `tomSecretsStartService` found. Sealed: `TomSecretsStarted`,
+`TomSecretsAlreadyStarted` or `TomSecretsStartFailed`.
+
+---
+
+### TomSecretsStarted
+
+A new service runs with the admin key.
+
+**Extends:** `TomSecretsStartResult`
+
+#### Constructors
+
+```dart
+const TomSecretsStarted(Uint8List adminKey)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `adminKey` | `Uint8List` | The admin key the starter keeps |
+
+---
+
+### TomSecretsAlreadyStarted
+
+A service was already running: attach to it, with the key held or by
+`claim`.
+
+**Extends:** `TomSecretsStartResult`
+
+#### Constructors
+
+```dart
+const TomSecretsAlreadyStarted()
+```
+
+---
+
+### TomSecretsStartFailed
+
+The service could not start.
+
+**Extends:** `TomSecretsStartResult`
+
+#### Constructors
+
+```dart
+const TomSecretsStartFailed(String code, String message)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `code` | `String` | The failure's code (`runtime`, `device_key`, `handover`, `no_answer`, ...) |
+| `message` | `String` | What happened (no secret) |
+
+---
+
+### TomSecretsPairingHandover
+
+The pairing mode's handover line: set the machine up in a data directory by
+receiving the pairing at an address and port with the code the giving
+machine shows.
+
+#### Constructors
+
+```dart
+const TomSecretsPairingHandover({
+  required String dataDirectory,
+  required String address,
+  required int port,
+  required String code,
+  required String device,
+  String? deviceKey,
+})
+```
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member |
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `dataDirectory` | `String` | The data directory the machine is set up in |
+| `address` | `String` | The giving machine's address |
+| `port` | `int` | Its pairing window's port |
+| `code` | `String` | The code its Pairing screen shows |
+| `device` | `String` | This machine's name |
+| `deviceKey` | `String?` | Where the device settings container's key is kept, or null (`auto`) |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toLine()` | `String` | The JSON line |
+
+---
+
+### TomSecretsPairingReport
+
+What a pairing gave, as the pairing mode reports it (no key, no token).
+
+#### Constructors
+
+```dart
+const TomSecretsPairingReport({
+  required String giver,
+  required List<TomSecretsPairedVault> vaults,
+  required bool config,
+  required List<String> tokens,
+})
+```
+
+#### Factory Constructors
+
+```dart
+factory TomSecretsPairingReport.fromJson(Map<String, Object?> json)
+```
+
+From the `received` line.
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `giver` | `String` | The giving device's name |
+| `vaults` | `List<TomSecretsPairedVault>` | The vaults it gave |
+| `config` | `bool` | Whether it gave the shared configuration |
+| `tokens` | `List<String>` | The repositories it gave a token for |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toJson()` | `Map<String, Object?>` | The `received` line |
+
+---
+
+### TomSecretsPairingModeException
+
+The pairing mode answered an error.
+
+**Implements:** `Exception`
+
+#### Constructors
+
+```dart
+const TomSecretsPairingModeException(
+  String code,
+  String message, {
+  String? failure,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `code` | `String` | The error's code (`pairing`, `wrong_password`, `setup`, `handover`, `ended`) |
+| `message` | `String` | What happened, for the user |
+| `failure` | `String?` | The pairing's failure (`wrongCode`, `refused`, ...) when `code` is `pairing` |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toString()` | `String` | `TomSecretsPairingModeException(<code>): <message>` |
+
+---
+
+### TomSecretsServicePairing
+
+A conversation with the service in its pairing mode, as `tsm pair` drives
+it: the service executable runs attached and talks in JSON lines.
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `start({required String executable, List<String> arguments = const [], required TomSecretsPairingHandover handover, Map<String, String>? environment})` | `Future<TomSecretsServicePairing>` | Starts the executable and hands it the handover |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `received()` | `Future<TomSecretsPairingReport>` | Waits for the pairing: what it gave; throws `TomSecretsPairingModeException` (the service has ended then) |
+| `setUp(String password)` | `Future<String>` | Sets the machine up with the master password; answers the bootstrap file written. After `wrong_password` another password may be sent |
+| `close()` | `Future<int>` | Ends the conversation and the service; answers its exit code |
+
+---
+
+## Enums
+
+### TomSecretsTransport
+
+How the endpoints are offered.
+
+#### Values
+
+| Value | Description |
+| --- | --- |
+| `unix` | Unix domain sockets: `client.sock`, `admin.sock` (Linux, macOS) |
+| `tcp` | Localhost TCP ports with a client token: `client.port` + `client.token`, `admin.port` (Windows) |
+
+---
+
+## Typedefs
+
+| Typedef | Definition | Description |
+| --- | --- | --- |
+| `TomSecretsPairedVault` | `({String name, String locator, bool primary})` | One vault a pairing gave |
+
+---
+
+## Global Functions and Constants
+
+### Constants
+
+| Constant | Type | Description |
+| --- | --- | --- |
+| `tomSecretsAdminLabel` | `String` | The admin's challenge label, `tsm-admin-v1` |
+| `tomSecretsServiceLabel` | `String` | The service's challenge label, `tsm-service-v1` |
+| `tomSecretsKeyBytes` | `int` | The length of an admin key and of a nonce (32) |
+| `tomSecretsAdminKeyIndexHandle` | `String` | The keychain handle of the index of kept starts, `tsm.admin.index` |
+| `tomSecretsKeychainService` | `String` | The service name of the product's items in the OS keychain, `tom-secrets-manager` |
+| `tomSecretsToolsFolder` | `String` | The folder of the distribution holding the command-line tools, `tsm` |
+| `tomSecretsAppExecutable` | `String` | The manager app's executable name without `.exe`, `tom_secrets_app` |
+| `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` |
+| `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` |
+| `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) |
+
+### Functions
+
+| Function | Signature | Description |
+| --- | --- | --- |
+| `tomSecretsChallengeInput` | `Uint8List tomSecretsChallengeInput(String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | The MAC input: the label's ASCII, both 32-byte nonces, the service start as 8 bytes big-endian |
+| `tomSecretsChallengeMac` | `Uint8List tomSecretsChallengeMac(List<int> adminKey, String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | HMAC-SHA256 of the challenge input under the admin key |
+| `tomSecretsConstantTimeEquals` | `bool tomSecretsConstantTimeEquals(List<int> a, List<int> b)` | Equality in time independent of where the lists differ |
+| `tomSecretsRandomBytes` | `Uint8List tomSecretsRandomBytes([int count = tomSecretsKeyBytes])` | Bytes from the OS's secure generator |
+| `tomSecretsAuthDelay` | `Duration tomSecretsAuthDelay(int failures)` | The delay before the next authentication: 0, then 1 s, 2 s, 4 s, ... up to 60 s |
+| `tomSecretsAdminKeyHandle` | `String tomSecretsAdminKeyHandle(int serviceStart)` | The keychain handle of the admin key of a service start, `tsm.admin.<start>` |
+| `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set |
+| `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory |
+| `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder |
+| `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin |
+| `tomSecretsStartService` | `Future<TomSecretsStartResult> tomSecretsStartService({required String executable, List<String> arguments = const [], required String bootstrap, Map<String, String>? environment, Duration timeout = const Duration(seconds: 60)})` | Starts the service detached with a fresh admin key handed on its standard input; waits for its answer line |

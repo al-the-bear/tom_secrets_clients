@@ -1,63 +1,146 @@
 # Tom Secrets Manager — clients
 
-The client side of the Tom Secrets Manager: the protocol document a process
-uses to ask the secrets service for a secret, the conformance suite with its
-fake service, and the client libraries — Dart, TypeScript and JavaScript (one npm package), and
-from phase B C, C++, Go, Java, Python and Rust — plus the command line `tsm`.
-Nothing here reaches KDBX: the clients are written from the protocol document
-and import no core code.
+The protocol, the conformance suite, the client libraries and the command line
+`tsm` of the Tom Secrets Manager.
 
-GitHub: `al-the-bear/tom_secrets_clients`. The product's other two
-repositories are `al-the-bear/tom_secrets_manager` (the core and the secrets
-service) and `al-the-bear/tom_app_secrets_manager` (the apps, the manual CI
-and the release build, with the install and first-run guide in its README).
-On pub.dev: `tom_secrets_client` (the Dart client) and `tom_secrets_tsm`
-(`tsm`); on npm: `@al-the-bear/tom-secrets-client`.
+> Part of the **Tom Secrets Manager** by al-the-bear.
+> © 2026 Peter Nicolai Alexis Kyaw — BSD-3-Clause, see [LICENSE](LICENSE).
 
-## Contents
+This document is the map of the repository `tom_secrets_clients`; each part
+has its own README. A program reads its secrets from the secrets service that
+runs for its user on the same machine; the client libraries find the service,
+speak its protocol and parse and format secret references. Nothing here
+reaches KDBX: the clients are written from the protocol document and import
+no code of the service or the core.
 
-| Package | Phase | What it holds |
-| --- | --- | --- |
-| [`protocol/`](protocol/protocol.md) | A | the protocol document: framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning, the signed objects, the approval code and the approval link with its hybrid handshake; a JSON Schema per message, the test vectors and the tools that write and check them (Python, Dart on `tom_pqc`, and a Go cross-check) |
-| [`conformance/`](conformance/README.md) | A | the suite every client runs: the fake service (Dart), the case tables, a runner per language (Dart, TypeScript and JavaScript now), the driver with its coverage and parity gates |
-| [`clients/dart/tom_secrets_client`](clients/dart/tom_secrets_client/README.md) | A | the Dart client: finding the service, frames, `get`, `getMany`, `getFile` (B), waiting for an unlock or an approval, the reference grammar; and its admin library (`admin.dart`): the admin client, the runtime directory, starting the service, the data directory, the keychain names |
-| [`clients/dart/tsm`](clients/dart/tsm/README.md) | A | `tsm`, the command line (`get`, `run`, `ref`, and the admin commands), on `tom_build_base`; its integration suite runs the real service |
-| [`clients/typescript`](clients/typescript/README.md) | A | `@al-the-bear/tom-secrets-client`, the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, waiting for an unlock or an approval, the reference grammar |
-| the other six libraries | B | C, C++, Go, Java, Python, Rust |
+**New here?** To read a secret from a shell or a script, start with
+[`tsm`](clients/dart/tsm/README.md); from a Dart program, with
+[`tom_secrets_client`](clients/dart/tom_secrets_client/README.md); from
+Node.js, with [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md).
+To write a client in another language, start with the
+[protocol](protocol/README.md).
 
-The protocol document, the Dart client, `tsm`, the TypeScript client and the
-conformance suite exist; the other packages follow in their phase.
+## What you can do with it
 
-## Checking the protocol
+- Read a secret by its reference (`[env:prod]db.main`) from a program, and
+  wait while the service is locked or an approver decides.
+- Run a command with secrets in its environment (`tsm run`).
+- Start, unlock, pair and administer the service from the command line, on a
+  desktop or a headless machine.
+- Implement a client in a new language against a fixed protocol, schemas,
+  test vectors and a shared conformance suite.
 
-```text
+## The product's repositories
+
+| Repository | What it holds |
+| --- | --- |
+| [`al-the-bear/tom_secrets_manager`](https://github.com/al-the-bear/tom_secrets_manager) | the core library and the secrets service |
+| `al-the-bear/tom_secrets_clients` (this one) | the protocol, the conformance suite, the client libraries and `tsm` |
+| [`al-the-bear/tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager) | the desktop and mobile apps, the build, the install and first-run guide |
+
+## Protocol and conformance
+
+| Part | What it is |
+| --- | --- |
+| [`protocol/`](protocol/README.md) | the [protocol document](protocol/protocol.md) — framing, finding the service, the reference grammar, every client and admin message, the error kinds, versioning, the signed objects, the approval code and the approval link with its hybrid handshake — with a JSON Schema per message, the test vectors and the tools that write and check them (Python, Dart on `tom_pqc`, and a Go cross-check) |
+| [`conformance/`](conformance/README.md) | the suite every client library runs: the fake service (Dart), the case tables, a runner per language, the driver with its coverage and parity gates |
+
+## Client libraries and tools
+
+| Package | What it is | Published | Binary |
+| --- | --- | --- | --- |
+| [`tom_secrets_client`](clients/dart/tom_secrets_client/README.md) | the Dart client: finding the service, frames, `get`, `getMany`, `getFile` (for a service that offers it), waiting for an unlock or an approval, the reference grammar; and its admin library (`admin.dart`): the admin client, the runtime and data directories, starting the service, the keychain names | pub.dev | — |
+| [`tsm`](clients/dart/tsm/README.md) | the command line: `get`, `run`, `ref`, and the admin commands (`pair`, `start`, `unlock`, `status`, `approve`, `grants`, `audit`, …); its integration suite runs the real service | pub.dev, as `tom_secrets_tsm` | `tsm` |
+| [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md) | the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, waiting for an unlock or an approval, the reference grammar | npm | — |
+
+Client libraries for C, C++, Go, Java, Python and Rust are planned for a later
+phase. Each will be written from the protocol document and released when its
+conformance runner passes every table.
+
+## Getting started
+
+```sh
+tsm get '[env:prod]db.main' --field UserName
+tsm run --map DB_PASSWORD='[env:prod]db.main' -- ./deploy.sh
+```
+
+```dart
+import 'package:tom_secrets_client/tom_secrets_client.dart';
+
+Future<void> main() async {
+  final client = await TomSecretsClient.connect();
+  final value = await client.get('[env:prod]db.main', field: 'UserName');
+  print(value.entry.store); // the store the entry came from
+}
+```
+
+The service must be running and unlocked (`tsm start --unlock`), and the
+program approved once; the first request waits for an approver.
+
+## Checking
+
+Run from the repository root, by hand:
+
+```sh
 python3 protocol/tool/check_protocol.py
 (cd protocol/tool/vectors_dart && testkit :test)
 (cd protocol/tool/vectors_go && go run .)
 conformance/tool/run_all.sh
 ```
 
-check that the document, the schemas and the vectors agree (Python 3.9 or
-later with `jsonschema`), that the signatures and the approval link verify
-and run both ways in Dart, and that Go's standard library computes the same
-signatures, codes, tokens and handshake (Go 1.27 or later); and that every
-client library passes the conformance suite (`conformance/README.md`).
-Section 12 of the protocol document lists how the vectors are regenerated.
+They check that the protocol document, the schemas and the vectors agree
+(Python 3.9 or later with `jsonschema` and `referencing`); that the
+signatures and the approval link verify and run both ways in Dart; that Go's
+standard library computes the same signatures, codes, tokens and handshake
+(Go 1.27 or later); and that every client library passes the conformance
+suite. Each Dart package's own suite runs with `testkit :test` from its
+folder; the TypeScript package's with `npm test`.
+
+## Documentation
+
+| Topic | Document |
+| --- | --- |
+| The protocol: wire format, references, approvals, the approval link | [protocol document](protocol/protocol.md) |
+| Schemas, vectors and their tools; implementing a client | [protocol README](protocol/README.md) |
+| The conformance suite and adding a runner | [conformance README](conformance/README.md) |
+| The Dart client and its admin library | [`tom_secrets_client` README](clients/dart/tom_secrets_client/README.md) |
+| The command line | [`tsm` README](clients/dart/tsm/README.md) |
+| The TypeScript and JavaScript client | [TypeScript client README](clients/typescript/README.md) |
+| The service the clients talk to | [`tom_secrets_service` README](https://github.com/al-the-bear/tom_secrets_manager/blob/main/tom_secrets_service/README.md) |
+
+The design decisions the code and documents cite (`DP-`, `BP-`, `TD-` and
+`IDEA-` ids, the `part-…` sections) are recorded in the product's design
+document, which is not published with the source; the protocol document is
+the published contract.
+
+## Repository layout
+
+```text
+tom_secrets_clients/
+  protocol/
+    protocol.md              the protocol document
+    schema/                  one JSON Schema per message, common.json
+    vectors/                 the test vectors (demo data)
+    tool/                    the reference implementation, generators, checker,
+                             vectors_dart/ and vectors_go/
+  conformance/
+    fake_service/            the fake service (Dart)
+    cases/                   the case tables
+    runners/                 one runner per language: dart, typescript, javascript
+    tool/                    the driver, run_all.sh, parity_gate.sh
+  clients/
+    dart/tom_secrets_client/ the Dart client and its admin library
+    dart/tsm/                the command line tsm
+    typescript/              @al-the-bear/tom-secrets-client (TypeScript and JavaScript)
+  _copilot_guidelines/       development notes for contributors
+  LICENSE                    BSD-3-Clause
+```
 
 ## Licence and boundaries
 
-Every package here is BSD-3 (`LICENSE`). No package depends on
-`tom_secrets_core` or anything that reaches KDBX, and no dependency closure may
-hold a GPL-licensed package; the licence-boundary check of
-`tom_secrets_build` (repository `tom_app_secrets_manager`) holds that, for the
-npm package from its `package-lock.json`. `tsm`'s
-tests take the service and the core as dev dependencies, which are not
-linked.
-
-## Design
-
-The protocol document (`protocol/protocol.md`) is the published contract
-between the service and its clients. The other design decisions the code
-and documents cite (`DP-`, `BP-`, `TD-` and `IDEA-` ids, the `part-…`
-sections) are recorded in the product's design document, which is not
-published with the source.
+Every package here is BSD-3-Clause ([LICENSE](LICENSE)). No package depends
+on `tom_secrets_core` or anything that reaches KDBX, and no dependency closure
+holds a GPL-licensed package; the licence-boundary check of the product's
+build (in `tom_app_secrets_manager`) holds that, for the npm package from its
+`package-lock.json`. `tsm`'s tests take the service and the core as dev
+dependencies, which are not linked into `tsm`.

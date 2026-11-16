@@ -4,6 +4,11 @@
   "description": "The TypeScript and JavaScript client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany) and parses and formats secret references. Node.js only.",
   "license": "BSD-3-Clause",
   "homepage": "https://enterprise-flutter.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/al-the-bear/tom_secrets_clients.git",
+    "directory": "clients/typescript"
+  },
   "author": "Peter Nicolai Alexis Kyaw",
   "keywords": [
     "secrets",
