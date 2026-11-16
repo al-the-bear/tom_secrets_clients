@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3
+
+- `TomSecretsRuntime` joins its files with the separator of the OS it is
+  made for (`separator`; `TomSecretsRuntime.current` takes the given
+  `operatingSystem`'s), so Windows paths computed elsewhere use a backslash.
+- `getMany`'s argument error for an empty or over-long list is documented
+  as the caller's mistake, raised before anything is sent.
+
 ## 0.2.2
 
 - The README rewritten as the package's manual; API summaries of the client and the admin library in `doc/api/`.

@@ -179,6 +179,11 @@ final class TomSecretsClient {
   /// Reads several secrets under one approval prompt (1 to 256); the results
   /// come in request order, each a value or an error. Every reference is
   /// parsed locally first.
+  ///
+  /// An empty list or one over [tomSecretsMaxGetMany] is a mistake of the
+  /// caller, not an answer of the service: it throws [ArgumentError] before
+  /// anything is sent, as the other language clients throw their argument
+  /// error (TypeScript a `RangeError`).
   Future<List<TomSecretResult>> getMany(
     List<TomSecretRequest> requests, {
     bool wait = true,

@@ -165,7 +165,11 @@ The runtime directory of this OS user: its check, the single-instance lock
 #### Constructors
 
 ```dart
-TomSecretsRuntime(String directory, {required TomSecretsTransport transport})
+TomSecretsRuntime(
+  String directory, {
+  required TomSecretsTransport transport,
+  String? separator,
+})
 ```
 
 #### Factory Constructors
@@ -178,7 +182,9 @@ factory TomSecretsRuntime.current({
 ```
 
 The runtime directory the client discovery names for this process (or the
-given environment and OS); Unix sockets except on Windows. Throws
+given environment and OS); Unix sockets except on Windows, and the paths
+joined with the separator of the OS asked for (`\` for `windows`, else
+`/`), whatever OS computes them. Throws
 `TomSecretsRuntimeException` when no directory can be named.
 
 #### Properties
@@ -187,6 +193,7 @@ given environment and OS); Unix sockets except on Windows. Throws
 | --- | --- | --- |
 | `directory` | `String` | The directory |
 | `transport` | `TomSecretsTransport` | How the endpoints are offered |
+| `separator` | `String` | The path separator the files are joined with (default this platform's) |
 | `clientSocket` | `String` | `client.sock` |
 | `adminSocket` | `String` | `admin.sock` |
 | `clientPortFile` | `String` | `client.port` |

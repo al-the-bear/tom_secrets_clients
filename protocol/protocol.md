@@ -1088,19 +1088,20 @@ type and adds `not_running` (section 3).
 | `token_expired` | admin only: as `offline`, because GitHub answered 401 or 403 or the token is past its expiry | `stores` |
 | `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4) |
 | `timeout` | an approval was not answered in time | — |
-| `rate_limited` | the identity is held back (section 11) | `retryAfterMs` |
+| `rate_limited` | the identity is held back (section 11) | `retryAfterMs`; `reason`: `requests` (the token bucket), `connections` (a connection over the caps, answered at its `hello` and closed), `held_back` (three refusals at prompts), `too_many_prompts` |
 | `unsupported` | an unknown `op`, or a protocol the service does not speak; a `token.set` whose token has nowhere to be kept | `op`, or `protocols`; `reason` `no_keychain` |
 | `internal` | a failure of the service | `code`, never a value |
 
 ## 11. Rate limits
 
-Per measured identity, configurable in the service:
+Per measured identity, configurable in the service (the values below are the
+defaults):
 
 | What | Limit |
 | --- | --- |
 | `get` and `getMany` | a token bucket of 20 per second, bursts of 50 |
 | refusals (`denied`, `not_found`, `ambiguous`) | ten in a minute make the identity wait 10 s per request for ten minutes |
-| open connections | 16 per identity, 256 in all |
+| open connections | 16 per identity, 256 in all; one over is answered `rate_limited` at its `hello` and closed |
 | pending prompts | one per identity and reference, at most three per identity; three refusals in ten minutes hold the identity back ten minutes |
 | failed admin authentications | the growing delay of 6.1 |
 | approval tokens | a token that fails counts as a failed authentication; three for one waiting request end it `denied` |

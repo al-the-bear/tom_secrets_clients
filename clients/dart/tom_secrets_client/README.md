@@ -501,7 +501,7 @@ service.
 
 ## Status
 
-Version 0.2.2, speaking protocol version 1. The suite runs from the package
+Version 0.2.3, speaking protocol version 1. The suite runs from the package
 folder with `testkit :test` (or `dart test`) and needs no running service:
 the client tests talk to a scripted fake service over a Unix socket, or a
 localhost port with a client token as on Windows; the vector tests check the

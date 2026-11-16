@@ -49,8 +49,13 @@ enum TomSecretsTransport {
 /// The runtime directory of this OS user.
 final class TomSecretsRuntime {
   /// The runtime directory at [directory], its endpoints offered over
-  /// [transport].
-  TomSecretsRuntime(this.directory, {required this.transport});
+  /// [transport]; its files joined with [separator] (default this
+  /// platform's).
+  TomSecretsRuntime(
+    this.directory, {
+    required this.transport,
+    String? separator,
+  }) : separator = separator ?? Platform.pathSeparator;
 
   /// The runtime directory protocol.md 3.1 names for this process (or
   /// [environment] and [operatingSystem]); Unix sockets except on Windows.
@@ -73,6 +78,8 @@ final class TomSecretsRuntime {
       transport: os == 'windows'
           ? TomSecretsTransport.tcp
           : TomSecretsTransport.unix,
+      // The paths of the OS asked for, not of the one this runs on.
+      separator: os == 'windows' ? r'\' : '/',
     );
   }
 
@@ -82,7 +89,10 @@ final class TomSecretsRuntime {
   /// How the endpoints are offered.
   final TomSecretsTransport transport;
 
-  String _path(String name) => '$directory${Platform.pathSeparator}$name';
+  /// The path separator its files are joined with.
+  final String separator;
+
+  String _path(String name) => '$directory$separator$name';
 
   /// `client.sock`.
   String get clientSocket => _path('client.sock');
