@@ -401,16 +401,24 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
 }
 
 /// `tsm pair <host:port> <code> [--device NAME] [--device-key MODE]
-/// [--service EXE]`: sets this machine up by pairing (part-sharing, BP-13).
-/// The service executable receives the pairing in its pairing mode (tsm
-/// links no core); tsm shows what the other machine gave, asks for the
-/// master password, then starts the service and unlocks it.
+/// [--link ADDRESS:PORT] [--service EXE]`: sets this machine up by pairing
+/// (part-sharing, BP-13). The service executable receives the pairing in
+/// its pairing mode (tsm links no core); tsm shows what the other machine
+/// gave, asks for the master password, then starts the service and unlocks
+/// it. `--link` is where this machine's approval link listens (the device
+/// setting `approvalLink`): the other machine is told it, so its service
+/// opens the link and its app answers this machine's prompts.
 Future<int> tsmPair(TsmContext c, TsmArgs a) async {
   final shown = a.positionalAt(0, "the other machine's address (host:port)");
   final code = a.positionalAt(1, 'the code its Pairing screen shows');
   final address = tsmPairingAddress(shown);
   if (address == null) {
     throw TsmFailure.usage('not an address and port (host:port): $shown');
+  }
+  final link = a.option('link')?.trim();
+  if (link != null) {
+    final problem = tomSecretsApprovalLinkProblem(link);
+    if (problem != null) throw TsmFailure.usage(problem);
   }
   final env = c.io.environment;
   final bootstrap = tomSecretsBootstrapPath(environment: env);
@@ -433,6 +441,7 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
       code: code.trim(),
       device: device,
       deviceKey: a.option('device-key'),
+      approvalLink: link,
     ),
   );
   final String written;
@@ -475,6 +484,7 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
     await pairing.close();
   }
   c.io.outln('set up ($written)');
+  if (link != null) c.io.outln('approval link on $link');
   final started = await _start(c, service, written);
   if (started != TsmExit.ok) return started;
   return _withAdmin(c, (admin) async {

@@ -18,7 +18,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.2';
+const String tsmVersion = '0.2.3';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -194,6 +194,14 @@ final ToolDefinition tsmTool = ToolDefinition(
           valueName: 'mode',
         ),
         OptionDefinition.option(
+          name: 'link',
+          description:
+              "Where this machine's approval link listens (a VPN or LAN "
+              'address and a port); the other machine opens the link to it '
+              'and answers its prompts.',
+          valueName: 'address:port',
+        ),
+        OptionDefinition.option(
           name: 'service',
           description:
               'The service executable (default: TSM_SERVICE, else '
@@ -201,7 +209,10 @@ final ToolDefinition tsmTool = ToolDefinition(
           valueName: 'path',
         ),
       ],
-      examples: const ['tsm pair 192.168.1.20:47900 7-guitar-orbit'],
+      examples: const [
+        'tsm pair 192.168.1.20:47900 7-guitar-orbit',
+        'tsm pair 10.8.0.7:47900 7-guitar-orbit --link 10.8.0.1:47731',
+      ],
     ),
     _command(
       'unlock',

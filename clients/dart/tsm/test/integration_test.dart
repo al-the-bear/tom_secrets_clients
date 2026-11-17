@@ -260,6 +260,10 @@ void main() {
       ),
     );
 
+    // This machine's approval link: a free port on the loopback.
+    final probe = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final link = '127.0.0.1:${probe.port}';
+    await probe.close();
     final r = await tsm([
       'pair',
       '127.0.0.1:${window.port}',
@@ -270,6 +274,8 @@ void main() {
       'bigbeast',
       '--device-key',
       'keyfile',
+      '--link',
+      link,
     ]);
     expect(r.code, 0, reason: '$r');
     expect(
@@ -277,10 +283,20 @@ void main() {
       'paired with mbp; it gave:\n'
       '  primary (primary)  file:${demo.primaryPath}\n'
       'set up (${demo.bootstrapPath})\n'
+      'approval link on $link\n'
       'started\n'
       'unlocked\n',
     );
-    expect((await window.result).receiver, 'bigbeast');
+    final given = await window.result;
+    expect(given.receiver, 'bigbeast');
+    // The giver is told where the link listens, and the service listens
+    // there once unlocked.
+    expect(given.receiverKeys.linkAddress, link);
+    final socket = await Socket.connect(
+      InternetAddress.loopbackIPv4,
+      probe.port,
+    );
+    socket.destroy();
     expect(
       File(demo.bootstrapPath).readAsStringSync(),
       contains('host: "bigbeast"'),

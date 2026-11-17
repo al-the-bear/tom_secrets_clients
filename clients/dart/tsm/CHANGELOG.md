@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3
+
+- `tsm pair --link ADDRESS:PORT`: where this machine's approval link
+  listens (the device setting `approvalLink`, checked: `host:port`, never
+  every interface); the giving machine is told it, so its service opens the
+  link and its app answers this machine's prompts. Needs
+  `tom_secrets_client` 0.2.4.
+
 ## 0.2.2
 
 - The README rewritten and a user guide, `doc/tsm_user_guide.md`; the help of `ref format --uuid` (the 32 hex digits) and `allow --pin` (`hash` or `off`) says what they take.

@@ -1053,7 +1053,8 @@ length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
    approver or link key, a master password, the allow list or the audit
    log.
 5. A answers `{"op":"done","keys"}` with its own public keys (`linkKey`,
-   `approverKey` when it approves, `linkAddress`), or
+   `approverKey` when it approves, `linkAddress`: where its approval link
+   listens, its device setting `approvalLink`, when it has one), or
    `{"op":"refused","reason"}` when it cannot take the bundle (a machine
    being set up needs the primary, and a `github:` primary its token); then
    both sides end and nothing is stored. Both derive the approval-token key,
@@ -1069,7 +1070,13 @@ primary. A machine set up by the pairing (the First run, or `tsm pair`
 through the service's pairing mode) writes its new trust material with
 the giving device recorded as its approver and, when it approves too, as a
 host it approves for; a running service records the same through
-`pair.record`.
+`pair.record`. A machine set up by pairing with an approval link (`tsm pair
+--link`, or the First run wizard's "This machine's approval link") is set
+up with that `approvalLink` and sends it as its `linkAddress`, so the
+giving side records it with the host (`pair.record`'s `host.address`) and
+its service opens the link as soon as the new machine's service listens.
+An `approvalLink` is `host:port` of one VPN or LAN address (an IPv6
+address in brackets), never every interface (`0.0.0.0`, `::`).
 
 ### 9.9 Test vectors
 

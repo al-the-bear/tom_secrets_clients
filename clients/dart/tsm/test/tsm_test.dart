@@ -366,6 +366,17 @@ void main() {
       r = await demo.tsm(['pair', '10.8.0.7:47900', '7-guitar-orbit']);
       expect(r.code, 6, reason: 'no service executable: $r');
       expect(r.err, contains('no service executable'));
+      for (final bad in ['0.0.0.0:47731', '10.8.0.1', '[::]:47731']) {
+        r = await demo.tsm([
+          'pair',
+          '10.8.0.7:47900',
+          '7-guitar-orbit',
+          '--link',
+          bad,
+        ]);
+        expect(r.code, 2, reason: 'a link that is no approval link: $r');
+        expect(r.err, contains('approval link'));
+      }
       expect(tsmPairingAddress('[fd00::7]:47900'), ('fd00::7', 47900));
       expect(tsmPairingAddress('mbp.local:1'), ('mbp.local', 1));
       for (final bad in [':1', 'a:0', 'a:65536', 'a b:1', '10.8.0.7']) {

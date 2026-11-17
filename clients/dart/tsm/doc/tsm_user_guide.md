@@ -65,11 +65,15 @@ new machine records the desktop as its approver.
    unlocked
    ```
 
+   With `--link 10.0.0.9:47731` it also prints `approval link on
+   10.0.0.9:47731` after `set up`.
+
 Options:
 
 | Option | Meaning |
 | --- | --- |
 | `--device NAME` | This machine's name, as the other machines and the grants know it. Default: the host name. |
+| `--link ADDRESS:PORT` | Where this machine's **approval link** listens: a VPN or LAN address of this machine and a port (`10.0.0.9:47731`), never every interface (`0.0.0.0`). It goes into the device settings (`approvalLink`), and the desktop is told it: its service opens the link, and its app answers this machine's prompts at once. Without it the machine has no link and its prompts wait for approval codes. |
 | `--device-key MODE` | Where the device settings container's key is kept: `auto` (the keychain where one is available, else the primary vault; the default), `keychain`, `vault` or `keyfile` (a key file beside the container). On a server without a keychain, `auto` keeps it in the primary vault. |
 | `--service EXE` | The service executable, when it is not beside `tsm` (or set `TSM_SERVICE`). |
 
