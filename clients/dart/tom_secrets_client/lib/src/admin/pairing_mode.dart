@@ -7,7 +7,10 @@
 /// in JSON lines:
 ///
 /// 1. tsm writes the handover, `{"mode":"pair","dataDirectory","address",
-///    "port","code","device","deviceKey"?}`.
+///    "port","code","device","deviceKey"?,"approvalLink"?}`; `approvalLink`
+///    (`address:port`, [tomSecretsApprovalLinkProblem]) goes into the device
+///    settings, and the giving machine is told it so it opens the approval
+///    link to this one.
 /// 2. The service receives the pairing and answers `{"status":"received",
 ///    "giver","vaults":[{"name","locator","primary"}],"config","tokens"}`
 ///    (nothing stored yet), or `{"status":"error","code","message",
@@ -30,12 +33,47 @@ const String tomSecretsPairingWrongPassword = 'wrong_password';
 /// How many master passwords the pairing mode takes.
 const int tomSecretsPairingPasswordTries = 3;
 
+/// Why [text] cannot be the device setting `approvalLink` (the address the
+/// approval link listens on, protocol.md 9.7), or null: `host:port`, an
+/// IPv6 address in brackets (`[fd00::1]:47731`), a port 1–65535 (with
+/// [anyPort] also 0, the system picks one), and never every interface
+/// (`0.0.0.0`, `::`): the link listens on a VPN or LAN address only.
+String? tomSecretsApprovalLinkProblem(String text, {bool anyPort = false}) {
+  final at = text.lastIndexOf(':');
+  final port = at < 0 ? null : int.tryParse(text.substring(at + 1));
+  if (at <= 0 ||
+      port == null ||
+      port < (anyPort ? 0 : 1) ||
+      port > 65535 ||
+      text.substring(at + 1).length > 5) {
+    return 'the approval link is <VPN or LAN address>:<port>, not $text';
+  }
+  var host = text.substring(0, at);
+  if (host.startsWith('[') && host.endsWith(']')) {
+    host = host.substring(1, host.length - 1);
+    if (!RegExp(r'^[0-9a-fA-F:]+$').hasMatch(host)) {
+      return 'the approval link is <VPN or LAN address>:<port>, not $text';
+    }
+  } else if (!RegExp(r'^[A-Za-z0-9.-]+$').hasMatch(host)) {
+    return 'the approval link is <VPN or LAN address>:<port>, not $text';
+  }
+  final parsed = InternetAddress.tryParse(host);
+  if (parsed != null &&
+      (parsed == InternetAddress.anyIPv4 ||
+          parsed == InternetAddress.anyIPv6)) {
+    return 'the approval link listens on a VPN or LAN address, not on every '
+        'interface ($text)';
+  }
+  return null;
+}
+
 /// The pairing mode's handover line.
 final class TomSecretsPairingHandover {
   /// A handover: set the machine up in [dataDirectory] by receiving the
   /// pairing at [address]:[port] with [code], as [device]; [deviceKey]
   /// names where the device settings container's key is kept (default
-  /// `auto`).
+  /// `auto`); [approvalLink] is the address this machine's approval link
+  /// listens on (none: no link).
   const TomSecretsPairingHandover({
     required this.dataDirectory,
     required this.address,
@@ -43,6 +81,7 @@ final class TomSecretsPairingHandover {
     required this.code,
     required this.device,
     this.deviceKey,
+    this.approvalLink,
   });
 
   /// The handover in [json], or null when it is not a pairing handover.
@@ -58,6 +97,14 @@ final class TomSecretsPairingHandover {
     if (port is! int || port < 1 || port > 65535) {
       throw const FormatException('the pairing handover names a port');
     }
+    final link = json['approvalLink'];
+    if (link != null) {
+      if (link is! String) {
+        throw const FormatException('approvalLink is address:port');
+      }
+      final problem = tomSecretsApprovalLinkProblem(link);
+      if (problem != null) throw FormatException(problem);
+    }
     return TomSecretsPairingHandover(
       dataDirectory: json['dataDirectory'] as String,
       address: json['address'] as String,
@@ -65,6 +112,7 @@ final class TomSecretsPairingHandover {
       code: json['code'] as String,
       device: json['device'] as String,
       deviceKey: json['deviceKey'] as String?,
+      approvalLink: link as String?,
     );
   }
 
@@ -86,6 +134,11 @@ final class TomSecretsPairingHandover {
   /// Where the device settings container's key is kept, or null (`auto`).
   final String? deviceKey;
 
+  /// The address this machine's approval link listens on (`address:port`),
+  /// or null: it goes into the device settings, and the giving machine
+  /// records it so its service opens the link at once.
+  final String? approvalLink;
+
   /// The JSON line.
   String toLine() => jsonEncode({
     'mode': 'pair',
@@ -95,6 +148,7 @@ final class TomSecretsPairingHandover {
     'code': code,
     'device': device,
     'deviceKey': ?deviceKey,
+    'approvalLink': ?approvalLink,
   });
 }
 

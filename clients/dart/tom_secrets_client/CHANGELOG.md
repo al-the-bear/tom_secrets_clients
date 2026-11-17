@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.4
+
+- The pairing mode's handover carries `approvalLink`
+  (`TomSecretsPairingHandover.approvalLink`): the address the new machine's
+  approval link listens on, which goes into its device settings and is
+  told to the giving machine.
+- `tomSecretsApprovalLinkProblem`: the check of an approval link address
+  (`host:port`, never every interface), shared by `tsm`, the service and
+  the app.
+
 ## 0.2.3
 
 - `TomSecretsRuntime` joins its files with the separator of the OS it is

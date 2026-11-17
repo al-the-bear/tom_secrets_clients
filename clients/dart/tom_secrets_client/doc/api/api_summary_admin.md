@@ -391,6 +391,7 @@ const TomSecretsPairingHandover({
   required String code,
   required String device,
   String? deviceKey,
+  String? approvalLink,
 })
 ```
 
@@ -398,7 +399,7 @@ const TomSecretsPairingHandover({
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member |
+| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member or names an `approvalLink` that is no approval link |
 
 #### Properties
 
@@ -410,6 +411,7 @@ const TomSecretsPairingHandover({
 | `code` | `String` | The code its Pairing screen shows |
 | `device` | `String` | This machine's name |
 | `deviceKey` | `String?` | Where the device settings container's key is kept, or null (`auto`) |
+| `approvalLink` | `String?` | The address this machine's approval link listens on (`address:port`), or null: it goes into the device settings, and the giving machine records it so its service opens the link at once |
 
 #### Methods
 
@@ -566,4 +568,5 @@ How the endpoints are offered.
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder |
 | `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin |
+| `tomSecretsApprovalLinkProblem` | `String? tomSecretsApprovalLinkProblem(String text, {bool anyPort = false})` | Why a text cannot be the device setting `approvalLink`, or null: `host:port` (an IPv6 address in brackets), a port 1–65535 (with `anyPort` also 0), never every interface (`0.0.0.0`, `::`) |
 | `tomSecretsStartService` | `Future<TomSecretsStartResult> tomSecretsStartService({required String executable, List<String> arguments = const [], required String bootstrap, Map<String, String>? environment, Duration timeout = const Duration(seconds: 60)})` | Starts the service detached with a fresh admin key handed on its standard input; waits for its answer line |

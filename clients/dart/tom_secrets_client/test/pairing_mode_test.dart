@@ -49,6 +49,60 @@ void main() {
     );
   });
 
+  test('the handover carries the approval link, checked', () {
+    const h = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      address: '10.8.0.7',
+      port: 47900,
+      code: '7-guitar-orbit',
+      device: 'bigbeast',
+      approvalLink: '10.8.0.1:47731',
+    );
+    final back = TomSecretsPairingHandover.fromJson(jsonDecode(h.toLine()))!;
+    expect(back.approvalLink, '10.8.0.1:47731');
+    for (final bad in ['0.0.0.0:47731', '[::]:47731', '10.8.0.1', 'x:0']) {
+      expect(
+        () => TomSecretsPairingHandover.fromJson({
+          ...jsonDecode(h.toLine()) as Map<String, Object?>,
+          'approvalLink': bad,
+        }),
+        throwsFormatException,
+        reason: bad,
+      );
+    }
+  });
+
+  test('an approval link is address:port, never every interface; port 0 '
+      'only where the system may pick one', () {
+    for (final good in [
+      '10.8.0.1:47731',
+      'bigbeast.vpn:47731',
+      '[fd00::1]:47731',
+      '127.0.0.1:1',
+    ]) {
+      expect(tomSecretsApprovalLinkProblem(good), isNull, reason: good);
+    }
+    for (final bad in [
+      '10.8.0.1',
+      ':47731',
+      '10.8.0.1:0',
+      '10.8.0.1:65536',
+      '10.8.0.1:x',
+      '0.0.0.0:47731',
+      '[::]:47731',
+      '[fd00::zz]:47731',
+      'a b:47731',
+      'host/x:47731',
+    ]) {
+      expect(tomSecretsApprovalLinkProblem(bad), isNotNull, reason: bad);
+    }
+    expect(tomSecretsApprovalLinkProblem('127.0.0.1:0', anyPort: true), isNull);
+    expect(
+      tomSecretsApprovalLinkProblem('0.0.0.0:0', anyPort: true),
+      contains('every interface'),
+    );
+  });
+
   test('the report reads back', () {
     const r = TomSecretsPairingReport(
       giver: 'mbp',
