@@ -105,9 +105,12 @@ A table is `{"note": "...", "cases": [case...]}`. A case:
 
 A pattern matches a recorded message when each of its members matches:
 objects by member, lists element by element and of equal length; `"$any"`
-matches anything and `"$absent"` requires the member to be missing. So a
-`hello` pattern names `client.name` (every runner uses
-`conformance-runner`) and leaves `version` and `language` to the library.
+matches anything, `"$absent"` requires the member to be missing, and
+`{"$includes": [...]}` a list holding at least those elements, in any order.
+So a `hello` pattern names `client.name` (every runner uses
+`conformance-runner`) and leaves `version` and `language` to the library,
+and a `getFile` case asks only that `features` names `binary` and
+`getFile`.
 
 ### The fake service's script
 

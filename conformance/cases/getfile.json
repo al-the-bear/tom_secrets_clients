@@ -48,10 +48,12 @@
        "version": "$any",
        "language": "$any"
       },
-      "features": [
-       "binary",
-       "getFile"
-      ]
+      "features": {
+       "$includes": [
+        "binary",
+        "getFile"
+       ]
+      }
      },
      {
       "op": "getFile",

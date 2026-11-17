@@ -79,9 +79,13 @@ def canonical(value) -> str:
 def subset(pattern, actual) -> bool:
     """`pattern` is contained in `actual`: objects by member (`"$absent"`
     requires a member to be missing), lists element by element and of equal
-    length, `"$any"` matches anything."""
+    length, `"$any"` matches anything, and `{"$includes": [...]}` a list
+    holding at least those elements (in any order)."""
     if pattern == '$any':
         return True
+    if isinstance(pattern, dict) and set(pattern) == {'$includes'}:
+        return isinstance(actual, list) and all(
+            any(subset(p, a) for a in actual) for p in pattern['$includes'])
     if isinstance(pattern, dict):
         if not isinstance(actual, dict):
             return False
