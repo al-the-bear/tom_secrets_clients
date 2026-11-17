@@ -450,6 +450,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
 | `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`) |
 | `vault.move {id, store, location, bytes, baseRevision?, keys{password, keyFile?, outerKey?}}` | `ok {id, location, revision}`, or `error` `malformed` (reason `location`: not the store's locator with `.tsmx` added or removed; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`; `move`), `denied` (reason `stale_base`, `target_exists`, `branch_moving`, `wrong_executable`), `not_found` (no open store), `offline` / `token_expired` (`stores`) | add or remove a store's outer encryption, which moves it to its locator with `.kdbx.tsmx` or `.kdbx` (6.4); accepted only from the manager app's executable |
+| `vault.create {id, store, location, bytes, keys{password, keyFile?, outerKey?}, githubToken?, keysDue?}` | `ok {id, store, location, revision}`, or `error` `malformed` (reason `store`: not a store name, or one the primary names already; `location`: not a vault locator, or the primary's or a listed vault's; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`: no base64, or a file that does not open with `keys` or whose metadata cannot be read; `githubToken`: a token for a vault that is not a `github:` vault outside the primary's repository; `create`), `denied` (reason `target_exists`, `wrong_executable`), `offline` / `token_expired` (`stores`) | create a further vault beside the primary: the service writes the new file where it lives and lists it in the primary (6.4); accepted only from the manager app's executable |
 | `pair.identity {id}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?}` | this device's public keys for a pairing (9.8); accepted only from the manager app's executable |
 | `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); accepted only from the manager app's executable |
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
@@ -587,6 +588,27 @@ the outer layer.
 The store is then reopened from what was written and `store_changed` names
 the new revision. A store that is not open answers `not_found`,
 `needs_unlock` or `unavailable` as a `get` would.
+
+**A new store** (`vault.create`). The app makes the new vault: an empty
+KDBX 4.1 file keyed through Argon2id, its metadata entry `.tom-secrets`
+naming the store, its kind (`personal`, `system`, `shared`) and, for a
+system vault, the binding it serves in (`env=prod`), and its entries if it
+brings any. `bytes` is the file as `location` keeps it and must open with
+`keys` (`outerKey` exactly when `location` is a `.tsmx` file). `store` is a
+store name the primary does not name yet, `location` a vault locator that is
+neither the primary's nor a listed vault's. The service writes the file
+first, and nothing may be there yet (`target_exists`): a `file:` vault at
+its path (its folder made when missing), a `github:` vault in one commit on
+the branch, by this device. Only then does it list the vault in the primary
+with `keys`, `githubToken` (the token of a `github:` vault outside the
+primary's repository, which the keychain does not hold) and `keysDue` (the
+entry's Expires, when its key file and repository key are due for rotation),
+and writes the primary; a primary that cannot be reached keeps the entry in
+its held copy until the next refresh writes it. A refused or failed write
+lists nothing. The new vault is served from then on, unless this machine's
+device settings name the stores it serves and not this one; then it is a
+vault not served here, editable through `vaultKeys` and `vaultFile`.
+`store_changed` names the primary and the new store.
 
 **[B] The key bundle.** The OS unlock hands key material to the service only
 sealed:
@@ -1108,7 +1130,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 82 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 83 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1294,3 +1316,7 @@ part-service) leaves these open; this document fixes them:
     result (`pair.record`). The receiving side is SPAKE2's A because it
     connects; its SPAKE2 message follows the giving side's hello, since both
     identities enter the transcript.
+32. A further vault is created through the service (`vault.create`, 6.4):
+    the app makes the file, the service writes it where it lives and only
+    then lists it in the primary, so a failed write lists nothing and a
+    listed vault always has its file.

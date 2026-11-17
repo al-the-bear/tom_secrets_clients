@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/vault.create.json",
+  "title": "vault.create",
+  "description": "Create a further vault beside the primary: the service writes the new file and lists it in the primary (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "location",
+    "bytes",
+    "keys"
+  ],
+  "properties": {
+    "op": {
+      "const": "vault.create"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "location": {
+      "type": "string"
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "keys": {
+      "type": "object",
+      "required": [
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "keyFile": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "outerKey": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    },
+    "githubToken": {
+      "description": "The token of a github: vault outside the primary's repository, kept in its entry (section 6.4).",
+      "type": "string",
+      "minLength": 1
+    },
+    "keysDue": {
+      "description": "When the vault's key file and repository key are due for rotation: its entry's Expires (section 6.4).",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

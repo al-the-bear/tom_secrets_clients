@@ -308,6 +308,20 @@ message('vault.move', 'admin', 'a2s', 'A',
         keys={'type': 'object', 'required': ['password'],
               'properties': {'password': STR, 'keyFile': ref('base64'),
                              'outerKey': ref('base64')}})
+message('vault.create', 'admin', 'a2s', 'A',
+        'Create a further vault beside the primary: the service writes the new file '
+        'and lists it in the primary (the manager app only).',
+        ['id', 'store', 'location', 'bytes', 'keys'], id=ref('id'), store=ref('storeName'),
+        location=STR, bytes=ref('base64'),
+        keys={'type': 'object', 'required': ['password'],
+              'properties': {'password': STR, 'keyFile': ref('base64'),
+                             'outerKey': ref('base64')}},
+        githubToken={'description': 'The token of a github: vault outside the primary\'s '
+                                    'repository, kept in its entry (section 6.4).',
+                     'type': 'string', 'minLength': 1},
+        keysDue={'description': 'When the vault\'s key file and repository key are due '
+                                'for rotation: its entry\'s Expires (section 6.4).',
+                 'type': 'string', 'format': 'date-time'})
 APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
                 'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
 LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],
