@@ -21,6 +21,13 @@
     },
     "frameUrl": {
       "type": "string"
+    },
+    "wait": {
+      "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 0
     }
   },
   "x-tsm": {

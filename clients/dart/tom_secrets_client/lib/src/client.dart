@@ -51,8 +51,14 @@ final class TomSecretsWelcome {
 /// The protocol version this library speaks.
 const int tomSecretsProtocol = 1;
 
-/// The features this library takes: binary frames and `getFile` [B].
-const List<String> tomSecretsClientFeatures = ['binary', 'getFile'];
+/// The features this library takes [B] (protocol.md 8): binary frames,
+/// `getFile`, `match` and `propose`.
+const List<String> tomSecretsClientFeatures = [
+  'binary',
+  'getFile',
+  'match',
+  'propose',
+];
 
 /// The most references one `getMany` carries.
 const int tomSecretsMaxGetMany = 256;
@@ -237,16 +243,7 @@ final class TomSecretsClient {
   }) async {
     final item = _item(reference, field, dimensions);
     final connection = await _ensureConnection();
-    final missing = tomSecretsClientFeatures.where(
-      (f) => !connection.welcome.features.contains(f),
-    );
-    if (missing.isNotEmpty) {
-      throw TomSecretsClientException(
-        TomSecretsErrorKind.unsupported,
-        'the service does not offer getFile (features ${missing.join(', ')})',
-        details: {'features': missing.toList()},
-      );
-    }
+    _requireFeatures(connection, 'getFile', const ['binary', 'getFile']);
     final answer = await _request({
       'op': 'getFile',
       ...item,
@@ -264,6 +261,76 @@ final class TomSecretsClient {
       throw _protocolError('the file does not match its size or sha256');
     }
     return TomSecretFile(reference, file['name']! as String, bytes);
+  }
+
+  void _requireFeatures(
+    _Connection connection,
+    String op,
+    List<String> features,
+  ) {
+    final missing = features.where(
+      (f) => !connection.welcome.features.contains(f),
+    );
+    if (missing.isNotEmpty) {
+      throw TomSecretsClientException(
+        TomSecretsErrorKind.unsupported,
+        'the service does not offer $op (features ${missing.join(', ')})',
+        details: {'features': missing.toList()},
+      );
+    }
+  }
+
+  /// **[B]** The login entries of the web page [url] (a login form in a
+  /// frame: [frameUrl]) that this client's grants cover, never a value
+  /// (protocol.md 5.5 `match`): the exact host first, then the last used.
+  /// Answered only for the browser host and the developer-tool helpers;
+  /// any other client gets `denied` (reason `not_allowed_op`). Fails as
+  /// `unsupported` when the service does not offer `match`.
+  Future<List<TomSecretsLoginCandidate>> match(
+    String url, {
+    String? frameUrl,
+    bool wait = true,
+    Duration? timeout,
+  }) async {
+    _requireFeatures(await _ensureConnection(), 'match', const ['match']);
+    final answer = await _request({
+      'op': 'match',
+      'url': url,
+      'frameUrl': ?frameUrl,
+      if (!wait) 'wait': false,
+      if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
+    });
+    if (answer['op'] != 'matches') {
+      throw _protocolError('match was answered ${answer['op']}');
+    }
+    return [
+      for (final c in (answer['candidates'] as List? ?? const []))
+        if (c is Map) TomSecretsLoginCandidate.fromJson(c.cast()),
+    ];
+  }
+
+  /// **[B]** Proposes a login for the user to save in the manager app
+  /// (protocol.md 5.5 `propose`): the service passes it to the attached app
+  /// and keeps nothing. Only for the browser host with a grant; with no app
+  /// attached `unavailable` (reason `no_app`). Fails as `unsupported` when
+  /// the service does not offer `propose`.
+  Future<void> propose({
+    required String url,
+    required String userName,
+    required String password,
+    String? title,
+  }) async {
+    _requireFeatures(await _ensureConnection(), 'propose', const ['propose']);
+    final answer = await _request({
+      'op': 'propose',
+      'url': url,
+      'title': ?title,
+      'userName': userName,
+      'password': password,
+    });
+    if (answer['op'] != 'accepted') {
+      throw _protocolError('propose was answered ${answer['op']}');
+    }
   }
 
   Map<String, Object?> _item(
@@ -557,7 +624,7 @@ final class _Connection {
           '_file': pending.file,
           '_bytes': pending.chunks!.takeBytes(),
         });
-      case 'value' || 'values' || 'error':
+      case 'value' || 'values' || 'matches' || 'accepted' || 'error':
         _complete(id! as int, message);
       default:
         // An answer this library does not know; section 8 says ignore it.

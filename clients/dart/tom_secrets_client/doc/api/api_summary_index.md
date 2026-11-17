@@ -44,6 +44,7 @@ manager app, `tsm` and the service.
 | `TomSecretEntry` | The entry a value was read from. | [→](api_summary_client.md#tomsecretentry) |
 | `TomSecretVersion` | The entry's last modification and the store file revision it was read from; a caller caching a value compares it to see a change. | [→](api_summary_client.md#tomsecretversion) |
 | `TomSecretFile` | What a `getFile` answers: an attachment or a typed key as bytes. | [→](api_summary_client.md#tomsecretfile) |
+| `TomSecretsLoginCandidate` | A login entry `match` found for a page: never a value. | [→](api_summary_client.md#tomsecretslogincandidate) |
 | `TomSecretRequest` | One reference of a `getMany`. | [→](api_summary_client.md#tomsecretrequest) |
 | `TomSecretResult` | One result of a `getMany`, in request order: a value or an error. | [→](api_summary_client.md#tomsecretresult) |
 | `TomSecretsProgress` | A progress notice, passed to a call's `onProgress`. | [→](api_summary_client.md#tomsecretsprogress) |
@@ -77,7 +78,7 @@ manager app, `tsm` and the service.
 | --- | --- | --- | --- |
 | `tomSecretsClientVersion` | `String` | The library's version, sent in `hello` | [→](api_summary_client.md#constants) |
 | `tomSecretsProtocol` | `int` | The protocol version this library speaks (1) | [→](api_summary_client.md#constants) |
-| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile` | [→](api_summary_client.md#constants) |
+| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile`, `match`, `propose` | [→](api_summary_client.md#constants) |
 | `tomSecretsMaxGetMany` | `int` | The most references one `getMany` carries (256) | [→](api_summary_client.md#constants) |
 | `tomSecretsDefaultField` | `String` | The field a reference without `#field` names (`Password`) | [→](api_summary_client.md#constants) |
 | `tomSecretsMaxReferenceBytes` | `int` | The longest reference, in bytes of UTF-8 (1024) | [→](api_summary_client.md#constants) |

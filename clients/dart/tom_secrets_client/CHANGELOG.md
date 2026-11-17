@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.5
+
+- `match` and `propose` [B] (protocol.md 5.5) for the browser host and the
+  developer-tool helpers: the login entries of a page the client's grants
+  cover (`TomSecretsLoginCandidate`, never a value), and a login proposed
+  for the manager app; each fails as `unsupported` when the service does
+  not offer its feature.
+- `hello.features` names `binary`, `getFile`, `match` and `propose`;
+  `getFile` checks only its own two features.
+
 ## 0.2.4
 
 - The pairing mode's handover carries `approvalLink`

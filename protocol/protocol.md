@@ -313,7 +313,7 @@ The service answers `welcome`:
 | --- | --- |
 | `protocol` | the version it will speak on this connection, `1` |
 | `service` | `{version}` |
-| `features` | the optional features it offers (section 8); empty in phase A |
+| `features` | the optional features it offers (section 8): a phase-B service offers `binary`, `getFile`, `match` and `propose`; a phase-A service none |
 | `host` | its host name (the current value of the `host` dimension) |
 | `platform` | `macos`, `linux`, `windows`, `ios` or `android` |
 
@@ -373,8 +373,85 @@ command line can show it.
 | Request | Answer | What |
 | --- | --- | --- |
 | **[B]** `getFile {id, ref, dimensions?, field?, wait?, timeoutMs?}` | `file {id, name, size}`, binary chunks (2.5), `end {id, sha256}` | an attachment or a typed key as bytes, for the ssh-agent and `tsm run --file` |
-| **[B]** `match {id, url, frameUrl?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host's and the helpers' grants, others get `denied` (reason `not_allowed_op`); audited |
-| **[B]** `propose {id, url, title?, userName, password}` | `accepted {id}` | a login for the app to save, passed to the attached app as the event `proposal`; with no app attached `unavailable` (reason `no_app`); only for the browser host's grant |
+| **[B]** `match {id, url, frameUrl?, wait?, timeoutMs?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host and the helpers, others get `denied` (reason `not_allowed_op`); audited |
+| **[B]** `propose {id, url, title?, userName, password, wait?, timeoutMs?}` | `accepted {id}` | a login for the app to save, passed to the attached app as the event `proposal`; with no app attached `unavailable` (reason `no_app`); only for the browser host holding a grant |
+
+**`getFile`** is checked and decided as `get` is (5.6) and answered with the
+value as bytes: `file` names the field (an attachment field
+`attachment:<name>` without its prefix) and gives its size, the binary
+chunks follow in order (2.5), and `end` carries the SHA-256 of all of them
+in lower-case hex. A refusal is an `error` as for `get`. A connection whose
+`hello.features` does not name both `binary` and `getFile` is answered
+`unsupported` with `details.features`, the ones missing.
+
+**Who `match` and `propose` answer.** The service tells them by the
+client's measured executable (7.1), never by what `hello` says:
+
+- the **browser host** is the product's native-messaging host
+  `tsm-browser-host` (`.exe` on Windows) beside the service's executable
+  (its real path); it may send `match` and `propose`;
+- the **helpers** are `tsm` beside the service, under any of its names
+  (`git-credential-tsm`, `docker-credential-tsm`: links or copies of it);
+  they may send `match`.
+
+Any other client is answered `denied` (reason `not_allowed_op`), which
+counts as a refusal (section 11).
+
+**`match`** answers the login entries (type `login`, no overlay entries)
+of the open stores whose URLs match `url` by 5.7, among the entries an
+`allow` grant of the client covers: for an entry, the grants whose subject
+names the client (7.3) are ranked as for a value (subject, then secret: a
+reference naming that entry, its store, `all`), and the entry is covered
+when the best of them is `allow` (`never` beats `allow` at equal rank). No
+prompt is raised; an entry no grant covers is left out. The browser host
+is never given an entry of a system vault (the vault's kind, its metadata
+`tsm.kind`). `url` and `frameUrl` are strings of at most 4 KiB (else
+`malformed`, reason `url`). With `frameUrl` (a login form in a frame) the
+frame is matched instead of the page, and only when it is the same site as
+the page (its host, or its registrable domain); a frame of another site
+matches nothing. A candidate carries `entryId`, the entry as a uuid
+reference (`<store>/~<32 hex>`, section 4) the browser host reads with `get`
+for a fill, the title, the user name, the entry's URL that matched as
+written, and `hasTotp` (the entry carries a TOTP secret); never a password
+or another value. Every `match` is audited (`refs` `match <host>`, the
+outcome and the candidates' entries). A locked service waits for an unlock
+as `get` does.
+
+**`propose`** carries `url`, `userName`, `password` and an optional
+`title` (else `malformed`, reason `propose`). It is answered for the
+browser host only when an `allow` grant names it (any secret); the service
+then passes the login to every attached manager app as the event
+`proposal` (6.5), keeps nothing, and answers `accepted`; with no app
+attached it answers `unavailable` (reason `no_app`). A locked service waits
+for an unlock as `get` does. Every `propose` is audited without the values.
+
+### 5.7 URL matching [B]
+
+How an entry's URLs match a page (`match`, the OS autofill). An entry's URLs
+are its `URL` field and every field whose name begins with `KP2A_URL`.
+
+- **Normalising:** only `http` and `https` URLs are web URLs (others, such
+  as `androidapp://`, never match); a text without a scheme is read as
+  `https`; the host lower-case, a trailing dot dropped, every non-ASCII
+  label as punycode (RFC 3492, `xn--`); a default port (443, 80) dropped.
+- **The registrable domain** is the public suffix after the Public Suffix
+  List (both its sections, the private one included) with one more label;
+  a host that is itself a public suffix has none. The list is the one
+  published at publicsuffix.org, as the implementation carries it.
+- **The entry field `tsm.urlMatch`** chooses the rule:
+
+  | Value | An entry URL matches when |
+  | --- | --- |
+  | `domain` (the default, also for an unknown value) | the host is the page's (exact host), or the registrable domains are equal (domain) |
+  | `host` | the host is the page's |
+  | `exact` | scheme, host and port are the page's and the page's path is the entry's path or below it |
+  | `never` | never |
+
+- An entry URL with `https` never matches an `http` page.
+- An IP address or `localhost` (on either side) matches only by host and
+  port exactly, whatever the rule.
+- **Order:** the exact host before the domain, then the last used first (the
+  entry's last access time, else its last modification), then by title.
 
 ### 5.6 What the service checks, in order
 
@@ -783,7 +860,12 @@ from the vault instead (9.4).
   A client sends a feature's messages only when `welcome.features` names it,
   and names in `hello.features` the features it takes; the service sends
   binary frames only to a client whose `hello.features` names `binary`. A
-  phase-A service ignores `hello.features` and offers none.
+  phase-A service ignores `hello.features` and offers none; a phase-B
+  service offers all four. This is the version handshake: the integer
+  `protocol` stays `1` for every additive change, and a client finds out
+  what a service speaks from `welcome.features`. A client asking a
+  phase-A service for a phase-B message gets `unsupported` (an unknown
+  `op`), never a silent answer.
 - An unknown `op` on an open connection is answered `error` `unsupported`
   with `details.op` and the connection stays open.
 - A value of an enumerated member that a receiver does not know (a new error
@@ -1108,7 +1190,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` without the grant for it), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -1128,7 +1210,7 @@ defaults):
 
 | What | Limit |
 | --- | --- |
-| `get` and `getMany` | a token bucket of 20 per second, bursts of 50 |
+| `get`, `getMany` and **[B]** `getFile`, `match`, `propose` | a token bucket of 20 per second, bursts of 50 |
 | refusals (`denied`, `not_found`, `ambiguous`) | ten in a minute make the identity wait 10 s per request for ten minutes |
 | open connections | 16 per identity, 256 in all; one over is answered `rate_limited` at its `hello` and closed |
 | pending prompts | one per identity and reference, at most three per identity; three refusals in ten minutes hold the identity back ten minutes |
@@ -1327,3 +1409,12 @@ part-service) leaves these open; this document fixes them:
     the app makes the file, the service writes it where it lives and only
     then lists it in the primary, so a failed write lists nothing and a
     listed vault always has its file.
+33. Phase B adds messages as features (`binary`, `getFile`, `match`,
+    `propose`, section 8) under protocol `1`: nothing in it is incompatible,
+    so the integer is not raised; `welcome.features` is the handshake.
+34. `match` and `propose` know the browser host and the helpers by their
+    measured executables beside the service (5.5), and `match` lists only
+    the entries an `allow` grant of the client covers, without a prompt,
+    never a system vault's to the browser host. URL matching (5.7) uses the
+    Public Suffix List, so `example.github.io` and `other.github.io` are
+    different sites.

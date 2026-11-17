@@ -71,7 +71,7 @@ void main() {
         // Windows: the text of client.token, re-read at this connect.
         if (Platform.isWindows)
           'token': 'dG9rZW4tb2YtdGhpcy1zZXJ2aWNlLXN0YXJ0LTAwMDA=',
-        'features': ['binary', 'getFile'],
+        'features': ['binary', 'getFile', 'match', 'propose'],
       });
       expect(client.welcome!.host, 'bomber');
       expect(client.welcome!.platform, 'linux');
@@ -615,6 +615,90 @@ void main() {
         _fails(TomSecretsErrorKind.unsupported),
       );
       expect(service.received.where((m) => m['op'] == 'getFile'), isEmpty);
+    });
+  });
+
+  group('match and propose [B]', () {
+    test('match: the candidates, never a value; propose: accepted', () async {
+      await startWith((c, r) {
+        final id = r['id']! as int;
+        if (r['op'] == 'match') {
+          c.send({
+            'op': 'matches',
+            'id': id,
+            'candidates': [
+              {
+                'entryId': 'personal/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8',
+                'title': 'Demo Mail',
+                'userName': 'demo.user',
+                'matchedUrl': 'https://mail.example.com',
+                'hasTotp': true,
+              },
+            ],
+          });
+        } else {
+          c.send({'op': 'accepted', 'id': id});
+        }
+      });
+      service.welcome = fakeWelcome(features: ['match', 'propose']);
+      final found = await client.match(
+        'https://mail.example.com/inbox',
+        frameUrl: 'https://mail.example.com/frame',
+      );
+      expect(
+        found.single.entryId,
+        'personal/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8',
+      );
+      expect(found.single.title, 'Demo Mail');
+      expect(found.single.userName, 'demo.user');
+      expect(found.single.hasTotp, isTrue);
+      final asked = service.received.last;
+      expect(asked['url'], 'https://mail.example.com/inbox');
+      expect(asked['frameUrl'], 'https://mail.example.com/frame');
+
+      await client.propose(
+        url: 'https://new.example.com',
+        title: 'New',
+        userName: 'demo-new',
+        password: 'demo-new-pw',
+      );
+      expect(service.received.last, {
+        'op': 'propose',
+        'id': service.received.last['id'],
+        'url': 'https://new.example.com',
+        'title': 'New',
+        'userName': 'demo-new',
+        'password': 'demo-new-pw',
+      });
+    });
+
+    test('a service that does not offer them: unsupported, nothing sent; a '
+        'refusal is the service\'s error', () async {
+      await startWith(
+        (c, r) => c.send({
+          'op': 'error',
+          'id': r['id'],
+          'kind': 'denied',
+          'message': 'not for this client',
+          'details': {'reason': 'not_allowed_op'},
+        }),
+      );
+      await expectLater(
+        client.match('https://example.com'),
+        _fails(TomSecretsErrorKind.unsupported),
+      );
+      await expectLater(
+        client.propose(url: 'https://x.example', userName: 'u', password: 'p'),
+        _fails(TomSecretsErrorKind.unsupported),
+      );
+      expect(service.received.where((m) => m['op'] != 'hello'), isEmpty);
+      await client.close();
+      service.welcome = fakeWelcome(features: ['match']);
+      client = TomSecretsClient(clientName: 'deploy.sh', environment: _env);
+      await expectLater(
+        client.match('https://example.com'),
+        _fails(TomSecretsErrorKind.denied),
+      );
     });
   });
 }

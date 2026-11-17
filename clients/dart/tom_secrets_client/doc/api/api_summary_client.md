@@ -139,6 +139,8 @@ TomSecretsClient({
 | `get(String reference, {String? field, Map<String, String>? dimensions, bool wait = true, Duration? timeout, bool wantClientToken = false, TomSecretsProgressCallback? onProgress, bool waitOnRateLimit = false})` | `Future<TomSecretValue>` | Reads one secret; the reference is parsed locally first; `timeout` is sent as `timeoutMs`; `wantClientToken` asks for a client token with an "always" approval; `waitOnRateLimit` waits out `rateLimited` and sends again |
 | `getMany(List<TomSecretRequest> requests, {bool wait = true, Duration? timeout, TomSecretsProgressCallback? onProgress, bool waitOnRateLimit = false})` | `Future<List<TomSecretResult>>` | Reads 1 to 256 secrets under one approval prompt; results in request order; an empty or too long list is an `ArgumentError` |
 | `getFile(String reference, {String? field, Map<String, String>? dimensions, bool wait = true, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<TomSecretFile>` | Reads an attachment or a typed key as bytes over binary frames, checked against its SHA-256; `unsupported` when the service lacks the features `binary` and `getFile` |
+| `match(String url, {String? frameUrl, bool wait = true, Duration? timeout})` | `Future<List<TomSecretsLoginCandidate>>` | The login entries of a web page this client's grants cover, never a value (protocol.md 5.5); only for the browser host and the helpers (`denied`, `not_allowed_op` otherwise); `unsupported` when the service lacks the feature `match` |
+| `propose({required String url, required String userName, required String password, String? title})` | `Future<void>` | A login for the user to save in the manager app (protocol.md 5.5); only for the browser host with a grant; `unavailable` (`no_app`) with no app attached; `unsupported` when the service lacks the feature `propose` |
 
 ---
 
@@ -419,6 +421,29 @@ const TomSecretVersion({required DateTime modified, required String revision})
 | Operator | Return Type | Description |
 | --- | --- | --- |
 | `operator ==(Object other)` | `bool` | Equal modification time and revision |
+
+---
+
+### TomSecretsLoginCandidate
+
+A login entry `match` found for a page: never a value.
+
+#### Constructors
+
+```dart
+const TomSecretsLoginCandidate({required String entryId, required String title, required String userName, required String matchedUrl, required bool hasTotp})
+factory TomSecretsLoginCandidate.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `entryId` | `String` | The entry as a uuid reference (`store/~<32 hex>`): what a fill reads with `get` |
+| `title` | `String` | The entry's title |
+| `userName` | `String` | Its user name |
+| `matchedUrl` | `String` | The entry URL that matched, as written |
+| `hasTotp` | `bool` | Whether it carries a TOTP secret |
 
 ---
 
@@ -793,7 +818,7 @@ Why a request waits.
 | --- | --- | --- |
 | `tomSecretsClientVersion` | `String` | The library's version, sent in `hello` |
 | `tomSecretsProtocol` | `int` | The protocol version this library speaks (1) |
-| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile` |
+| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile`, `match`, `propose` |
 | `tomSecretsMaxGetMany` | `int` | The most references one `getMany` carries (256) |
 | `tomSecretsDefaultField` | `String` | The field a reference without `#field` names (`Password`) |
 | `tomSecretsMaxReferenceBytes` | `int` | The longest reference, in bytes of UTF-8 (1024) |

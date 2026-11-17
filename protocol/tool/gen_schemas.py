@@ -202,7 +202,7 @@ message('file', 'client', 's2c', 'B', 'The start of a getFile answer.', ['id', '
 message('end', 'client', 's2c', 'B', 'The end of a getFile answer, after its binary chunks.',
         ['id', 'sha256'], id=ref('id'), sha256={'type': 'string', 'pattern': '^[0-9a-f]{64}$'})
 message('match', 'client', 'c2s', 'B', 'Logins matching a page (browser host, helpers).',
-        ['id', 'url'], id=ref('id'), url=STR, frameUrl=STR)
+        ['id', 'url'], id=ref('id'), url=STR, frameUrl=STR, wait=BOOL, timeoutMs=INT0)
 message('matches', 'client', 's2c', 'B', 'The answer to match: candidates, never a value.',
         ['id', 'candidates'], id=ref('id'),
         candidates={'type': 'array', 'items': {
@@ -211,7 +211,7 @@ message('matches', 'client', 's2c', 'B', 'The answer to match: candidates, never
                            'hasTotp': BOOL}}})
 message('propose', 'client', 'c2s', 'B', 'A login for the app to save (browser host).',
         ['id', 'url', 'userName', 'password'], id=ref('id'), url=STR, title=STR,
-        userName=STR, password=STR)
+        userName=STR, password=STR, wait=BOOL, timeoutMs=INT0)
 message('accepted', 'client', 's2c', 'B', 'The answer to propose.', ['id'], id=ref('id'))
 
 # ---- admin endpoint (section 6) -----------------------------------------

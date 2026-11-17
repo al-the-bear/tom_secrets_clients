@@ -1,7 +1,7 @@
 # tom_secrets_client
 
 The Dart client of the Tom Secrets Manager: finds the local secrets service,
-speaks its client protocol (frames, hello, get, getMany, getFile) and parses
+speaks its client protocol (frames, hello, get, getMany, getFile, match, propose) and parses
 and formats secret references.
 
 ## Overview
@@ -51,6 +51,7 @@ succeed; without one every call fails as `notRunning`.
 | `get` | Reads one secret by reference, with an optional field and dimension values |
 | `getMany` | Reads 1 to 256 secrets under one approval prompt; results in request order |
 | `getFile` | Reads an attachment or a typed key as bytes over binary frames, checked against its SHA-256 (needs a service offering `binary` and `getFile`) |
+| `match`, `propose` | For the browser host and the developer-tool helpers: the login entries of a web page (never a value), and a login proposed for the manager app (needs a service offering `match` and `propose`) |
 | Waiting | The service waits for an unlock or an approval up to a timeout; progress notices say why, with the approval code when no approver is connected |
 | Rate limits | `rateLimited` is waited out and the request sent again on request |
 | Client tokens | A granted client token is handed to the caller, never stored |
@@ -137,7 +138,7 @@ identity; the service identifies a client by its executable.
 ```dart
 final client = await TomSecretsClient.connect(clientName: 'billing_job');
 print(client.welcome?.serviceVersion);
-print(client.welcome?.features); // e.g. {binary, getFile}
+print(client.welcome?.features); // e.g. {binary, getFile, match, propose}
 await client.close();
 ```
 
@@ -235,6 +236,26 @@ file.dispose();
 
 `getFile` fails as `unsupported` when the service does not offer the
 features `binary` and `getFile`.
+
+### The browser host and the helpers
+
+```dart
+final logins = await client.match('https://mail.example.com/inbox');
+for (final c in logins) {
+  print('${c.title} (${c.userName}) ${c.entryId}');
+}
+await client.propose(
+  url: 'https://new.example.com/signup',
+  userName: 'demo.user',
+  password: 'demo-generated-pw',
+);
+```
+
+The service answers `match` only for the browser host (`tsm-browser-host`)
+and the helpers (`tsm` and its names), and `propose` only for the browser
+host holding a grant; any other client gets `denied` (`not_allowed_op`).
+`match` lists the entries the client's grants cover and never a value; a
+fill reads the chosen entry with `get` on its `entryId`.
 
 ### Errors
 

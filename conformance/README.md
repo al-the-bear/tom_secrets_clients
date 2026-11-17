@@ -168,7 +168,8 @@ request over 64 KiB are refused locally as `malformed` with the reasons
   `errorKind` and `not_running`) is expected by some case; every message of
   the client endpoint is sent by a client or served by a script in some case,
   except `match`, `matches`, `propose` and `accepted` (phase B, asked only by
-  the browser host and the helpers, no library call); every action is used.
+  the browser host and the helpers, which build on the Dart library; its own
+  tests cover them); every action is used.
 - **Parity** (`parity_gate.sh`): an expected value changed, then the value the
   fake service sends changed: every runner must go red both times.
 - **Schemas**: every frame the fake service records is validated against

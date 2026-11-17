@@ -295,3 +295,43 @@ final class TomSecretResult {
   /// The error, or null.
   final TomSecretsClientException? error;
 }
+
+/// A login entry `match` found for a page (protocol.md 5.5): never a value.
+final class TomSecretsLoginCandidate {
+  /// A candidate.
+  const TomSecretsLoginCandidate({
+    required this.entryId,
+    required this.title,
+    required this.userName,
+    required this.matchedUrl,
+    required this.hasTotp,
+  });
+
+  /// From a `matches` candidate.
+  factory TomSecretsLoginCandidate.fromJson(Map<String, Object?> json) =>
+      TomSecretsLoginCandidate(
+        entryId: json['entryId'] is String ? json['entryId']! as String : '',
+        title: json['title'] is String ? json['title']! as String : '',
+        userName: json['userName'] is String ? json['userName']! as String : '',
+        matchedUrl: json['matchedUrl'] is String
+            ? json['matchedUrl']! as String
+            : '',
+        hasTotp: json['hasTotp'] == true,
+      );
+
+  /// The entry as a uuid reference (`store/~<32 hex>`): what a fill reads
+  /// with `get` (`field: 'UserName'`, `'Password'`, `'totp'`).
+  final String entryId;
+
+  /// The entry's title.
+  final String title;
+
+  /// Its user name.
+  final String userName;
+
+  /// The entry URL that matched, as written in the entry.
+  final String matchedUrl;
+
+  /// Whether it carries a TOTP secret.
+  final bool hasTotp;
+}
