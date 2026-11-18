@@ -310,10 +310,11 @@
           "type": "string"
         },
         "subject": {
+          "description": "exe, script, interpreter, folder, tsm-command, exe-token or [B] exe-from (section 7.3).",
           "type": "string"
         },
         "secret": {
-          "description": "A canonical reference, \"store <name>\" or \"all\".",
+          "description": "A canonical reference, \"store <name>\" or \"all\"; [B] \"ssh-key [host <fingerprints>] [forward] <target>\" for the ssh-agent (section 7.6).",
           "type": "string"
         },
         "decision": {

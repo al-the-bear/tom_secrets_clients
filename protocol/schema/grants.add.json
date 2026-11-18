@@ -33,6 +33,7 @@
           "type": "string"
         },
         "secret": {
+          "description": "As a grant's; a reference is made canonical.",
           "type": "string"
         },
         "decision": {

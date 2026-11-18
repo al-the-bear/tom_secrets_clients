@@ -29,6 +29,12 @@ can never reach an admin operation by mistake:
 A third, the **approval link** between a host's service and the manager apps
 of the user's other devices, runs over its own handshake (section 9).
 
+**[B]** The service also serves an **ssh-agent** endpoint that speaks the SSH
+agent protocol (draft-miller-ssh-agent), not these frames: `agent.sock` in the
+runtime directory on Linux and macOS, the named pipe `\\.\pipe\tsm-ssh-agent`
+on Windows. `ssh` finds it through `SSH_AUTH_SOCK` or `IdentityAgent`. What it
+answers and how its signatures are approved is 7.6.
+
 Clients only read. Nothing on the client endpoint changes a store.
 
 ## 2. Framing
@@ -139,8 +145,9 @@ joined. `<uid>` is the user's numeric id.
 | `client.port` | Windows | the client endpoint's localhost TCP port |
 | `client.token` | Windows | the client token of this service start |
 | `admin.port` | Windows | the admin endpoint's localhost TCP port |
+| `agent.sock` | Linux, macOS | **[B]** the ssh-agent endpoint, a Unix domain socket (7.6); on Windows the agent is the named pipe `\\.\pipe\tsm-ssh-agent`, whose ACL admits only the service's user and SYSTEM |
 | `service.lock` | all | the single-instance lock (not for clients) |
-| `service.json` | all | `{pid, start, protocol, client, admin}`: the service's PID, its start (milliseconds since the epoch), the protocol version and the endpoints (`{socket}` or `{port}`); no secret, for diagnostics |
+| `service.json` | all | `{pid, start, protocol, client, admin, agent?}`: the service's PID, its start (milliseconds since the epoch), the protocol version and the endpoints (`{socket}` or `{port}`; **[B]** the ssh-agent's `{socket}` or `{pipe}` while it runs); no secret, for diagnostics |
 
 - A **port file** holds the port in decimal, 1 to 65535, without a sign or
   leading zeros, optionally followed by one line end (LF or CR LF).
@@ -521,7 +528,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
 | `lock {id}` | `ok` | lock: clear every secret from memory |
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
-| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}}], admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}]}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key); `tsm status` shows it where no app is attached |
+| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}}], admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}], agent?}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key); `tsm status` shows it where no app is attached; **[B]** `agent` is the ssh-agent's endpoint (`{socket}` or `{pipe}`) while it runs |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
@@ -533,7 +540,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
 | `pair.list {id}` | `pairedDevices {id, devices[{device, platform?, paired, pairedBy?, keyIds, approverKeyId?, approverKeySince?, linkKeySince?, revoked?}]}` | the device records of the primary; accepted only from the manager app's executable |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
-| `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4) |
+| `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?, sshHost?, withParent?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4); **[B]** `sshHost` limits a lasting ssh-agent grant to the request's destination host, `withParent` names the client with its parent (`exe-from`, 7.3); a confirmation (`confirmOnly`, 7.6) takes only `once` or `never` (else `malformed`) and writes nothing |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
 | `approval.issue {id, host, code, decision, secret, pin?}` | `approvalToken {id, token}` | have this device make the token for a code shown on `host` (7.5, 9.6); for a decision other than `once` its app also writes the signed grant |
 | `grants.list {id, host?}` | `grantList {id, grants[]}` | the allow list of one host, or of every host (7.3) |
@@ -544,7 +551,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `token.set {id, repository, token}` | `tokenSet {id, repository, where, expiresAt?}`, or `error` `denied` (reason `token_refused` when GitHub answers 401, `token_no_access` when the token does not see the repository, `token_read_only` when it may not write there, `wrong_executable`), `not_found` (no vault in that repository), `offline` (GitHub could not be reached), `unsupported` (reason `no_keychain`: nowhere to keep the token of the primary's own repository), `malformed` (reason `token`) | renew the GitHub token of a vault repository (`owner/name`, part-key-rotation §3); accepted only from the manager app's executable. The service first checks the token: it reads the repository and its default branch, creates the branch `tsm-token-check-<12 hex digits>` at the default branch's head and deletes it again (a vault repository's only workflow runs on a schedule or by hand, so the branch starts nothing), and takes the expiry GitHub reports (`GitHub-Authentication-Token-Expiration`). Then it replaces the token where the old one lives — the device keychain (`tsm.github-token.<owner>:<repository>`, its expiry in `tsm.github-token-expiry.<owner>:<repository>`, `where` `keychain`), else the primary's vault entries that keep a token for that repository (never for the primary's own repository; `where` `primary`, the primary written) — and fetches every store again; a repository with no token yet takes the keychain, else the vault list. `expiresAt` is the expiry GitHub reported, absent for a token without one. The token is never logged |
 | `settings.get {id}` | `deviceSettings {id, device, cliApprovals, stores[]}` | the device settings (`device`: `serviceLock{mode, idleSeconds, maxUnlockedSeconds?, lockOnSleep}`, `appLock`, `defaultEnvironment?`, `servedStores?` (absent: every store), `refreshMinutes` (0: no refresh), `offlineCache`, `keyExpiryWarningDays`, `approvalTimeoutSeconds`, `codeTimeoutSeconds`, `approvalLink?`, and the rotation ages and reminder start of DP-85: `otherKeyWarningDays` (30), `keyPairAgeMonths` (24), `primaryKeyAgeMonths` (24), `vaultKeyAgeMonths` (12)), whether command-line approvals are on, and the stores the primary names (the primary first); `locked` while locked |
 | `settings.set {id, device}` | `ok {id, nextUnlock[]}`, or `error` `malformed` (reason `settings`), `denied` (reason `wrong_executable`) | write the whole device settings; accepted only from the manager app's executable; the lock policy, the refresh, the timeouts, the cache and the reminder period apply at once, `nextUnlock` names those that apply at the next unlock (`servedStores`, `defaultEnvironment`, `approvalLink`) |
-| `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?}]}` | the audit log |
+| `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?, entries?, ssh?}]}` | the audit log; `outcome` is `allowed`, `denied:<reason>`, an error kind, or for a lookup `matched` / `proposed`; `entries` the UUIDs of the entries decided; **[B]** `ssh` an ssh-agent signature's `{key, keyType, title?, host?, hostNames?, forwarded, purpose, namespace?}` (7.6) |
 | `approvals.list {id}` | `approvalList {id, approvals[]}` | the requests waiting on this host (`tsm approvals`), each as its `approval_needed` event reads without `op`: `approvalId`, `host`, `identity`, `refs`, `resolved`, `approvalCode?`, … (6.5, 7.2) |
 | `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding, own?}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now; `own` true marks this device's own approver and link key pairs, which `keys.rotate` rotates |
 | `keys.rotate {id, approver?, link?}` | `keysRotated {id, approverKeyId?, resigned, delivered[], pending[]}`, or `error` `malformed` (reason `keys`: both false), `denied` (reason `wrong_executable`) | rotate this device's own key pairs by hand (part-key-rotation §4; both by default, as an approver device does); accepted only from the manager app's executable. `approver`: a new hybrid approver pair (Ed25519 + ML-DSA-65); every grant and revocation this device signed is signed again with it, in every host's group of the primary vault, and its key-change statement (9.4, signed by the old and the new pair) is written into the group of every host it approves for, where a host the link does not reach takes it at its next refresh (`resigned` counts the objects signed again). `link`: a new approval-link pair; the previous one stays in use for 14 days for the hosts the new key has not reached (this device connects to them with it) and for the approvers that connect here (this device's link answers them under it). Both are then sent to every recorded host with a link address over a session under the keys that host knows (`keychange`, `linkKey`, 9.7): `delivered` names the hosts that took them, `pending` those not reached; the new link key is sent to them again at each refresh, at most every 15 minutes |
@@ -705,7 +712,7 @@ After `subscribe` the service pushes events on that connection (no `id`):
 | Event | Members | When |
 | --- | --- | --- |
 | `unlock_needed` | `identity?` | a client waits for an unlock |
-| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4) |
+| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6) |
 | `approval_closed` | `approvalId, outcome` (`approved`, `denied`, `timeout`, `abandoned`, `no_approver`) | a prompt was answered or ended elsewhere |
 | `locked`, `unlocked` | — | the service locked or unlocked |
 | `store_changed` | `store, revision?` | a store was reopened with new content |
@@ -779,18 +786,20 @@ A **grant** of the allow list:
 | --- | --- |
 | `id` | the grant's id |
 | `host` | the host it holds on; a service applies only its own host's grants |
-| `subject` | `exe <path>`, `script <interpreter> <path>`, `interpreter <path>`, `folder <path> [interpreter]`, `tsm-command <command line>` or `exe-token <path> <tokenId>` |
-| `secret` | a canonical reference (4.5), `store <name>` or `all` |
+| `subject` | `exe <path>`, `script <interpreter> <path>`, `interpreter <path>`, `folder <path> [interpreter]`, `tsm-command <command line>`, `exe-token <path> <tokenId>`, or **[B]** `exe-from <parent path> => <path>` (the executable started by that parent: `ssh` started by `git`) |
+| `secret` | a canonical reference (4.5), `store <name>` or `all`; **[B]** for the ssh-agent `ssh-key [host <fingerprint>[,<fingerprint>…]] [forward] <target>` (7.6) |
 | `decision` | `allow` or `never` |
 | `created`, `lastUsed` | times |
 | `pin` | `hash`, `off` or `{relaxedUntil}` |
 | `approver` | the trusted device that made it |
 | `signatures` | the signature list, items `{alg, keyId, sig}` (section 9) |
 
-Matching: the most specific subject wins (exe, script or exe-token, then
-folder, then interpreter); for one subject a reference beats a store and a
-store beats `all`; a `never` grant beats an `allow` grant of the same
-specificity. A service accepts a grant only when its signatures verify
+Matching: the most specific subject wins (exe-from, then exe, script or
+exe-token, then folder, then interpreter); for one subject a reference beats a
+store and a store beats `all`; a `never` grant beats an `allow` grant of the
+same specificity. A value request is decided only by value grants and an
+ssh-agent request only by agent grants (`ssh-key …`, 7.6); a service that does
+not know a subject or secret form never matches it. A service accepts a grant only when its signatures verify
 against an approver key it recorded at pairing (section 9).
 
 ### 7.4 Client tokens
@@ -839,6 +848,58 @@ A library hands the token to its caller and never stores it itself.
 The code's derivation is 9.5, the token's tag and its redemption 9.6. `tsm
 approve` without a token takes a signed approval record for a waiting code
 from the vault instead (9.4).
+
+### 7.6 The ssh-agent [B]
+
+The service's agent (1, part-os-integration) serves the vaults' `ssh-key`
+entries (part-structure: the key an attachment, `KeeAgent.settings` beside
+it). Private keys never leave the service.
+
+- **Messages:** `REQUEST_IDENTITIES`; `SIGN_REQUEST` (an RSA key signs with
+  `rsa-sha2-256` or `rsa-sha2-512` only, as the request's flags ask; a SHA-1
+  request is refused); `EXTENSION session-bind@openssh.com` (OpenSSH 8.9+:
+  the destination's host key, its signature of the session id, which must
+  verify, and whether the connection is forwarded, recorded per connection).
+  Everything else (`ADD_IDENTITY`, `REMOVE_IDENTITY`, `REMOVE_ALL_IDENTITIES`,
+  `LOCK`, `UNLOCK`, other extensions) is answered `FAILURE`: keys are added in
+  the app, and the agent locks with the service. A user authentication on a
+  bound connection must name the last binding's session id (and, host-bound,
+  its host key).
+- **Peers** are measured as clients are (7.1); one that cannot be measured
+  gets no key and no signature.
+- **The keys listed:** unlocked, every `ssh-key` entry whose KeeAgent settings
+  allow the agent and add the key when the vault opens, whose key the agent
+  reads (Ed25519, ECDSA P-256 / P-384 / P-521, RSA; OpenSSH or PEM, a
+  passphrase in the entry's `Password`), less those a `never` grant refuses
+  the client; the comment is the entry's title. A forwarded connection sees
+  only the keys an agent grant lets it use forwarded. Locked, the public keys
+  the agent kept at the last unlock with the subjects of the `allow` grants
+  that cover them, to the clients those subjects name (`agent_keys.json` in
+  the service's data directory; public keys are no secrets).
+- **An agent grant** (7.3) names the client, the keys (`<target>`: a canonical
+  reference, here the entry's uuid reference `<store>/~<uuid>`; `store
+  <name>`; `all`), optionally the destination hosts by their host keys'
+  fingerprints (`host SHA256:…`; it decides only on a connection bound to one
+  of them) and `forward`, which lets a forwarded connection use the key; a
+  forwarding grant names one key and its hosts. Among the matching grants the
+  most specific subject, then key, then one limited to hosts wins.
+- **Deciding a signature:** a `never` grant refuses. A forwarded request
+  (`ssh -A`, an earlier binding forwarded) without an agent grant that allows
+  forwarding is refused without a prompt (DP-49). An `allow` grant signs, but
+  a forwarded request, or a key whose KeeAgent settings ask for confirmation,
+  or a key of a vault whose metadata sets `tsm.ssh-confirm`, is confirmed each
+  time: `approval_needed` with `confirmOnly`, answered `once` or `never`,
+  nothing written. Without a grant the approvers are asked (7.2): the request's
+  `refs` are the entry's uuid reference, `ssh` is `{key, keyType, title?,
+  host?, hostNames?, forwarded, purpose, namespace?}` — the key's fingerprint,
+  the destination's host key fingerprint and its names in the user's
+  `known_hosts`, `purpose` `userauth`, `sshsig` (with its `namespace`,
+  `git` for a signed commit) or `other`; a lasting answer writes an agent
+  grant, limited to the destination when `approve` says `sshHost`.
+- **Locked:** a sign request sends `unlock_needed` and waits up to the
+  approval timeout; still locked, it is answered `FAILURE` and `ssh` tries its
+  next method.
+- **Audit:** every decision is audited (6.3 `audit.query`) with `ssh`.
 
 ## 8. Versioning and extension
 
@@ -1418,3 +1479,10 @@ part-service) leaves these open; this document fixes them:
     never a system vault's to the browser host. URL matching (5.7) uses the
     Public Suffix List, so `example.github.io` and `other.github.io` are
     different sites.
+35. The ssh-agent (7.6) speaks OpenSSH's agent protocol on an endpoint of
+    its own, not these frames. Its grants are grants of 7.3, so they are
+    signed, listed, revoked and re-signed as every grant is: what they cover
+    is written into the signed `secret` (`ssh-key …`) and a parent-qualified
+    client into `subject` (`exe-from`), forms a service that does not know
+    them never matches. A confirmation (`confirmOnly`) is a prompt that
+    writes nothing.

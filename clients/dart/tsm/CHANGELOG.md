@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4
+
+- `tsm status` shows the ssh-agent's endpoint (`agent`, what
+  `SSH_AUTH_SOCK` or `IdentityAgent` names); `tsm approvals` names an agent
+  prompt's SSH key and destination host. Needs `tom_secrets_client` 0.2.6.
+
 ## 0.2.3
 
 - `tsm pair --link ADDRESS:PORT`: where this machine's approval link

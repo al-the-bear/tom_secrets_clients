@@ -44,24 +44,63 @@
             }
           },
           "outcome": {
-            "enum": [
-              "allowed",
-              "denied",
-              "not_found",
-              "ambiguous",
-              "locked",
-              "timeout",
-              "abandoned",
-              "rate_limited",
-              "unavailable",
-              "malformed"
-            ]
+            "description": "\"allowed\", \"denied:<reason>\", an error kind, or for a lookup \"matched\" / \"proposed\".",
+            "type": "string"
           },
           "grantId": {
             "type": "string"
           },
           "approver": {
             "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ssh": {
+            "description": "[B] An ssh-agent signature: the key, the destination, the purpose (section 7.6).",
+            "type": "object",
+            "required": [
+              "key",
+              "keyType",
+              "forwarded",
+              "purpose"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "keyType": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "hostNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "forwarded": {
+                "type": "boolean"
+              },
+              "purpose": {
+                "enum": [
+                  "userauth",
+                  "sshsig",
+                  "other"
+                ]
+              },
+              "namespace": {
+                "type": "string"
+              }
+            }
           }
         }
       }

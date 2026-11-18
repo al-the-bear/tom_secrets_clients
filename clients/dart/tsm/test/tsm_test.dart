@@ -206,6 +206,10 @@ void main() {
       expect(r.text, contains('service  running, unlocked'));
       expect(r.text, contains('store    primary  current  file'));
       expect(r.text, contains('store    team  current  file'));
+      if (!Platform.isWindows) {
+        // The ssh-agent's socket, for SSH_AUTH_SOCK (protocol.md 7.6).
+        expect(r.text, contains('agent    ${demo.runtime.agentSocket}'));
+      }
       final json =
           jsonDecode(
                 (await demo.tsm(['status', '--json'], keychain: keychain)).text,

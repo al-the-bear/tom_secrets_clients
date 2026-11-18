@@ -62,6 +62,53 @@
     },
     "wantClientToken": {
       "type": "boolean"
+    },
+    "ssh": {
+      "description": "[B] An ssh-agent signature: the key, the destination, the purpose (section 7.6).",
+      "type": "object",
+      "required": [
+        "key",
+        "keyType",
+        "forwarded",
+        "purpose"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "keyType": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "hostNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forwarded": {
+          "type": "boolean"
+        },
+        "purpose": {
+          "enum": [
+            "userauth",
+            "sshsig",
+            "other"
+          ]
+        },
+        "namespace": {
+          "type": "string"
+        }
+      }
+    },
+    "confirmOnly": {
+      "description": "[B] A confirmation of one ssh-agent signature a grant allows: answered once or never, nothing written (section 7.6).",
+      "type": "boolean"
     }
   },
   "x-tsm": {

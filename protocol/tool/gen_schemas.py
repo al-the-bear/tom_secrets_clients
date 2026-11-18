@@ -95,8 +95,12 @@ COMMON = {
               'required': ['id', 'host', 'subject', 'secret', 'decision', 'created', 'pin',
                            'approver', 'signatures'],
               'properties': {
-                  'id': STR, 'host': STR, 'subject': STR,
-                  'secret': {'description': 'A canonical reference, "store <name>" or "all".', **STR},
+                  'id': STR, 'host': STR,
+                  'subject': {'description': 'exe, script, interpreter, folder, tsm-command, '
+                              'exe-token or [B] exe-from (section 7.3).', **STR},
+                  'secret': {'description': 'A canonical reference, "store <name>" or "all"; '
+                             '[B] "ssh-key [host <fingerprints>] [forward] <target>" for the '
+                             'ssh-agent (section 7.6).', **STR},
                   'decision': {'enum': ['allow', 'never']},
                   'created': {'$ref': '#/$defs/timestamp'},
                   'lastUsed': {'$ref': '#/$defs/timestamp'},
@@ -254,6 +258,17 @@ EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'days
                                'key': STR, 'vault': ref('storeName'),
                                'expiresAt': ref('timestamp'),
                                'daysLeft': {'type': 'integer'}}}
+AGENT_ENDPOINT = {'description': '[B] The ssh-agent endpoint while it runs (section 7.6).',
+                  'type': 'object',
+                  'properties': {'socket': STR, 'pipe': STR}}
+SSH_USE = {'description': '[B] An ssh-agent signature: the key, the destination, the purpose '
+           '(section 7.6).',
+           'type': 'object', 'required': ['key', 'keyType', 'forwarded', 'purpose'],
+           'properties': {'key': STR, 'keyType': STR, 'title': STR, 'host': STR,
+                          'hostNames': {'type': 'array', 'items': STR},
+                          'forwarded': BOOL,
+                          'purpose': {'enum': ['userauth', 'sshsig', 'other']},
+                          'namespace': STR}}
 message('status', 'admin', 'a2s', 'A', 'Ask for the service state.', ['id'], id=ref('id'))
 message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         ['id', 'locked', 'lockMode', 'protocol', 'service', 'stores', 'admins', 'hardening'],
@@ -263,7 +278,8 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
                  'properties': {'version': STR, 'start': ref('epochMs')}},
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
-        expiring={'type': 'array', 'items': EXPIRING_KEY})
+        expiring={'type': 'array', 'items': EXPIRING_KEY},
+        agent=AGENT_ENDPOINT)
 message('reload', 'admin', 'a2s', 'A', 'Fetch and reopen the stores now.', ['id'], id=ref('id'))
 message('vaultKeys', 'admin', 'a2s', 'A', 'Get the keys of the open vaults for editing.',
         ['id'], id=ref('id'), stores={'type': 'array', 'items': ref('storeName')})
@@ -360,7 +376,10 @@ message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connec
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
         ['id', 'approvalId', 'decision', 'secret'], also=['link'], id=ref('id'), approvalId=STR,
         decision=ref('decision'), secret=ref('secretScope'), folder=STR, pin=ref('pin'),
-        clientToken=ref('base64'))
+        clientToken=ref('base64'),
+        sshHost={'description': '[B] Limit a lasting ssh-agent grant to the destination host.',
+                 **BOOL},
+        withParent={'description': '[B] Name the client with its parent (exe-from).', **BOOL})
 message('approval.redeem', 'admin', 'a2s', 'A', 'Redeem a one-time approval token.',
         ['id', 'token'], id=ref('id'),
         token={'type': 'string', 'pattern': '^[A-Z2-7]{26}$'})
@@ -379,7 +398,9 @@ message('grants.add', 'admin', 'a2s', 'A', 'Add a grant (a pre-approval for anot
         grant={'description': 'The grant without id, created, approver and signatures, '
                'which the service fills in and signs.',
                'type': 'object', 'required': ['host', 'subject', 'secret', 'decision'],
-               'properties': {'host': STR, 'subject': STR, 'secret': STR,
+               'properties': {'host': STR, 'subject': STR,
+                              'secret': {'description': 'As a grant\'s; a reference is made '
+                                         'canonical.', **STR},
                               'decision': {'enum': ['allow', 'never']}, 'pin': ref('pin')}})
 message('grants.revoke', 'admin', 'a2s', 'A', 'Revoke a grant of any host.',
         ['id', 'host', 'grantId'], id=ref('id'), host=STR, grantId=STR)
@@ -447,10 +468,12 @@ message('auditRecords', 'admin', 's2a', 'A', 'The answer to audit.query.', ['id'
             'type': 'object', 'required': ['time', 'host', 'identity', 'refs', 'outcome'],
             'properties': {'time': ref('timestamp'), 'host': STR, 'identity': ref('identity'),
                            'refs': {'type': 'array', 'items': ref('reference')},
-                           'outcome': {'enum': ['allowed', 'denied', 'not_found', 'ambiguous',
-                                                'locked', 'timeout', 'abandoned',
-                                                'rate_limited', 'unavailable', 'malformed']},
-                           'grantId': STR, 'approver': STR}}})
+                           'outcome': {'description': '"allowed", "denied:<reason>", an error '
+                                       'kind, or for a lookup "matched" / "proposed".',
+                                       **STR},
+                           'grantId': STR, 'approver': STR,
+                           'entries': {'type': 'array', 'items': STR},
+                           'ssh': SSH_USE}}})
 # events, pushed after subscribe (section 6.5)
 message('unlock_needed', 'admin', 's2a', 'A', 'A client waits for an unlock.', [],
         identity=ref('identity'))
@@ -461,7 +484,9 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
             'type': 'object', 'required': ['store', 'path', 'kind'],
             'properties': {'store': ref('storeName'), 'path': STR, 'kind': STR}}},
         hostHint=STR, approvalCode={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'},
-        wantClientToken=BOOL)
+        wantClientToken=BOOL, ssh=SSH_USE,
+        confirmOnly={'description': '[B] A confirmation of one ssh-agent signature a grant '
+                     'allows: answered once or never, nothing written (section 7.6).', **BOOL})
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})

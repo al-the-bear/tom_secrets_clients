@@ -570,6 +570,15 @@ Future<int> tsmStatus(TsmContext c, TsmArgs a) async {
       'service  running, ${report['locked'] == true ? 'locked' : 'unlocked'}, '
       'lock mode ${report['lockMode']}, version ${service['version']}',
     );
+    // The ssh-agent's endpoint [B]: what SSH_AUTH_SOCK or IdentityAgent
+    // names (protocol.md 7.6).
+    final agent = report['agent'];
+    if (agent is Map) {
+      c.io.outln(
+        'agent    ${agent['socket'] ?? agent['pipe']}  '
+        '(SSH_AUTH_SOCK or IdentityAgent for ssh)',
+      );
+    }
     for (final s in (report['stores'] as List? ?? const []).cast<Map>()) {
       final fetched = s['fetchedAt'] == null
           ? null
@@ -633,9 +642,15 @@ Future<int> tsmApprovals(TsmContext c, TsmArgs a) => _withAdmin(c, (
   } else {
     for (final w in waiting) {
       final identity = (w['identity'] as Map?) ?? const {};
+      // An ssh-agent signature [B] names its key and destination.
+      final ssh = w['ssh'];
+      final what = ssh is Map
+          ? 'SSH key ${ssh['title'] ?? ssh['key']}'
+                '${ssh['host'] == null ? '' : ' for ${ssh['host']}'}'
+          : (w['refs'] as List).join(', ');
       c.io.outln(
         '${w['approvalCode'] ?? '(an approver is attached)'}  '
-        '${(w['refs'] as List).join(', ')}  '
+        '$what  '
         '${identity['script'] ?? identity['exe'] ?? ''}',
       );
     }

@@ -316,11 +316,16 @@ tsm status
 ```
 
 ```text
-service  running, unlocked, lock mode idle, version 0.11.1
+service  running, unlocked, lock mode idle, version 0.12.0
+agent    /run/user/1000/tsm/agent.sock  (SSH_AUTH_SOCK or IdentityAgent for ssh)
 store    fleet  current  github  fetched 12 min ago
 store    infra  offline  cache  fetched 9 days ago  (GitHub not reachable; offline copy older than 7 days)
 ```
 
+- `agent` is the service's ssh-agent: point `ssh` at it with
+  `export SSH_AUTH_SOCK=<that path>`, or `IdentityAgent <that path>` in
+  `~/.ssh/config` (on Windows the pipe `\\.\pipe\tsm-ssh-agent`). It
+  signs with the vaults' SSH keys; the manager app approves each new use.
 - Each store shows its state, where its copy comes from (`github`, `file`,
   `cache`) and how old the copy is. A store on its offline copy says why:
   `GitHub not reachable`, or `token expired: enter a new one`. A copy older

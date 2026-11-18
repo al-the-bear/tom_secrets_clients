@@ -749,26 +749,26 @@ packages:
     dependency: "direct main"
     description:
       name: tom_secrets_client
-      sha256: df95fb600e42a3ee91d4bc946b45f101a59038770b3428b3d707bb765401ad4e
+      sha256: a844ac4627be159bec27f8bed19c6a098e90b8a03d111d2e53d4c511ff12c55f
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.4"
+    version: "0.2.6"
   tom_secrets_core:
     dependency: "direct dev"
     description:
       name: tom_secrets_core
-      sha256: be04bd4a5e3e6e1e73b28643d46987dc0dcd90349ca2beebde25611f52b88546
+      sha256: "48da8f25e1c4128fed5c360bd7a9aff31c1d3312144907fe0c6998e8e4b64aca"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.3"
+    version: "0.2.6"
   tom_secrets_service:
     dependency: "direct dev"
     description:
       name: tom_secrets_service
-      sha256: "813d125af558648ddfe6ac61e491940128a6740c211e2c0d70d940f9fded8c78"
+      sha256: ca5ce7938038cf14416be683f0696273effd0b1bf713ba43950135cb14500233
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.7"
+    version: "0.12.0"
   typed_data:
     dependency: transitive
     description:

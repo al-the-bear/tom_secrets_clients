@@ -35,6 +35,14 @@
     },
     "clientToken": {
       "$ref": "common.json#/$defs/base64"
+    },
+    "sshHost": {
+      "description": "[B] Limit a lasting ssh-agent grant to the destination host.",
+      "type": "boolean"
+    },
+    "withParent": {
+      "description": "[B] Name the client with its parent (exe-from).",
+      "type": "boolean"
     }
   },
   "x-tsm": {
