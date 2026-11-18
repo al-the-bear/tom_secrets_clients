@@ -17,6 +17,7 @@ import '../../tom_secrets_client.dart';
 
 import 'admin_auth.dart';
 import 'runtime.dart';
+import 'unlock_bundle.dart';
 
 /// The admin endpoint refused or broke the conversation.
 final class TomSecretsAdminException implements Exception {
@@ -39,7 +40,7 @@ final class TomSecretsAdminException implements Exception {
 
 /// An authenticated admin connection.
 final class TomSecretsAdminClient {
-  TomSecretsAdminClient._(this._socket, this.serviceStart);
+  TomSecretsAdminClient._(this._socket);
 
   /// Connects to the admin endpoint of [runtime] and proves both sides hold
   /// [adminKey]; throws `service_impostor` when the service's `mac2` is
@@ -86,7 +87,10 @@ final class TomSecretsAdminClient {
         'the service could not prove it holds the admin key',
       );
     }
-    admin._listen();
+    admin
+      .._serviceStart = start
+      .._bundleKey = tomSecretsBundleKey(adminKey, serviceNonce, adminNonce)
+      .._listen();
     return admin;
   }
 
@@ -134,7 +138,7 @@ final class TomSecretsAdminClient {
     } on Object {
       throw TomSecretsAdminException('not_running', 'no service answers');
     }
-    final admin = TomSecretsAdminClient._(socket, 0);
+    final admin = TomSecretsAdminClient._(socket);
     admin._subscription = socket.listen(
       admin._data,
       onDone: admin._done,
@@ -145,8 +149,14 @@ final class TomSecretsAdminClient {
 
   final Socket _socket;
 
-  /// The service's start time (from the challenge).
-  final int serviceStart;
+  /// The service's start time (from the challenge; 0 on a connection that
+  /// claimed the service).
+  int get serviceStart => _serviceStart;
+  int _serviceStart = 0;
+
+  /// The bundle key of this connection (protocol.md 6.4), or null on a
+  /// connection that claimed the service.
+  Uint8List? _bundleKey;
 
   late final StreamSubscription<List<int>> _subscription;
   final TomSecretsFrameReader _reader = TomSecretsFrameReader(
@@ -259,8 +269,41 @@ final class TomSecretsAdminClient {
         'keyFile': ?(keyFile == null ? null : base64.encode(keyFile)),
       });
 
+  /// Unlocks [vault] (a store's name as `status` lists it: the primary
+  /// unlocks the service, another store a locked store of an unlocked
+  /// service) with [bundle], the key material the OS unlock read (protocol.md
+  /// 6.4): sealed under this connection's bundle key. A bundle that no
+  /// longer opens the vault (re-keyed) answers `denied` reason
+  /// `bad_password`; one the service cannot open, `bad_bundle`.
+  Future<void> unlockWithBundle(
+    String vault,
+    TomSecretsUnlockBundle bundle,
+  ) async {
+    final key = _bundleKey;
+    if (key == null) {
+      throw TomSecretsAdminException(
+        'unsupported',
+        'a connection that claimed the service cannot send a key bundle',
+      );
+    }
+    final plaintext = bundle.encode();
+    final Map<String, String> sealed;
+    try {
+      sealed = await tomSecretsSealBundle(
+        bundleKey: key,
+        vault: vault,
+        serviceStart: serviceStart,
+        plaintext: plaintext,
+      );
+    } finally {
+      plaintext.fillRange(0, plaintext.length, 0);
+    }
+    await request('unlock', {'vault': vault, 'bundle': sealed});
+  }
+
   /// Ends the connection.
   Future<void> close() async {
+    _bundleKey?.fillRange(0, _bundleKey!.length, 0);
     await _subscription.cancel();
     _socket.destroy();
     if (!_closed) _done();

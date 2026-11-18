@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.9
+
+- The OS unlock's key bundle (protocol.md 6.4, part-os-unlock):
+  `TomSecretsUnlockBundle` (the composite key and the repository key),
+  `tomSecretsBundleKey` (HKDF-SHA256 per admin connection),
+  `tomSecretsSealBundle` / `tomSecretsOpenBundle` (AES-256-GCM, checked
+  against `protocol/vectors/bundles.json`), and
+  `TomSecretsAdminClient.unlockWithBundle`. New dependency: `cryptography`.
+- `TomSecretsAdminClient.serviceStart` now answers the service's start (it
+  answered 0).
+
 ## 0.2.8
 
 - `TomSecretsIntegrations` reads and writes its (small) files synchronously

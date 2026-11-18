@@ -16,6 +16,10 @@
   implementation computes from the objects (the signatures themselves are
   checked by tool/vectors_dart's tests and, independently, by
   tool/vectors_go);
+- bundles.json: the bundle key (HKDF-SHA256) and the associated data are
+  what the reference implementation computes, every plaintext is a bundle
+  of version 1 (the AES-256-GCM sealing is checked by tool/vectors_dart and
+  by the Dart client's tests);
 - link_handshake.json: every transport frame's plaintext is its JSON, valid
   against its schema, a message allowed on the approval link from its side,
   within the link's frame limit; every link message has a frame.
@@ -142,6 +146,20 @@ def main() -> int:
               case['mac'], f"hmac {case['name']}: mac")
         check(base64.b64encode(tp.admin_mac('tsm-service-v1', key, sn, an, start)).decode() ==
               case['mac2'], f"hmac {case['name']}: mac2")
+
+    bundles = load('bundles.json')
+    bkey, bsn, ban = (base64.b64decode(bundles[k]) for k in ('adminKey', 'serviceNonce', 'adminNonce'))
+    check(base64.b64encode(tp.bundle_key(bkey, bsn, ban)).decode() == bundles['bundleKey'],
+          'bundles.json: bundleKey')
+    for case in bundles['cases']:
+        check(base64.b64encode(tp.bundle_aad(case['vault'], bundles['serviceStart'])).decode()
+              == case['aad'], f"bundle {case['name']}: aad")
+        plain = json.loads(case['plaintext'])
+        check(plain.get('v') == 1 and len(base64.b64decode(plain['compositeKey'])) == 32
+              and set(plain) <= {'v', 'compositeKey', 'outerKey'},
+              f"bundle {case['name']}: plaintext")
+        check(len(base64.b64decode(case['bundle']['nonce'])) == 12, f"bundle {case['name']}: nonce")
+    check(len(bundles['rejected']) >= 4, 'bundles.json: rejected cases')
 
     disc = load('discovery.json')
     for case in disc['cases']:

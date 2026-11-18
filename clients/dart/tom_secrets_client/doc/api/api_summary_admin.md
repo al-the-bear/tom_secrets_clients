@@ -22,6 +22,8 @@
   - [TomSecretsPairingReport](#tomsecretspairingreport)
   - [TomSecretsPairingModeException](#tomsecretspairingmodeexception)
   - [TomSecretsServicePairing](#tomsecretsservicepairing)
+  - [TomSecretsUnlockBundle](#tomsecretsunlockbundle)
+  - [TomSecretsBundleException](#tomsecretsbundleexception)
 - [Enums](#enums)
   - [TomSecretsTransport](#tomsecretstransport)
 - [Typedefs](#typedefs)
@@ -56,11 +58,13 @@ Object
 ├── TomSecretsPairingHandover
 ├── TomSecretsPairingReport
 ├── TomSecretsServicePairing
+├── TomSecretsUnlockBundle
 └── (implements Exception)
     ├── TomSecretsAdminException
     ├── TomSecretsRuntimeException
     ├── TomSecretsAlreadyRunning
-    └── TomSecretsPairingModeException
+    ├── TomSecretsPairingModeException
+    └── TomSecretsBundleException
 ```
 
 ---
@@ -82,7 +86,7 @@ An authenticated admin connection: requests by id and the pushed events.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `serviceStart` | `int` | The service's start time |
+| `serviceStart` | `int` | The service's start time (0 on a connection that claimed the service) |
 | `events` | `Stream<Map<String, Object?>>` | The pushed events, after a `subscribe` request |
 | `isClosed` | `bool` | Whether the connection has ended |
 
@@ -92,6 +96,7 @@ An authenticated admin connection: requests by id and the pushed events.
 | --- | --- | --- |
 | `request(String op, [Map<String, Object?> fields = const {}])` | `Future<Map<String, Object?>>` | Sends an admin request with an id; answers the answer, or throws `TomSecretsAdminException` for an `error` |
 | `unlock(String password, {List<int>? keyFile})` | `Future<void>` | Unlocks with the master password (and key file) |
+| `unlockWithBundle(String vault, TomSecretsUnlockBundle bundle)` | `Future<void>` | Unlocks a store (the primary: the service) with the OS unlock's key bundle, sealed under this connection's bundle key (protocol.md 6.4); `unsupported` on a connection that claimed the service |
 | `close()` | `Future<void>` | Ends the connection |
 
 ---
@@ -512,6 +517,29 @@ it: the service executable runs attached and talks in JSON lines.
 | `setUp(String password)` | `Future<String>` | Sets the machine up with the master password; answers the bootstrap file written. After `wrong_password` another password may be sent |
 | `close()` | `Future<int>` | Ends the conversation and the service; answers its exit code |
 
+### TomSecretsUnlockBundle
+
+The key material of one vault's OS unlock (protocol.md 6.4): its composite
+key and, for a vault with the outer encryption, its repository key; never
+the password text.
+
+| Constructor | Description |
+| --- | --- |
+| `TomSecretsUnlockBundle({required List<int> compositeKey, String? outerKey})` | A bundle of a 32-byte composite key (a copy is kept) and a repository key |
+| `TomSecretsUnlockBundle.decode(List<int> bytes)` | Reads the plaintext `{"v": 1, "compositeKey", "outerKey"?}`; throws `TomSecretsBundleException` |
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `compositeKey` | `Uint8List` | The composite key |
+| `outerKey` | `String?` | The repository key, or null |
+| `encode()` | `Uint8List` | The plaintext bytes; the caller wipes them |
+| `dispose()` | `void` | Overwrites the composite key |
+
+### TomSecretsBundleException
+
+A sealed bundle did not open, or its plaintext is no bundle; carries no key
+material. `message` says what failed.
+
 ---
 
 ## Enums
@@ -564,6 +592,10 @@ How the endpoints are offered.
 | `tomSecretsRandomBytes` | `Uint8List tomSecretsRandomBytes([int count = tomSecretsKeyBytes])` | Bytes from the OS's secure generator |
 | `tomSecretsAuthDelay` | `Duration tomSecretsAuthDelay(int failures)` | The delay before the next authentication: 0, then 1 s, 2 s, 4 s, ... up to 60 s |
 | `tomSecretsAdminKeyHandle` | `String tomSecretsAdminKeyHandle(int serviceStart)` | The keychain handle of the admin key of a service start, `tsm.admin.<start>` |
+| `tomSecretsBundleKey` | `Uint8List tomSecretsBundleKey(List<int> adminKey, List<int> serviceNonce, List<int> adminNonce)` | The bundle key of one admin connection: HKDF-SHA256 of the admin key, salted with both nonces, info `tsm-bundle-v1` |
+| `tomSecretsBundleAad` | `Uint8List tomSecretsBundleAad(String vault, int serviceStart)` | A sealed bundle's associated data: the vault's name and the service start as 8 bytes big-endian |
+| `tomSecretsSealBundle` | `Future<Map<String, String>> tomSecretsSealBundle({required List<int> bundleKey, required String vault, required int serviceStart, required List<int> plaintext, List<int>? nonce})` | The `bundle` object of `unlock`: AES-256-GCM with a random 12-byte nonce, the tag appended |
+| `tomSecretsOpenBundle` | `Future<Uint8List> tomSecretsOpenBundle({required List<int> bundleKey, required String vault, required int serviceStart, required Map<String, Object?> bundle})` | The plaintext of a sealed bundle; throws `TomSecretsBundleException` when it does not open |
 | `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set |
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder |

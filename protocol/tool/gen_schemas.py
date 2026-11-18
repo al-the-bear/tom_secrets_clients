@@ -310,11 +310,14 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
                                       'type': 'boolean'},
                            'keys': {'description': 'The store key material (section 6.4): '
                                     'its master password, key file and repository outer key, '
-                                    'each when the store has one.',
+                                    'each when the store has one; for a vault opened with an '
+                                    'OS unlock bundle (phase B) its composite key in place of '
+                                    'the password and the key file.',
                                     'type': 'object',
                                     'properties': {'password': STR,
                                                    'keyFile': ref('base64'),
-                                                   'outerKey': ref('base64')}}}}})
+                                                   'outerKey': ref('base64'),
+                                                   'compositeKey': ref('base64_32')}}}}})
 message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of a store the service holds, for editing: an open store, or a vault the primary lists that this machine does not serve.',
         ['id', 'store'], id=ref('id'), store=ref('storeName'))
 message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile.',

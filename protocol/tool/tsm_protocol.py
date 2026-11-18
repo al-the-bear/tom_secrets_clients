@@ -240,6 +240,19 @@ def admin_mac(label: str, admin_key: bytes, service_nonce: bytes,
     return hmac.new(admin_key, message, hashlib.sha256).digest()
 
 
+def bundle_key(admin_key: bytes, service_nonce: bytes, admin_nonce: bytes) -> bytes:
+    """The OS unlock's bundle key (section 6.4): HKDF-SHA256(ikm = adminKey,
+    salt = serviceNonce || adminNonce, info = "tsm-bundle-v1"), 32 bytes."""
+    prk = hmac.new(service_nonce + admin_nonce, admin_key, hashlib.sha256).digest()
+    return hmac.new(prk, b'tsm-bundle-v1\x01', hashlib.sha256).digest()
+
+
+def bundle_aad(vault: str, service_start: int) -> bytes:
+    """A sealed bundle's associated data: the vault's name in UTF-8 and
+    serviceStart as 8 bytes big-endian."""
+    return vault.encode('utf-8') + service_start.to_bytes(8, 'big')
+
+
 # --------------------------------------------------------------------------
 # Signed objects and approval codes (protocol.md section 9)
 # --------------------------------------------------------------------------

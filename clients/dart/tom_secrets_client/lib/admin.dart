@@ -18,3 +18,4 @@ export 'src/admin/keychain_names.dart';
 export 'src/admin/pairing_mode.dart';
 export 'src/admin/runtime.dart';
 export 'src/admin/starter.dart';
+export 'src/admin/unlock_bundle.dart';

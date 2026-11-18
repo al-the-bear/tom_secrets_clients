@@ -56,7 +56,7 @@
             "type": "boolean"
           },
           "keys": {
-            "description": "The store key material (section 6.4): its master password, key file and repository outer key, each when the store has one.",
+            "description": "The store key material (section 6.4): its master password, key file and repository outer key, each when the store has one; for a vault opened with an OS unlock bundle (phase B) its composite key in place of the password and the key file.",
             "type": "object",
             "properties": {
               "password": {
@@ -67,6 +67,9 @@
               },
               "outerKey": {
                 "$ref": "common.json#/$defs/base64"
+              },
+              "compositeKey": {
+                "$ref": "common.json#/$defs/base64_32"
               }
             }
           }

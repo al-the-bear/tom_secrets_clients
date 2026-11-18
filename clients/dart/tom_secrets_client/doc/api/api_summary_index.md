@@ -96,6 +96,8 @@ manager app, `tsm` and the service.
 | Type | Description | Link |
 | --- | --- | --- |
 | `TomSecretsAdminClient` | An authenticated admin connection: requests by id and the pushed events. | [→](api_summary_admin.md#tomsecretsadminclient) |
+| `TomSecretsUnlockBundle` | The OS unlock's key material of one vault: its composite key and repository key. | [→](api_summary_admin.md#tomsecretsunlockbundle) |
+| `TomSecretsBundleException` | A sealed bundle did not open, or is no bundle. | [→](api_summary_admin.md#tomsecretsbundleexception) |
 | `TomSecretsAdminException` | The admin endpoint refused or broke the conversation. | [→](api_summary_admin.md#tomsecretsadminexception) |
 | `TomSecretsAdminKeyring` | The admin keys the app and `tsm` keep in the OS keychain, one per start of the service, and the index of the starts they were kept for. | [→](api_summary_admin.md#tomsecretsadminkeyring) |
 | `TomSecretsRuntime` | The runtime directory of this OS user: its check, the single-instance lock `service.lock`, `service.json` and the endpoint files. | [→](api_summary_admin.md#tomsecretsruntime) |
@@ -122,6 +124,9 @@ manager app, `tsm` and the service.
 | `tomSecretsRandomBytes` | `Uint8List tomSecretsRandomBytes([int count = tomSecretsKeyBytes])` | Bytes from the OS's secure generator | [→](api_summary_admin.md#functions) |
 | `tomSecretsAuthDelay` | `Duration tomSecretsAuthDelay(int failures)` | The delay before the next authentication: 0, then 1 s, 2 s, 4 s, ... up to 60 s | [→](api_summary_admin.md#functions) |
 | `tomSecretsAdminKeyHandle` | `String tomSecretsAdminKeyHandle(int serviceStart)` | The keychain handle of the admin key of a service start, `tsm.admin.<start>` | [→](api_summary_admin.md#functions) |
+| `tomSecretsBundleKey` | `Uint8List tomSecretsBundleKey(List<int> adminKey, List<int> serviceNonce, List<int> adminNonce)` | The bundle key of one admin connection (HKDF-SHA256) | [→](api_summary_admin.md#functions) |
+| `tomSecretsSealBundle` | `Future<Map<String, String>> tomSecretsSealBundle({...})` | Seals the OS unlock's key bundle (AES-256-GCM) | [→](api_summary_admin.md#functions) |
+| `tomSecretsOpenBundle` | `Future<Uint8List> tomSecretsOpenBundle({...})` | Opens a sealed key bundle | [→](api_summary_admin.md#functions) |
 | `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set | [→](api_summary_admin.md#functions) |
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory | [→](api_summary_admin.md#functions) |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder | [→](api_summary_admin.md#functions) |
@@ -159,6 +164,8 @@ manager app, `tsm` and the service.
 | `TomSecretRequest` | Client | [→](api_summary_client.md#tomsecretrequest) |
 | `TomSecretResult` | Client | [→](api_summary_client.md#tomsecretresult) |
 | `TomSecretsAdminClient` | Admin | [→](api_summary_admin.md#tomsecretsadminclient) |
+| `TomSecretsUnlockBundle` | Admin | [→](api_summary_admin.md#tomsecretsunlockbundle) |
+| `TomSecretsBundleException` | Admin | [→](api_summary_admin.md#tomsecretsbundleexception) |
 | `TomSecretsAdminException` | Admin | [→](api_summary_admin.md#tomsecretsadminexception) |
 | `TomSecretsAdminKeyring` | Admin | [→](api_summary_admin.md#tomsecretsadminkeyring) |
 | `TomSecretsAlreadyRunning` | Admin | [→](api_summary_admin.md#tomsecretsalreadyrunning) |

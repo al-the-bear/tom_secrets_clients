@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 /// Writes protocol/vectors/signatures.json and link_handshake.json (section 9
-/// of protocol.md), or with `--check` compares them with a fresh generation.
+/// of protocol.md) and bundles.json (the OS unlock's key bundle, 6.4), or with `--check` compares them with a fresh generation.
 ///
 ///     cd protocol/tool/vectors_dart
 ///     dart run bin/gen_vectors.dart [--check]
@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:tsm_protocol_vectors/generate.dart';
+import 'package:tsm_protocol_vectors/unlock_bundles.dart';
 
 Future<void> main(List<String> args) async {
   final check = args.contains('--check');
@@ -30,6 +31,7 @@ Future<void> main(List<String> args) async {
   final files = {
     'signatures.json': signatures,
     'link_handshake.json': await linkVectors(signatures),
+    'bundles.json': await bundleVectors(),
   };
   var differ = 0;
   for (final MapEntry(key: name, value: data) in files.entries) {

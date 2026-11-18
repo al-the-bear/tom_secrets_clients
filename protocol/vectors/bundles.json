@@ -1,0 +1,73 @@
+{
+  "note": "The sealed key bundles of the OS unlock (section 6.4): bundleKey = HKDF-SHA256(ikm = adminKey, salt = serviceNonce || adminNonce, info = \"tsm-bundle-v1\", 32 bytes); ciphertext = AES-256-GCM(bundleKey, nonce, plaintext, aad = vault UTF-8 || serviceStart as 8 bytes big-endian) with the 16-byte tag appended. Keys, nonces and the composite keys are demo values derived from labels.",
+  "adminKey": "D+9S6sHqEouqUrVf8nWojNNp0hUw6a1Hds3NxnaSalA=",
+  "serviceNonce": "VSUB8D3X5Q4y4JCBIRNuL4P+VfWge2569ZXzU6eWTas=",
+  "adminNonce": "ZD9ihFFeRR8P38Uw+ArZcXK32UOe49WppCr7yLsmtZY=",
+  "serviceStart": 1794560400000,
+  "bundleKey": "dYmccNGejNrHHaqae0eGmT9fxVJLj/hk/3iWVyTsZ2s=",
+  "cases": [
+    {
+      "name": "the primary, composite key only",
+      "vault": "personal",
+      "plaintext": "{\"v\":1,\"compositeKey\":\"L69bBecvjYlhjBXK6ZR9ZqLVz6A77zp+6XRPwqLUBrg=\"}",
+      "aad": "cGVyc29uYWwAAAGh1CKagA==",
+      "bundle": {
+        "nonce": "gydraT9Nv2TBHYw3",
+        "ciphertext": "0/YtlIT65TeeW6pzrigX8dzhEduQ5dPlwup5mIwhU6MK+Qvass3pSdLu7VISJ2fes0r/8HiOR8Z4JToqU9l0FHMYA3oJ0hPnm+ghmWpSIdsf8fr8jg=="
+      }
+    },
+    {
+      "name": "a vault with the outer encryption",
+      "vault": "fleet",
+      "plaintext": "{\"v\":1,\"compositeKey\":\"YLYriIckjXjrFff1rDoJmLuSjw/EGvowg212c3Q4wvw=\",\"outerKey\":\"XZYwPYJHgmqthIZ4umSGabG5wH06JLJusc9a93Q7ygo=\"}",
+      "aad": "ZmxlZXQAAAGh1CKagA==",
+      "bundle": {
+        "nonce": "hzeU1RmxkoT+LlS3",
+        "ciphertext": "7OcnA17IbEhkFrI7cHtcd7q6Pudvx72yzM/rsvVHbTypKsyCTAku0zTtNDbZXd0zUeEmCuwZci8n1cCFW0oj70IOwWwTOp3m6HJfzIzqTbROCnJAiG1s8Tuh4GyTNbdZtgVL/JLsixVzsSkLwUaCRNIAHwlDbYjJ6zFfC0L8edfBHhUO1jt6wxLLTqOjr2k="
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "name": "another vault",
+      "case": "the primary, composite key only",
+      "vault": "fleet",
+      "serviceStart": 1794560400000,
+      "bundle": {
+        "nonce": "gydraT9Nv2TBHYw3",
+        "ciphertext": "0/YtlIT65TeeW6pzrigX8dzhEduQ5dPlwup5mIwhU6MK+Qvass3pSdLu7VISJ2fes0r/8HiOR8Z4JToqU9l0FHMYA3oJ0hPnm+ghmWpSIdsf8fr8jg=="
+      }
+    },
+    {
+      "name": "another service start",
+      "case": "the primary, composite key only",
+      "vault": "personal",
+      "serviceStart": 1794560400001,
+      "bundle": {
+        "nonce": "gydraT9Nv2TBHYw3",
+        "ciphertext": "0/YtlIT65TeeW6pzrigX8dzhEduQ5dPlwup5mIwhU6MK+Qvass3pSdLu7VISJ2fes0r/8HiOR8Z4JToqU9l0FHMYA3oJ0hPnm+ghmWpSIdsf8fr8jg=="
+      }
+    },
+    {
+      "name": "another admin connection (serviceNonce)",
+      "case": "the primary, composite key only",
+      "vault": "personal",
+      "serviceStart": 1794560400000,
+      "serviceNonce": "Emtgy3Sjf1cqhIkDcxi+GXfSlAtXaYh7pWB0gNysyB8=",
+      "bundle": {
+        "nonce": "gydraT9Nv2TBHYw3",
+        "ciphertext": "0/YtlIT65TeeW6pzrigX8dzhEduQ5dPlwup5mIwhU6MK+Qvass3pSdLu7VISJ2fes0r/8HiOR8Z4JToqU9l0FHMYA3oJ0hPnm+ghmWpSIdsf8fr8jg=="
+      }
+    },
+    {
+      "name": "a changed tag",
+      "case": "the primary, composite key only",
+      "vault": "personal",
+      "serviceStart": 1794560400000,
+      "bundle": {
+        "nonce": "gydraT9Nv2TBHYw3",
+        "ciphertext": "0/YtlIT65TeeW6pzrigX8dzhEduQ5dPlwup5mIwhU6MK+Qvass3pSdLu7VISJ2fes0r/8HiOR8Z4JToqU9l0FHMYA3oJ0hPnm+ghmWpSIdsf8fr8jw=="
+      }
+    }
+  ]
+}
