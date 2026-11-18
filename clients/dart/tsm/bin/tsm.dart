@@ -11,7 +11,11 @@ import 'dart:io';
 import 'package:tom_secrets_tsm/tom_secrets_tsm.dart';
 
 Future<void> main(List<String> arguments) async {
-  final code = await tsmMain(arguments, TsmIo.system());
+  // Multi-call (part-os-integration): git runs tsm as git-credential-tsm.
+  final io = TsmIo.system();
+  final code = tsmInvokedName(Platform.executable) == tsmGitCredentialName
+      ? await tsmGitCredential(arguments, io)
+      : await tsmMain(arguments, io);
   await stdout.flush();
   await stderr.flush();
   exit(code);

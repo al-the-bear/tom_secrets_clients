@@ -14,11 +14,12 @@ import 'package:tom_secrets_client/tom_secrets_client.dart'
     show TomSecretsClientException;
 
 import 'commands.dart';
+import 'helpers.dart';
 import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.4';
+const String tsmVersion = '0.2.5';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -79,6 +80,28 @@ final ToolDefinition tsmTool = ToolDefinition(
       'none answers (an SSH session) each admin command asks for the master '
       'password and claims the service.',
   commands: [
+    _command(
+      'integrations',
+      'Show, install or remove the developer-tool integrations: ssh (the '
+          "service's agent as IdentityAgent in ~/.ssh/config) and git "
+          '(credential.helper tsm in ~/.gitconfig, git-credential-tsm beside '
+          'tsm). Each is a marked block; nothing outside it changes.',
+      options: const [
+        OptionDefinition.option(
+          name: 'hosts',
+          description: 'The ssh Host patterns the agent is used for.',
+          valueName: 'patterns',
+        ),
+        _json,
+      ],
+      examples: const [
+        'tsm integrations',
+        'tsm integrations install ssh',
+        "tsm integrations install ssh --hosts '*.example.com'",
+        'tsm integrations install git',
+        'tsm integrations uninstall git',
+      ],
+    ),
     _command(
       'get',
       'Print a value: the reference\'s field, without a trailing line break.',
@@ -320,6 +343,7 @@ const Map<String, _Command> _commands = {
   'allow': tsmAllow,
   'audit': tsmAudit,
   'compact': tsmCompact,
+  'integrations': tsmIntegrations,
 };
 
 /// Runs tsm with [arguments] over [io]; answers the exit code.

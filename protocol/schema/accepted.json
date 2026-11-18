@@ -14,6 +14,10 @@
     },
     "id": {
       "$ref": "common.json#/$defs/id"
+    },
+    "known": {
+      "description": "A helper's credential the vaults hold already: not passed on (DP-52).",
+      "type": "boolean"
     }
   },
   "x-tsm": {

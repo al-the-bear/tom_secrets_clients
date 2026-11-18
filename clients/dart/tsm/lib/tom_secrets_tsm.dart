@@ -7,6 +7,7 @@
 library;
 
 export 'src/commands.dart';
+export 'src/helpers.dart';
 export 'src/tsm_context.dart';
 export 'src/tsm_io.dart';
 export 'src/tsm_tool.dart';

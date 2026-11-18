@@ -109,6 +109,37 @@
     "confirmOnly": {
       "description": "[B] A confirmation of one ssh-agent signature a grant allows: answered once or never, nothing written (section 7.6).",
       "type": "boolean"
+    },
+    "pick": {
+      "description": "[B] A helper's pick prompt: the logins to pick from (section 5.5).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "entryId",
+          "title",
+          "userName",
+          "matchedUrl"
+        ],
+        "properties": {
+          "entryId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "matchedUrl": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "url": {
+      "description": "[B] The page or host the logins of a pick prompt match.",
+      "type": "string"
     }
   },
   "x-tsm": {

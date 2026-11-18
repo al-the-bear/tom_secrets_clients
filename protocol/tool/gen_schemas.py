@@ -206,17 +206,23 @@ message('file', 'client', 's2c', 'B', 'The start of a getFile answer.', ['id', '
 message('end', 'client', 's2c', 'B', 'The end of a getFile answer, after its binary chunks.',
         ['id', 'sha256'], id=ref('id'), sha256={'type': 'string', 'pattern': '^[0-9a-f]{64}$'})
 message('match', 'client', 'c2s', 'B', 'Logins matching a page (browser host, helpers).',
-        ['id', 'url'], id=ref('id'), url=STR, frameUrl=STR, wait=BOOL, timeoutMs=INT0)
+        ['id', 'url'], id=ref('id'), url=STR, frameUrl=STR,
+        userName={'description': 'Only this user\'s logins.', **STR},
+        pick={'description': 'The helpers: one login of the host, decided by the grants or '
+              'picked by the user (section 5.5).', **BOOL},
+        wait=BOOL, timeoutMs=INT0)
 message('matches', 'client', 's2c', 'B', 'The answer to match: candidates, never a value.',
         ['id', 'candidates'], id=ref('id'),
         candidates={'type': 'array', 'items': {
             'type': 'object', 'required': ['entryId', 'title', 'userName', 'matchedUrl', 'hasTotp'],
             'properties': {'entryId': STR, 'title': STR, 'userName': STR, 'matchedUrl': STR,
                            'hasTotp': BOOL}}})
-message('propose', 'client', 'c2s', 'B', 'A login for the app to save (browser host).',
+message('propose', 'client', 'c2s', 'B', 'A login for the app to save (browser host, helpers).',
         ['id', 'url', 'userName', 'password'], id=ref('id'), url=STR, title=STR,
         userName=STR, password=STR, wait=BOOL, timeoutMs=INT0)
-message('accepted', 'client', 's2c', 'B', 'The answer to propose.', ['id'], id=ref('id'))
+message('accepted', 'client', 's2c', 'B', 'The answer to propose.', ['id'], id=ref('id'),
+        known={'description': 'A helper\'s credential the vaults hold already: not passed '
+               'on (DP-52).', **BOOL})
 
 # ---- admin endpoint (section 6) -----------------------------------------
 message('challenge', 'admin', 's2a', 'A', 'The first frame of an admin connection.',
@@ -379,7 +385,8 @@ message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
         clientToken=ref('base64'),
         sshHost={'description': '[B] Limit a lasting ssh-agent grant to the destination host.',
                  **BOOL},
-        withParent={'description': '[B] Name the client with its parent (exe-from).', **BOOL})
+        withParent={'description': '[B] Name the client with its parent (exe-from).', **BOOL},
+        pick={'description': '[B] The entryId picked at a helper\'s pick prompt.', **STR})
 message('approval.redeem', 'admin', 'a2s', 'A', 'Redeem a one-time approval token.',
         ['id', 'token'], id=ref('id'),
         token={'type': 'string', 'pattern': '^[A-Z2-7]{26}$'})
@@ -486,7 +493,14 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
         hostHint=STR, approvalCode={'type': 'string', 'pattern': '^[A-Z2-7]{10}$'},
         wantClientToken=BOOL, ssh=SSH_USE,
         confirmOnly={'description': '[B] A confirmation of one ssh-agent signature a grant '
-                     'allows: answered once or never, nothing written (section 7.6).', **BOOL})
+                     'allows: answered once or never, nothing written (section 7.6).', **BOOL},
+        pick={'description': '[B] A helper\'s pick prompt: the logins to pick from '
+              '(section 5.5).',
+              'type': 'array', 'items': {
+                  'type': 'object', 'required': ['entryId', 'title', 'userName', 'matchedUrl'],
+                  'properties': {'entryId': STR, 'title': STR, 'userName': STR,
+                                 'matchedUrl': STR}}},
+        url={'description': '[B] The page or host the logins of a pick prompt match.', **STR})
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})

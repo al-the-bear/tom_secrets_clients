@@ -315,6 +315,129 @@ void main() {
     expect(again.code, 5);
     expect(again.err, contains('set up already'));
   }, testOn: '!windows');
+
+  test(
+    'git runs tsm as git-credential-tsm against the real service: the '
+    'user picks the login once, git gets it, and then without asking',
+    () async {
+      if (Platform.isWindows) {
+        markTestSkipped('the link is a symbolic link here');
+        return;
+      }
+      // tsm built and put beside the service, where the service knows its
+      // helpers; git-credential-tsm a link to it.
+      final tsmOut = Directory('${build.path}/tsm_out');
+      final built = await Process.run(Platform.resolvedExecutable, [
+        'build',
+        'cli',
+        '--target',
+        'bin/tsm.dart',
+        '-o',
+        tsmOut.path,
+      ]);
+      expect(built.exitCode, 0, reason: '${built.stdout}\n${built.stderr}');
+      final bin = File(serviceExe).parent.path;
+      // Replaced, not written over: a file being run cannot be opened for
+      // writing (Linux: text file busy).
+      final placed = File('$bin/tsm');
+      if (placed.existsSync()) placed.deleteSync();
+      File('${tsmOut.path}/bundle/bin/tsm').copySync(placed.path);
+      Process.runSync('chmod', ['755', '$bin/tsm']);
+      final lib = Directory('${tsmOut.path}/bundle/lib');
+      if (lib.existsSync()) {
+        for (final f in lib.listSync().whereType<File>()) {
+          f.copySync(
+            '${File(serviceExe).parent.parent.path}/lib/'
+            '${f.uri.pathSegments.last}',
+          );
+        }
+      }
+      final link = '$bin/git-credential-tsm';
+      if (FileSystemEntity.typeSync(link, followLinks: false) !=
+          FileSystemEntityType.notFound) {
+        File(link).deleteSync();
+      }
+      Link(link).createSync('$bin/tsm');
+
+      final self = tomSecretsIdentityOf(tomSecretsProcessInfo(pid)!);
+      final demo = await Demo.create(adminExecutables: [self.exe]);
+      final keychain = TomInMemorySecretStore();
+      Future<TsmRun> tsm(List<String> args) =>
+          demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+      addTearDown(() async {
+        await tsm(['stop']);
+        await _gone(demo);
+      });
+      final r = await tsm(['start', '--unlock', '--service', serviceExe]);
+      expect(r.code, 0, reason: '$r');
+      final start = (await demo.runtime.readInfo())!['start']! as int;
+      final app = await TomSecretsAdminClient.connect(
+        demo.runtime,
+        base64.decode((await keychain.read(tomSecretsAdminKeyHandle(start)))!),
+      );
+      addTearDown(app.close);
+      await app.request('subscribe');
+
+      Future<String> fill() async {
+        final git = await Process.start(
+          'git',
+          [
+            '-c',
+            'credential.helper=',
+            '-c',
+            // As `tsm integrations install git` configures it: the helper
+            // `tsm`, found as git-credential-tsm on PATH, so git starts it
+            // itself (an absolute path would go through the shell).
+            'credential.helper=tsm',
+            'credential',
+            'fill',
+          ],
+          environment: {
+            ...demo.environment,
+            'GIT_TERMINAL_PROMPT': '0',
+            'PATH': '$bin:${Platform.environment['PATH']}',
+          },
+        );
+        git.stdin.write('protocol=https\nhost=git.example.com\n\n');
+        await git.stdin.close();
+        final out = await git.stdout.transform(utf8.decoder).join();
+        await git.stderr.drain<void>();
+        await git.exitCode;
+        return out;
+      }
+
+      final needed = app.events.firstWhere((e) => e['op'] == 'approval_needed');
+      final first = fill();
+      final event = await needed;
+      final identity = (event['identity']! as Map).cast<String, Object?>();
+      // Measured as tsm (the link resolved), started by git.
+      expect(identity['exe'], File('$bin/tsm').resolveSymbolicLinksSync());
+      expect((identity['parent']! as Map)['exe'], contains('git'));
+      final pick = (event['pick']! as List).cast<Map>().single;
+      await app.request('approve', {
+        'approvalId': event['approvalId'],
+        'decision': 'always',
+        'secret': 'ref',
+        'pick': pick['entryId'],
+      });
+      final out = await first;
+      expect(out, contains('username=demo-git-user'));
+      expect(out, contains('password=demo-git-token'));
+      final grants = (await app.request('grants.list'))['grants']! as List;
+      expect(
+        grants.map((g) => (g as Map)['subject']),
+        contains(startsWith('exe-from ')),
+      );
+
+      var prompted = false;
+      final sub = app.events.listen((e) {
+        if (e['op'] == 'approval_needed') prompted = true;
+      });
+      expect(await fill(), contains('password=demo-git-token'));
+      await sub.cancel();
+      expect(prompted, isFalse);
+    },
+  );
 }
 
 /// Waits until the service's runtime files are gone.

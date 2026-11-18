@@ -107,6 +107,12 @@ final class Demo {
       argon2: testArgon2,
     );
     _add(team, 'Api', 'Token', {'Password': 'demo-api-token'});
+    // A login git's credential helper finds by its host.
+    _add(team, 'Code', 'Example git', {
+      'URL': 'https://git.example.com',
+      'UserName': 'demo-git-user',
+      'Password': 'demo-git-token',
+    });
     final logo = KdbxEntry.create(team, team.body.rootGroup)
       ..setString(KdbxKeyCommon.TITLE, PlainValue('Logo'))
       ..setString(const KdbxKey('tsm.key'), PlainValue('demo.logo'));
@@ -167,11 +173,15 @@ final class Demo {
   TomSecretsTransport get transport =>
       Platform.isWindows ? TomSecretsTransport.tcp : TomSecretsTransport.unix;
 
+  /// Variables a test adds to tsm's environment (`HOME`, `PATH`).
+  Map<String, String> environmentOverrides = const {};
+
   /// The environment tsm runs with.
   Map<String, String> get environment => {
     ...Platform.environment,
     'TSM_RUNTIME_DIR': runtimeDirectory,
     'TSM_DATA_DIR': dataDirectory,
+    ...environmentOverrides,
   };
 
   /// Starts the service in this process (the in-process half of the tests;
@@ -179,6 +189,7 @@ final class Demo {
   Future<TomSecretsService> startInProcess({
     required Uint8List adminKey,
     TomSecretsAccessPolicy? policy = const AllowAll(),
+    Set<String>? helperExecutables,
   }) async {
     final service = await TomSecretsService.launch(
       TomSecretsServiceConfig(
@@ -187,6 +198,7 @@ final class Demo {
         adminKey: adminKey,
         policy: policy,
         host: 'demo-host',
+        helperExecutables: helperExecutables,
         authDelay: (n) => Duration(milliseconds: 10 * n),
         peerMeasurer:
             transport == TomSecretsTransport.tcp && !Platform.isWindows
@@ -233,6 +245,28 @@ final class Demo {
       ),
     );
     passwordPrompts = prompts;
+    return TsmRun(code, out.takeBytes(), err.toString());
+  }
+
+  /// Runs tsm as `git-credential-tsm` with [args], git's [input] lines on
+  /// standard input.
+  Future<TsmRun> gitCredential(List<String> args, List<String> input) async {
+    final out = BytesBuilder();
+    final err = StringBuffer();
+    final lines = [...input];
+    final code = await tsmGitCredential(
+      args,
+      TsmIo(
+        writeOut: out.add,
+        err: err,
+        readSecret: (_) async => null,
+        readLine: () async => lines.isEmpty ? null : lines.removeAt(0),
+        environment: environment,
+        keychain: () async => null,
+        executableDirectory: '/nonexistent',
+        runCommand: (command, env) async => 0,
+      ),
+    );
     return TsmRun(code, out.takeBytes(), err.toString());
   }
 

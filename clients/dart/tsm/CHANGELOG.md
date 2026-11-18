@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.5
+
+- `git-credential-tsm`, a second name of `tsm` (multi-call: the name it is
+  started under): `get` answers the login of git's host the service's
+  `match` with `pick` gives (the user picks it once in the app), `store`
+  proposes a credential the vaults do not hold, `erase` is ignored; nothing
+  is answered when no service runs or nothing matches (DP-52, DP-53).
+- `tsm integrations [status | install <ssh|git> | uninstall <ssh|git>]
+  [--hosts PATTERNS] [--json]`: the ssh block (`IdentityAgent` of the
+  agent) and the git block (`credential.helper tsm`, `git-credential-tsm`
+  beside tsm), marked blocks with nothing outside them changed. Needs
+  `tom_secrets_client` 0.2.7.
+
 ## 0.2.4
 
 - `tsm status` shows the ssh-agent's endpoint (`agent`, what

@@ -184,6 +184,13 @@ switched command-line approvals on.
 | --- | --- |
 | `compact <owner/name>` | Cuts the history of a `github:` vault repository now, keeping the repository's own retention. |
 
+### ssh and git
+
+| Command | What it does |
+| --- | --- |
+| `integrations [status \| install <ssh\|git> \| uninstall <ssh\|git>] [--hosts PATTERNS] [--json]` | Shows, writes or removes the ssh block (`IdentityAgent` of the service's agent in `~/.ssh/config`, for `Host *` or the `--hosts` patterns) and the git block (`credential.helper tsm` in `~/.gitconfig`, with `git-credential-tsm` beside tsm); each is a marked block, nothing outside it changes. |
+| `git-credential-tsm get\|store\|erase` | tsm under its second name, run by git: `get` answers the login of git's host (picked once in the manager app), `store` proposes a new credential to the app, `erase` is ignored; nothing is answered when nothing matches or no service runs. |
+
 ### Global options
 
 | Option | What it does |

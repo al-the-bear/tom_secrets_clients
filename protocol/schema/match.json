@@ -22,6 +22,14 @@
     "frameUrl": {
       "type": "string"
     },
+    "userName": {
+      "description": "Only this user's logins.",
+      "type": "string"
+    },
+    "pick": {
+      "description": "The helpers: one login of the host, decided by the grants or picked by the user (section 5.5).",
+      "type": "boolean"
+    },
     "wait": {
       "type": "boolean"
     },

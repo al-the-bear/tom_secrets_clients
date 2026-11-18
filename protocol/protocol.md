@@ -380,8 +380,8 @@ command line can show it.
 | Request | Answer | What |
 | --- | --- | --- |
 | **[B]** `getFile {id, ref, dimensions?, field?, wait?, timeoutMs?}` | `file {id, name, size}`, binary chunks (2.5), `end {id, sha256}` | an attachment or a typed key as bytes, for the ssh-agent and `tsm run --file` |
-| **[B]** `match {id, url, frameUrl?, wait?, timeoutMs?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host and the helpers, others get `denied` (reason `not_allowed_op`); audited |
-| **[B]** `propose {id, url, title?, userName, password, wait?, timeoutMs?}` | `accepted {id}` | a login for the app to save, passed to the attached app as the event `proposal`; with no app attached `unavailable` (reason `no_app`); only for the browser host holding a grant |
+| **[B]** `match {id, url, frameUrl?, userName?, pick?, wait?, timeoutMs?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host and the helpers, others get `denied` (reason `not_allowed_op`); `pick` (the helpers) asks for one login of the host; audited |
+| **[B]** `propose {id, url, title?, userName, password, wait?, timeoutMs?}` | `accepted {id, known?}` | a login for the app to save, passed to the attached app as the event `proposal`; with no app attached `unavailable` (reason `no_app`); only for the browser host or a helper holding a grant; a helper's credential the vaults hold already is not passed on (`known`) |
 
 **`getFile`** is checked and decided as `get` is (5.6) and answered with the
 value as bytes: `file` names the field (an attachment field
@@ -399,7 +399,7 @@ client's measured executable (7.1), never by what `hello` says:
   (its real path); it may send `match` and `propose`;
 - the **helpers** are `tsm` beside the service, under any of its names
   (`git-credential-tsm`, `docker-credential-tsm`: links or copies of it);
-  they may send `match`.
+  they may send `match` (also with `pick`) and `propose`.
 
 Any other client is answered `denied` (reason `not_allowed_op`), which
 counts as a refusal (section 11).
@@ -422,11 +422,33 @@ for a fill, the title, the user name, the entry's URL that matched as
 written, and `hasTotp` (the entry carries a TOTP secret); never a password
 or another value. Every `match` is audited (`refs` `match <host>`, the
 outcome and the candidates' entries). A locked service waits for an unlock
-as `get` does.
+as `get` does. With `userName` (a string) only that user's logins are
+answered.
+
+**`match` with `pick`** (the helpers only, else `denied`; git's credential
+lookup, part-os-integration) answers one login of the host, by the host
+rule (only entries whose URL's host is the page's):
+
+1. the one login the client's grants cover; of several covered, the one an
+   `allow` grant names by its reference (a remembered pick);
+2. else, when the vaults hold logins of the host (covered or not; of
+   several covered, those), the approvers pick one at a prompt
+   (`approval_needed` with `pick`, the logins as `{entryId, title,
+   userName, matchedUrl}`, and `url`; `progress` `pending` `approval`):
+   `approve` with `decision` `once` or `always` and `pick`, the `entryId`
+   picked, or `never`. `always` writes a grant for the picked entry's
+   reference, its subject the helper as started by its tool
+   (`exe-from <tool> => <tsm>`, 7.3); `once` lets this connection read that
+   entry once with `get` without a prompt; `never` writes nothing;
+3. refused, unanswered within the approval timeout, or with no approver
+   connected (a pick has no approval code): no candidate.
 
 **`propose`** carries `url`, `userName`, `password` and an optional
 `title` (else `malformed`, reason `propose`). It is answered for the
-browser host only when an `allow` grant names it (any secret); the service
+browser host and the helpers only when an `allow` grant names the client
+(any secret). A helper's proposal (git's `store`, DP-52) of a credential
+a login of the vaults matching `url` (5.7) holds already, user name and
+password, is answered `accepted` with `known` `true` and not passed on;
 then passes the login to every attached manager app as the event
 `proposal` (6.5), keeps nothing, and answers `accepted`; with no app
 attached it answers `unavailable` (reason `no_app`). A locked service waits
@@ -540,7 +562,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
 | `pair.list {id}` | `pairedDevices {id, devices[{device, platform?, paired, pairedBy?, keyIds, approverKeyId?, approverKeySince?, linkKeySince?, revoked?}]}` | the device records of the primary; accepted only from the manager app's executable |
 | `subscribe {id}` | `ok`, then events (6.5) | start the event stream on this connection |
-| `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?, sshHost?, withParent?}` | `ok` | answer a prompt (7.2); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4); **[B]** `sshHost` limits a lasting ssh-agent grant to the request's destination host, `withParent` names the client with its parent (`exe-from`, 7.3); a confirmation (`confirmOnly`, 7.6) takes only `once` or `never` (else `malformed`) and writes nothing |
+| `approve {id, approvalId, decision, secret, folder?, pin?, clientToken?, sshHost?, withParent?, pick?}` | `ok` | answer a prompt (7.2); **[B]** `pick` the `entryId` picked at a helper's pick prompt (5.5); `clientToken` is the token the app made for an `always` of a request with `wantClientToken` (7.4); **[B]** `sshHost` limits a lasting ssh-agent grant to the request's destination host, `withParent` names the client with its parent (`exe-from`, 7.3); a confirmation (`confirmOnly`, 7.6) takes only `once` or `never` (else `malformed`) and writes nothing |
 | `approval.redeem {id, token}` | `ok` | `tsm approve <token>`: redeem a one-time approval token (7.5) |
 | `approval.issue {id, host, code, decision, secret, pin?}` | `approvalToken {id, token}` | have this device make the token for a code shown on `host` (7.5, 9.6); for a decision other than `once` its app also writes the signed grant |
 | `grants.list {id, host?}` | `grantList {id, grants[]}` | the allow list of one host, or of every host (7.3) |
@@ -712,7 +734,7 @@ After `subscribe` the service pushes events on that connection (no `id`):
 | Event | Members | When |
 | --- | --- | --- |
 | `unlock_needed` | `identity?` | a client waits for an unlock |
-| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6) |
+| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?, pick?, url?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6); `pick` and `url` for a helper's pick prompt (5.5) |
 | `approval_closed` | `approvalId, outcome` (`approved`, `denied`, `timeout`, `abandoned`, `no_approver`) | a prompt was answered or ended elsewhere |
 | `locked`, `unlocked` | — | the service locked or unlocked |
 | `store_changed` | `store, revision?` | a store was reopened with new content |
@@ -1486,3 +1508,9 @@ part-service) leaves these open; this document fixes them:
     client into `subject` (`exe-from`), forms a service that does not know
     them never matches. A confirmation (`confirmOnly`) is a prompt that
     writes nothing.
+36. A helper asks for one credential (git's `get`), so `match` takes `pick`:
+    the grants decide when they can, and otherwise the user picks the login
+    at a prompt, as part-os-integration asks. The pick is remembered as a
+    reference grant, which outranks a store grant that covers several
+    logins; a `once` pick is a one-time read on the connection. The lookup
+    uses the host rule, as git names one host.

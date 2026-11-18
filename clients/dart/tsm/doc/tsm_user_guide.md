@@ -13,6 +13,7 @@ the tasks it is used for, on a desktop and on a headless machine. The
 - [References](#references)
 - [Approvals on a headless machine](#approvals-on-a-headless-machine)
 - [Status and key reminders](#status-and-key-reminders)
+- [ssh and git](#ssh-and-git)
 - [Compacting a vault repository](#compacting-a-vault-repository)
 - [Troubleshooting](#troubleshooting)
 
@@ -322,10 +323,10 @@ store    fleet  current  github  fetched 12 min ago
 store    infra  offline  cache  fetched 9 days ago  (GitHub not reachable; offline copy older than 7 days)
 ```
 
-- `agent` is the service's ssh-agent: point `ssh` at it with
-  `export SSH_AUTH_SOCK=<that path>`, or `IdentityAgent <that path>` in
-  `~/.ssh/config` (on Windows the pipe `\\.\pipe\tsm-ssh-agent`). It
-  signs with the vaults' SSH keys; the manager app approves each new use.
+- `agent` is the service's ssh-agent: `tsm integrations install ssh` points
+  `ssh` at it (see [ssh and git](#ssh-and-git)), or by hand
+  `export SSH_AUTH_SOCK=<that path>`. It signs with the vaults' SSH keys;
+  the manager app approves each new use.
 - Each store shows its state, where its copy comes from (`github`, `file`,
   `cache`) and how old the copy is. A store on its offline copy says why:
   `GitHub not reachable`, or `token expired: enter a new one`. A copy older
@@ -344,6 +345,47 @@ tsm audit --subject 'exe /opt/app/bin/server' --json
 `status`, `keys`, `approvals`, `grants` and `audit` take `--json` for
 scripts. `audit` covers the last 7 days unless `--since` / `--until` (ISO
 8601) say otherwise.
+
+## ssh and git
+
+`tsm integrations` writes and removes this user's tool configuration, each
+in a block between `# >>> tom secrets >>>` and `# <<< tom secrets <<<`;
+nothing outside the block changes (the manager app's Settings ›
+Integrations does the same):
+
+```sh
+tsm integrations                       # what is installed, and what is not right
+tsm integrations install ssh           # IdentityAgent of the agent, for Host *
+tsm integrations install ssh --hosts '*.example.com'
+tsm integrations install git           # credential.helper tsm, git-credential-tsm
+tsm integrations uninstall git
+```
+
+```text
+ssh  installed  /home/demo/.ssh/config  (Host *)
+git  installed, needs repair  /home/demo/.gitconfig
+     /opt/tsm/bin is not on PATH: git will not find it
+```
+
+- **ssh**: the block goes to the top of `~/.ssh/config` (ssh takes the
+  first value it reads) with `IdentityAgent` set to the agent; on Windows
+  the pipe is written `\\\\.\\pipe\\tsm-ssh-agent`, every backslash doubled,
+  as ssh's config reader takes a backslash as an escape.
+- **git**: the block in `~/.gitconfig` names the helper `tsm`, and
+  `git-credential-tsm` is made beside `tsm` (a symbolic link; on Windows a
+  hard link or a copy). The folder of `tsm` must be on `PATH` for git to
+  find it.
+
+**git's credentials.** git runs `git-credential-tsm get` with its host on
+standard input; the helper asks the service for the login of that host
+(a login whose URL has the host, with git's user name when git gives one)
+and prints its user name and password. The first time, the manager app
+asks you to pick the login (`always` makes git get it from then on); while
+it waits, or the service is locked, git shows
+`waiting for Tom Secrets Manager…`. With no service running, no matching
+login, or a refusal it answers nothing and git asks its next helper or you.
+A password git saw work that the vaults do not hold (`store`) is offered to
+the app as a proposal; `erase` is ignored.
 
 ## Compacting a vault repository
 

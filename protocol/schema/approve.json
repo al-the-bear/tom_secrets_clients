@@ -43,6 +43,10 @@
     "withParent": {
       "description": "[B] Name the client with its parent (exe-from).",
       "type": "boolean"
+    },
+    "pick": {
+      "description": "[B] The entryId picked at a helper's pick prompt.",
+      "type": "string"
     }
   },
   "x-tsm": {
