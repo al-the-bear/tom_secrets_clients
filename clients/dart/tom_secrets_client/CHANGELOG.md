@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.6
+
+- The ssh-agent's endpoint in the runtime directory [B]:
+  `TomSecretsRuntime.agentSocket` (`agent.sock` on Linux and macOS),
+  `TomSecretsRuntime.agentPipe` (`\\.\pipe\tsm-ssh-agent` on Windows) and
+  `agentEndpoint`, the one of the runtime's OS; `agent.sock` is an endpoint
+  file (removed with the others); `writeInfo` takes the agent's endpoint
+  for `service.json`.
+
 ## 0.2.5
 
 - `match` and `propose` [B] (protocol.md 5.5) for the browser host and the

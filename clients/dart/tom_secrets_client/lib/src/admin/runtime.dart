@@ -100,6 +100,19 @@ final class TomSecretsRuntime {
   /// `admin.sock`.
   String get adminSocket => _path('admin.sock');
 
+  /// `agent.sock`, the ssh-agent's Unix domain socket (Linux, macOS; phase
+  /// B): what `SSH_AUTH_SOCK` or `IdentityAgent` names.
+  String get agentSocket => _path('agent.sock');
+
+  /// The ssh-agent's named pipe on Windows (phase B), the same for every
+  /// user (the pipe's ACL admits only the service's user).
+  static const String agentPipe = r'\\.\pipe\tsm-ssh-agent';
+
+  /// Where `ssh` finds the agent on this runtime's OS: [agentPipe] on
+  /// Windows, else [agentSocket].
+  String get agentEndpoint =>
+      transport == TomSecretsTransport.tcp ? agentPipe : agentSocket;
+
   /// `client.port`.
   String get clientPortFile => _path('client.port');
 
@@ -117,7 +130,7 @@ final class TomSecretsRuntime {
 
   /// The endpoint files of [transport], every one a start writes.
   List<String> get endpointFiles => switch (transport) {
-    TomSecretsTransport.unix => [clientSocket, adminSocket],
+    TomSecretsTransport.unix => [clientSocket, adminSocket, agentSocket],
     TomSecretsTransport.tcp => [clientPortFile, clientTokenFile, adminPortFile],
   };
 
@@ -256,11 +269,13 @@ final class TomSecretsRuntime {
     if (await info.exists()) await info.delete();
   }
 
-  /// Writes `service.json`: PID, start, protocol, the endpoints; no secret.
+  /// Writes `service.json`: PID, start, protocol, the endpoints (the
+  /// ssh-agent's [agent] `{socket}` or `{pipe}` when it runs); no secret.
   Future<void> writeInfo({
     required int start,
     required Map<String, Object?> client,
     required Map<String, Object?> admin,
+    Map<String, Object?>? agent,
   }) => _writeFile(
     infoFile,
     jsonEncode({
@@ -269,6 +284,7 @@ final class TomSecretsRuntime {
       'protocol': 1,
       'client': client,
       'admin': admin,
+      'agent': ?agent,
     }),
   );
 

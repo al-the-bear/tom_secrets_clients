@@ -20,6 +20,9 @@ void main() {
       r'C:\Users\demo\AppData\Local\TomSecretsManager\run\client.port',
     );
     expect(runtime.separator, r'\');
+    // The ssh-agent is a named pipe there, not a file of the directory.
+    expect(runtime.agentEndpoint, r'\\.\pipe\tsm-ssh-agent');
+    expect(runtime.endpointFiles, isNot(contains(runtime.agentSocket)));
   });
 
   test('Linux paths computed anywhere use slashes', () {
@@ -29,6 +32,8 @@ void main() {
     );
     expect(runtime.transport, TomSecretsTransport.unix);
     expect(runtime.clientSocket, '/run/user/1000/tsm/client.sock');
+    expect(runtime.agentEndpoint, '/run/user/1000/tsm/agent.sock');
+    expect(runtime.endpointFiles, contains(runtime.agentSocket));
     expect(runtime.separator, '/');
   });
 }
