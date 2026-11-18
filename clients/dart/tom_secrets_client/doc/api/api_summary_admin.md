@@ -24,8 +24,12 @@
   - [TomSecretsServicePairing](#tomsecretsservicepairing)
   - [TomSecretsUnlockBundle](#tomsecretsunlockbundle)
   - [TomSecretsBundleException](#tomsecretsbundleexception)
+  - [TomSecretsBrowserHosts](#tomsecretsbrowserhosts)
+  - [TomSecretsBrowserHostState](#tomsecretsbrowserhoststate)
+  - [TomSecretsRegistry](#tomsecretsregistry)
 - [Enums](#enums)
   - [TomSecretsTransport](#tomsecretstransport)
+  - [TomSecretsBrowser](#tomsecretsbrowser)
 - [Typedefs](#typedefs)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -540,6 +544,44 @@ the password text.
 A sealed bundle did not open, or its plaintext is no bundle; carries no key
 material. `message` says what failed.
 
+### TomSecretsBrowserHosts
+
+The browsers' native-messaging manifests of the browser host
+`tsm-browser-host` (part-browser), installed per user by the manager app and
+checked at every start: `net.tom.secrets.json` in each browser's folder, on
+Windows kept under `%LOCALAPPDATA%\TomSecretsManager\NativeMessagingHosts\`
+and named by the registry key's default value.
+
+| Constructor | Description |
+| --- | --- |
+| `TomSecretsBrowserHosts({required String home, required String hostExecutable, String? operatingSystem, Map<String, String>? environment, TomSecretsRegistry? registry})` | The manifests in [home] naming [hostExecutable]; Windows' `LOCALAPPDATA` and `APPDATA` from [environment]; the registry through `reg.exe` by default |
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `profileFolder(TomSecretsBrowser b)` | `String` | The browser's profile folder, whose presence offers it |
+| `manifestFolder(TomSecretsBrowser b)` | `String` | The folder the browser reads the manifest from |
+| `manifestPath(TomSecretsBrowser b)` | `String` | The manifest file |
+| `registryKey(TomSecretsBrowser b)` | `String?` | The Windows registry key (`HKCU\Software\…\NativeMessagingHosts\net.tom.secrets`), null elsewhere |
+| `manifest(TomSecretsBrowser b)` | `Map<String, Object?>` | `name`, `description`, `path`, `type: stdio`, `allowed_origins` (Chromium) or `allowed_extensions` (Firefox) |
+| `state(TomSecretsBrowser b)` | `Future<TomSecretsBrowserHostState>` | Where the host stands for the browser |
+| `states()` | `Future<List<TomSecretsBrowserHostState>>` | Every browser's |
+| `install(TomSecretsBrowser b)` | `Future<void>` | Writes the manifest (and the registry value); `StateError` for a Flatpak or Snap browser |
+| `remove(TomSecretsBrowser b)` | `Future<void>` | Removes the manifest (and the registry key) |
+| `repair()` | `Future<List<TomSecretsBrowser>>` | Rewrites each installed manifest that names another host; answers those |
+
+### TomSecretsBrowserHostState
+
+Where the host stands for one browser: `browser`, `present` (its profile
+folder exists), `installed`, `current` (names this host and the product's
+extensions), `manifest` (the file), `sandboxed` (why a Flatpak or Snap
+browser cannot start it, or null), `problems`; `toJson()`.
+
+### TomSecretsRegistry
+
+The Windows registry as far as the manifests need it: `read(key)` (the
+default value, or null), `write(key, value)`, `delete(key)`.
+`TomSecretsRegExe` implements it with `reg.exe`.
+
 ---
 
 ## Enums
@@ -554,6 +596,11 @@ How the endpoints are offered.
 | --- | --- |
 | `unix` | Unix domain sockets: `client.sock`, `admin.sock` (Linux, macOS) |
 | `tcp` | Localhost TCP ports with a client token: `client.port` + `client.token`, `admin.port` (Windows) |
+
+### TomSecretsBrowser
+
+A browser the host can be installed for: `chrome`, `chromium`, `edge`,
+`brave`, `firefox`; `label` (its name), `isFirefox`.
 
 ---
 
@@ -579,6 +626,12 @@ How the endpoints are offered.
 | `tomSecretsToolsFolder` | `String` | The folder of the distribution holding the command-line tools, `tsm` |
 | `tomSecretsAppExecutable` | `String` | The manager app's executable name without `.exe`, `tom_secrets_app` |
 | `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` |
+| `tomSecretsBrowserHostName` | `String` | The browser host's executable name without `.exe`, `tsm-browser-host` |
+| `tomSecretsBrowserHostId` | `String` | The native-messaging host's name, `net.tom.secrets` |
+| `tomSecretsFirefoxExtensionId` | `String` | The Firefox extension's id, `tom-secrets@enterprise-flutter.dev` |
+| `tomSecretsChromiumDevelopmentKey` | `String` | The Chromium development build's public key (the manifest's `key`) |
+| `tomSecretsChromiumDevelopmentId` | `String` | The development build's extension id, fixed by that key |
+| `tomSecretsChromiumExtensionIds` | `List<String>` | The Chromium extension ids the host serves; `tomSecretsChromiumExtensionOrigins` their origins |
 | `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` |
 | `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) |
 
@@ -596,6 +649,7 @@ How the endpoints are offered.
 | `tomSecretsBundleAad` | `Uint8List tomSecretsBundleAad(String vault, int serviceStart)` | A sealed bundle's associated data: the vault's name and the service start as 8 bytes big-endian |
 | `tomSecretsSealBundle` | `Future<Map<String, String>> tomSecretsSealBundle({required List<int> bundleKey, required String vault, required int serviceStart, required List<int> plaintext, List<int>? nonce})` | The `bundle` object of `unlock`: AES-256-GCM with a random 12-byte nonce, the tag appended |
 | `tomSecretsOpenBundle` | `Future<Uint8List> tomSecretsOpenBundle({required List<int> bundleKey, required String vault, required int serviceStart, required Map<String, Object?> bundle})` | The plaintext of a sealed bundle; throws `TomSecretsBundleException` when it does not open |
+| `tomSecretsBrowserHostBeside` | `String tomSecretsBrowserHostBeside(String serviceExecutable, {required String operatingSystem})` | The browser host beside the service, where the service recognises it |
 | `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set |
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder |

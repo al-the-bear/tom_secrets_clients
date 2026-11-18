@@ -70,3 +70,20 @@ String tomSecretsDistributionApp(
       ? _join([serviceDirectory, '..', '..', '..', 'MacOS', exe], sep)
       : _join([serviceDirectory, '..', '..', exe], sep);
 }
+
+/// The browser host `tsm-browser-host` beside the service whose executable
+/// is [serviceExecutable] (where the service recognises it, protocol.md 5.5,
+/// and where the distribution carries it).
+String tomSecretsBrowserHostBeside(
+  String serviceExecutable, {
+  required String operatingSystem,
+}) {
+  final windows = operatingSystem == 'windows';
+  final sep = windows ? r'\' : '/';
+  final cut = serviceExecutable.lastIndexOf(sep);
+  final dir = cut < 0 ? '.' : serviceExecutable.substring(0, cut);
+  return '$dir$sep$tomSecretsBrowserHostName${windows ? '.exe' : ''}';
+}
+
+/// The browser host's executable name, without `.exe`.
+const String tomSecretsBrowserHostName = 'tsm-browser-host';

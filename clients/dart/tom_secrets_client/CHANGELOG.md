@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.10
+
+- The browsers' native-messaging manifests of `tsm-browser-host`
+  (part-browser): `TomSecretsBrowserHosts` (Chrome, Chromium, Edge, Brave
+  and Firefox on macOS, Linux and Windows: the manifest's folder, on
+  Windows the registry value through `reg.exe`; install, remove, the start
+  check; a Flatpak or Snap browser named), `TomSecretsBrowserHostState`,
+  `TomSecretsRegistry`; the extension ids the host serves
+  (`tomSecretsChromiumExtensionIds`, the development build's key and id,
+  `tomSecretsFirefoxExtensionId`); `tomSecretsBrowserHostBeside`.
+
 ## 0.2.9
 
 - The OS unlock's key bundle (protocol.md 6.4, part-os-unlock):
