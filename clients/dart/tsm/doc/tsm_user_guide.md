@@ -13,6 +13,7 @@ the tasks it is used for, on a desktop and on a headless machine. The
 - [References](#references)
 - [Approvals on a headless machine](#approvals-on-a-headless-machine)
 - [Status and key reminders](#status-and-key-reminders)
+- [Signing in with GitHub](#signing-in-with-github)
 - [ssh and git](#ssh-and-git)
 - [Compacting a vault repository](#compacting-a-vault-repository)
 - [Troubleshooting](#troubleshooting)
@@ -345,6 +346,27 @@ tsm audit --subject 'exe /opt/app/bin/server' --json
 `status`, `keys`, `approvals`, `grants` and `audit` take `--json` for
 scripts. `audit` covers the last 7 days unless `--since` / `--until` (ISO
 8601) say otherwise.
+
+## Signing in with GitHub
+
+Once the GitHub App for your vault repositories is registered and named in
+the manager app (Keys › GitHub sign-in), a headless machine signs in with:
+
+```sh
+tsm login
+```
+
+```text
+Open https://github.com/login/device and enter the code WDJB-MJHT
+signed in as demo-user
+```
+
+Enter the code on any device's browser. The service then reaches the vault
+repositories with the App's tokens and renews them itself; unused for six
+months, `tsm status` shows the sign-in as due and `tsm login` signs in
+again. `tsm logout` goes back to the token pasted for the machine. A pasted
+token is the way to cut off one machine alone if it is ever lost (revoking
+the App on GitHub signs out every device), so a server may well keep one.
 
 ## ssh and git
 

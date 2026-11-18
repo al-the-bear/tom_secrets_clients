@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.6
+
+- `tsm login [--client-id ID]`: "Sign in with GitHub" on a headless
+  machine; prints the GitHub App's device code and the page to enter it on,
+  waits, and says who is signed in (the service keeps and renews the
+  tokens). `tsm logout` signs the machine out; its pasted tokens are used
+  again (part-key-rotation §3, DP-83). Needs `tom_secrets_service` 0.14.0.
+
 ## 0.2.5
 
 - `git-credential-tsm`, a second name of `tsm` (multi-call: the name it is

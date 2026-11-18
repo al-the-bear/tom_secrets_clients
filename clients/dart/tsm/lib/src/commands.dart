@@ -826,3 +826,41 @@ Future<int> tsmCompact(TsmContext c, TsmArgs a) async {
     return TsmExit.ok;
   });
 }
+
+// ── GitHub sign-in (part-key-rotation §3, DP-83) ────────────────────────
+
+/// `tsm login [--client-id ID]`: "Sign in with GitHub" on a headless
+/// machine. The service starts the GitHub App's device flow; tsm prints the
+/// code and the page to enter it on (on any device), then waits for the
+/// outcome. The service keeps and renews the tokens (`github.signIn`).
+Future<int> tsmLogin(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
+  await admin.request('subscribe');
+  final done = admin.events.firstWhere((e) => e['op'] == 'github_sign_in');
+  final code = await admin.request('github.signIn', {
+    'clientId': ?a.option('client-id'),
+  });
+  c.io.outln(
+    'Open ${code['verificationUri']} and enter the code ${code['userCode']}',
+  );
+  c.io.err.writeln(
+    'tsm: waiting for GitHub (the code is valid '
+    '${((code['expiresIn'] as int?) ?? 900) ~/ 60} minutes)…',
+  );
+  final event = await done;
+  final outcome = event['outcome'];
+  if (outcome == 'signed_in') {
+    final login = event['login'];
+    c.io.outln(login == null ? 'signed in' : 'signed in as $login');
+    return TsmExit.ok;
+  }
+  c.io.err.writeln('tsm: not signed in: $outcome');
+  return TsmExit.of(outcome == 'expired' ? 'timeout' : 'denied');
+});
+
+/// `tsm logout`: the device's GitHub App tokens leave the keychain; its
+/// pasted tokens are used again.
+Future<int> tsmLogout(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
+  await admin.request('github.signOut');
+  c.io.outln('signed out');
+  return TsmExit.ok;
+});

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/githubApp.json",
+  "title": "githubApp",
+  "description": "The answer to github.app; never a token. Endpoint: admin; direction: s2a; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "state"
+  ],
+  "properties": {
+    "op": {
+      "const": "githubApp"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "state": {
+      "enum": [
+        "not_configured",
+        "signed_out",
+        "pending",
+        "signed_in",
+        "sign_in_again"
+      ]
+    },
+    "clientId": {
+      "type": "string"
+    },
+    "signedInClientId": {
+      "type": "string"
+    },
+    "login": {
+      "type": "string"
+    },
+    "accessExpiresAt": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "refreshExpiresAt": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "userCode": {
+      "type": "string"
+    },
+    "verificationUri": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "B"
+  }
+}

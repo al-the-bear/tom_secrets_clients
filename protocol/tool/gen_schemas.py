@@ -260,10 +260,13 @@ STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPu
                                'notPushed': INT0, 'rewritten': REWRITTEN}}
 EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
                 'properties': {'kind': {'enum': ['github_token', 'vault_keys',
-                                                 'approver_key', 'link_key']},
+                                                 'approver_key', 'link_key',
+                                                 'github_app']},
                                'key': STR, 'vault': ref('storeName'),
                                'expiresAt': ref('timestamp'),
                                'daysLeft': {'type': 'integer'}}}
+GITHUB_APP_STATE = {'enum': ['not_configured', 'signed_out', 'pending', 'signed_in',
+                             'sign_in_again']}
 AGENT_ENDPOINT = {'description': '[B] The ssh-agent endpoint while it runs (section 7.6).',
                   'type': 'object',
                   'properties': {'socket': STR, 'pipe': STR}}
@@ -285,7 +288,10 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
         expiring={'type': 'array', 'items': EXPIRING_KEY},
-        agent=AGENT_ENDPOINT)
+        agent=AGENT_ENDPOINT,
+        github={'description': '[B] The GitHub App sign-in (section 6.3 github.app).',
+                'type': 'object', 'required': ['state'],
+                'properties': {'state': GITHUB_APP_STATE, 'login': STR}})
 message('reload', 'admin', 'a2s', 'A', 'Fetch and reopen the stores now.', ['id'], id=ref('id'))
 message('vaultKeys', 'admin', 'a2s', 'A', 'Get the keys of the open vaults for editing.',
         ['id'], id=ref('id'), stores={'type': 'array', 'items': ref('storeName')})
@@ -376,7 +382,9 @@ message('pairedDevices', 'admin', 's2a', 'A', 'The answer to pair.list.',
                            'pairedBy': STR, 'keyIds': {'type': 'array', 'items': STR},
                            'approverKeyId': STR, 'approverKeySince': ref('timestamp'),
                            'linkKeySince': ref('timestamp'),
-                           'revoked': ref('timestamp')}}})
+                           'revoked': ref('timestamp'),
+                           'githubAuth': {'enum': ['app', 'token']},
+                           'githubTokenExpires': ref('timestamp')}}})
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',
@@ -455,6 +463,23 @@ message('token.set', 'admin', 'a2s', 'A',
 message('tokenSet', 'admin', 's2a', 'A', 'The answer to token.set.',
         ['id', 'repository', 'where'], id=ref('id'), repository=STR,
         where={'enum': ['keychain', 'primary']}, expiresAt=STR)
+message('github.app', 'admin', 'a2s', 'B', 'The device\'s GitHub App sign-in.', ['id'],
+        id=ref('id'))
+message('githubApp', 'admin', 's2a', 'B', 'The answer to github.app; never a token.',
+        ['id', 'state'], id=ref('id'), state=GITHUB_APP_STATE, clientId=STR,
+        signedInClientId=STR, login=STR, accessExpiresAt=ref('timestamp'),
+        refreshExpiresAt=ref('timestamp'), userCode=STR, verificationUri=STR)
+message('github.app.configure', 'admin', 'a2s', 'B',
+        'Name the user\'s GitHub App in the primary (the manager app only).',
+        ['id', 'clientId'], id=ref('id'),
+        clientId={'description': 'The App\'s client id; "" removes it.', **STR})
+message('github.signIn', 'admin', 'a2s', 'B', 'Start the GitHub App\'s device flow.',
+        ['id'], id=ref('id'), clientId=STR)
+message('deviceCode', 'admin', 's2a', 'B', 'The answer to github.signIn.',
+        ['id', 'userCode', 'verificationUri', 'expiresIn', 'interval'], id=ref('id'),
+        userCode=STR, verificationUri=STR, expiresIn=INT0, interval=INT0)
+message('github.signOut', 'admin', 'a2s', 'B', 'Drop the device\'s GitHub App tokens.',
+        ['id'], id=ref('id'))
 message('settings.get', 'admin', 'a2s', 'A', 'Read the device settings.', ['id'],
         id=ref('id'))
 message('deviceSettings', 'admin', 's2a', 'A', 'The answer to settings.get.',
@@ -504,6 +529,9 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})
+message('github_sign_in', 'admin', 's2a', 'B', 'A GitHub App device flow ended, or a sign-out.',
+        ['outcome'], outcome={'enum': ['signed_in', 'denied', 'expired', 'device_flow_disabled',
+                                       'bad_client_id', 'failed', 'signed_out']}, login=STR)
 message('locked', 'admin', 's2a', 'A', 'The service locked.')
 message('unlocked', 'admin', 's2a', 'A', 'The service unlocked.')
 message('store_changed', 'admin', 's2a', 'A', 'A store was reopened with new content.',

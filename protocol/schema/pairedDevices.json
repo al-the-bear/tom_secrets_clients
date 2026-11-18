@@ -55,6 +55,15 @@
           },
           "revoked": {
             "$ref": "common.json#/$defs/timestamp"
+          },
+          "githubAuth": {
+            "enum": [
+              "app",
+              "token"
+            ]
+          },
+          "githubTokenExpires": {
+            "$ref": "common.json#/$defs/timestamp"
           }
         }
       }

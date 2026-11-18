@@ -332,6 +332,20 @@ FRAMES = [
                                      'until': '2026-11-13T09:10:00Z'}),
     ('event proposal (phase B)', 'admin', {'op': 'proposal', 'url': 'https://example.org',
                                            'userName': 'demo', 'password': 'demo-password-2'}),
+    ('github.app (phase B)', 'admin', {'op': 'github.app', 'id': 50}),
+    ('githubApp (phase B)', 'admin',
+     {'op': 'githubApp', 'id': 50, 'state': 'signed_in', 'clientId': 'Iv23demoClientId',
+      'signedInClientId': 'Iv23demoClientId', 'login': 'demo-user',
+      'accessExpiresAt': '2026-11-13T17:00:00Z', 'refreshExpiresAt': '2027-05-15T09:00:00Z'}),
+    ('github.app.configure (phase B)', 'admin',
+     {'op': 'github.app.configure', 'id': 51, 'clientId': 'Iv23demoClientId'}),
+    ('github.signIn (phase B)', 'admin', {'op': 'github.signIn', 'id': 52}),
+    ('deviceCode (phase B)', 'admin',
+     {'op': 'deviceCode', 'id': 52, 'userCode': 'WDJB-MJHT',
+      'verificationUri': 'https://github.com/login/device', 'expiresIn': 900, 'interval': 5}),
+    ('github.signOut (phase B)', 'admin', {'op': 'github.signOut', 'id': 53}),
+    ('event github_sign_in (phase B)', 'admin',
+     {'op': 'github_sign_in', 'outcome': 'signed_in', 'login': 'demo-user'}),
 ]
 
 

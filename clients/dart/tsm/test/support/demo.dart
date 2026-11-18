@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomSecretStore;
 import 'package:tom_kdbx_store/tom_kdbx_store.dart'
@@ -190,6 +191,8 @@ final class Demo {
     required Uint8List adminKey,
     TomSecretsAccessPolicy? policy = const AllowAll(),
     Set<String>? helperExecutables,
+    TomSecretStore? keychain,
+    http.Client? githubClient,
   }) async {
     final service = await TomSecretsService.launch(
       TomSecretsServiceConfig(
@@ -199,6 +202,8 @@ final class Demo {
         policy: policy,
         host: 'demo-host',
         helperExecutables: helperExecutables,
+        keychain: keychain,
+        githubClient: githubClient,
         authDelay: (n) => Duration(milliseconds: 10 * n),
         peerMeasurer:
             transport == TomSecretsTransport.tcp && !Platform.isWindows

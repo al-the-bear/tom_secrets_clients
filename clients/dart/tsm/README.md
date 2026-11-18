@@ -184,6 +184,13 @@ switched command-line approvals on.
 | --- | --- |
 | `compact <owner/name>` | Cuts the history of a `github:` vault repository now, keeping the repository's own retention. |
 
+### GitHub sign-in
+
+| Command | What it does |
+| --- | --- |
+| `login [--client-id ID]` | Signs this machine in with the GitHub App: prints the code to enter at github.com/login/device (on any device) and waits; the service keeps the App's tokens and renews them. `--client-id` only while the primary vault (which names the App) cannot be read yet. |
+| `logout` | Signs this machine out of the GitHub App; its pasted tokens are used again. |
+
 ### ssh and git
 
 | Command | What it does |

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/github_sign_in.json",
+  "title": "github_sign_in",
+  "description": "A GitHub App device flow ended, or a sign-out. Endpoint: admin; direction: s2a; phase B. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "outcome"
+  ],
+  "properties": {
+    "op": {
+      "const": "github_sign_in"
+    },
+    "outcome": {
+      "enum": [
+        "signed_in",
+        "denied",
+        "expired",
+        "device_flow_disabled",
+        "bad_client_id",
+        "failed",
+        "signed_out"
+      ]
+    },
+    "login": {
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "B"
+  }
+}

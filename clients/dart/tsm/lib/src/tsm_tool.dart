@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.5';
+const String tsmVersion = '0.2.6';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -319,6 +319,27 @@ final ToolDefinition tsmTool = ToolDefinition(
       'compact',
       'Cut the history of a vault repository now: compact <owner/name>.',
     ),
+    _command(
+      'login',
+      'Sign in with GitHub: prints a code to enter on github.com (on any '
+          'device); the service then keeps and renews the GitHub App\'s '
+          'tokens for the vault repositories.',
+      options: const [
+        OptionDefinition.option(
+          name: 'client-id',
+          description:
+              'The GitHub App\'s client id, while the primary vault (which '
+              'names it) cannot be read yet.',
+          valueName: 'id',
+        ),
+      ],
+      examples: const ['tsm login'],
+    ),
+    _command(
+      'logout',
+      'Sign out of the GitHub App on this machine: its pasted tokens are used '
+          'again.',
+    ),
   ],
 );
 
@@ -343,6 +364,8 @@ const Map<String, _Command> _commands = {
   'allow': tsmAllow,
   'audit': tsmAudit,
   'compact': tsmCompact,
+  'login': tsmLogin,
+  'logout': tsmLogout,
   'integrations': tsmIntegrations,
 };
 
