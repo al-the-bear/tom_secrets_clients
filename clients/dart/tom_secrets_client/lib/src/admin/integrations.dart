@@ -11,6 +11,9 @@
 /// | --- | --- | --- | --- |
 /// | `ssh` | `~/.ssh/config` (at its top: ssh takes the first value) | `Host *` (editable), `IdentityAgent <the agent endpoint>` | — |
 /// | `git` | `~/.gitconfig` | `[credential]`, `helper = tsm` | `git-credential-tsm` beside `tsm`: a symbolic link, on Windows a hard link or a copy |
+///
+/// The files are small and read and written synchronously (behind the
+/// `Future` API), so a UI test's fake time does not hold them up.
 library;
 
 import 'dart:io';
@@ -289,9 +292,9 @@ final class TomSecretsIntegrations {
     if (integration == TomSecretsIntegration.git) {
       final link = helperLink;
       if (link != null &&
-          await FileSystemEntity.type(link, followLinks: false) !=
+          FileSystemEntity.typeSync(link, followLinks: false) !=
               FileSystemEntityType.notFound) {
-        await File(link).delete();
+        File(link).deleteSync();
       }
     }
     return status(integration);
@@ -329,17 +332,17 @@ final class TomSecretsIntegrations {
     final link = helperLink;
     final tsm = tsmExecutable;
     if (link == null || tsm == null) return ['tsm is not known here'];
-    final type = await FileSystemEntity.type(link, followLinks: false);
+    final type = FileSystemEntity.typeSync(link, followLinks: false);
     if (type == FileSystemEntityType.notFound) {
       return ['$link is missing'];
     }
     final problems = <String>[];
     if (type == FileSystemEntityType.link) {
-      final target = await File(link).resolveSymbolicLinks();
-      if (target != await File(tsm).resolveSymbolicLinks()) {
+      final target = File(link).resolveSymbolicLinksSync();
+      if (target != File(tsm).resolveSymbolicLinksSync()) {
         problems.add('$link does not lead to $tsm');
       }
-    } else if (await File(link).length() != await File(tsm).length()) {
+    } else if (File(link).lengthSync() != File(tsm).lengthSync()) {
       problems.add('$link is not this tsm');
     }
     final dir = File(link).parent.path;
@@ -366,23 +369,23 @@ final class TomSecretsIntegrations {
     final link = helperLink;
     final tsm = tsmExecutable;
     if (link == null || tsm == null) throw StateError('tsm is not known here');
-    if (await FileSystemEntity.type(link, followLinks: false) !=
+    if (FileSystemEntity.typeSync(link, followLinks: false) !=
         FileSystemEntityType.notFound) {
-      await File(link).delete();
+      File(link).deleteSync();
     }
     if (!_windows) {
-      await Link(link).create(tsm);
+      Link(link).createSync(tsm);
       return;
     }
     // A symbolic link needs a privilege on Windows, and a .cmd shim would
     // make cmd.exe the parent: a hard link, else a copy.
-    final made = await Process.run('cmd', ['/c', 'mklink', '/H', link, tsm]);
-    if (made.exitCode != 0) await File(tsm).copy(link);
+    final made = Process.runSync('cmd', ['/c', 'mklink', '/H', link, tsm]);
+    if (made.exitCode != 0) File(tsm).copySync(link);
   }
 
   static Future<String?> _read(String file) async {
     final f = File(file);
-    return await f.exists() ? f.readAsString() : null;
+    return f.existsSync() ? f.readAsStringSync() : null;
   }
 
   Future<void> _write(
@@ -392,16 +395,16 @@ final class TomSecretsIntegrations {
   }) async {
     final f = File(file);
     final dir = f.parent;
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
       if (privateDirectory && !_windows) {
-        await Process.run('chmod', ['700', dir.path]);
+        Process.runSync('chmod', ['700', dir.path]);
       }
     }
-    final existed = await f.exists();
-    await f.writeAsString(text, flush: true);
+    final existed = f.existsSync();
+    f.writeAsStringSync(text, flush: true);
     if (!existed && privateDirectory && !_windows) {
-      await Process.run('chmod', ['600', f.path]);
+      Process.runSync('chmod', ['600', f.path]);
     }
   }
 }

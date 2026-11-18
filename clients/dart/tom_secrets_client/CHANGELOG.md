@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.8
+
+- `TomSecretsIntegrations` reads and writes its (small) files synchronously
+  behind its `Future` API, so the manager app's widget tests, which run on
+  fake time, see them written.
+
 ## 0.2.7
 
 - `match` takes `userName` (only that user's logins), `pick` (the helpers:
