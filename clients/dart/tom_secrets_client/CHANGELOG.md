@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.7
+
+- `match` takes `userName` (only that user's logins), `pick` (the helpers:
+  one login of the host, the one the grants decide or the one the user
+  picks in the app) and `onProgress`; `propose` answers whether the vaults
+  hold the credential already (a helper's `store`, DP-52).
+- The developer-tool integrations (`TomSecretsIntegrations`, admin
+  library): the ssh block (`IdentityAgent` of the service's agent, at the
+  top of `~/.ssh/config`, its `Host` patterns editable; on Windows the
+  pipe's backslashes doubled, as ssh's config reader takes them) and the git
+  block (`credential.helper tsm` in `~/.gitconfig`, `git-credential-tsm`
+  beside `tsm`), installed, checked (`status`: still this machine's agent
+  and helper), repaired and removed; `tomSecretsWithBlock` /
+  `tomSecretsBlockOf` keep everything outside the marked block.
+
 ## 0.2.6
 
 - The ssh-agent's endpoint in the runtime directory [B]:

@@ -286,20 +286,32 @@ final class TomSecretsClient {
   /// Answered only for the browser host and the developer-tool helpers;
   /// any other client gets `denied` (reason `not_allowed_op`). Fails as
   /// `unsupported` when the service does not offer `match`.
+  ///
+  /// [userName] keeps only that user's logins. [pick] (the helpers only,
+  /// git's lookup) asks for one login of the host: the one the grants
+  /// decide, else the one the user picks at the app's prompt (remembered
+  /// with "always"; with "once" this connection may read it once); none
+  /// when nobody answers. [onProgress] hears `pending` `unlock` or
+  /// `approval` meanwhile.
   Future<List<TomSecretsLoginCandidate>> match(
     String url, {
     String? frameUrl,
+    String? userName,
+    bool pick = false,
     bool wait = true,
     Duration? timeout,
+    TomSecretsProgressCallback? onProgress,
   }) async {
     _requireFeatures(await _ensureConnection(), 'match', const ['match']);
     final answer = await _request({
       'op': 'match',
       'url': url,
       'frameUrl': ?frameUrl,
+      'userName': ?userName,
+      if (pick) 'pick': true,
       if (!wait) 'wait': false,
       if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
-    });
+    }, onProgress: onProgress);
     if (answer['op'] != 'matches') {
       throw _protocolError('match was answered ${answer['op']}');
     }
@@ -311,10 +323,12 @@ final class TomSecretsClient {
 
   /// **[B]** Proposes a login for the user to save in the manager app
   /// (protocol.md 5.5 `propose`): the service passes it to the attached app
-  /// and keeps nothing. Only for the browser host with a grant; with no app
-  /// attached `unavailable` (reason `no_app`). Fails as `unsupported` when
-  /// the service does not offer `propose`.
-  Future<void> propose({
+  /// and keeps nothing. Only for the browser host and the helpers with a
+  /// grant; with no app attached `unavailable` (reason `no_app`). Fails as
+  /// `unsupported` when the service does not offer `propose`. Answers
+  /// whether the vaults hold the credential already (a helper's, which is
+  /// then not proposed, DP-52).
+  Future<bool> propose({
     required String url,
     required String userName,
     required String password,
@@ -331,6 +345,7 @@ final class TomSecretsClient {
     if (answer['op'] != 'accepted') {
       throw _protocolError('propose was answered ${answer['op']}');
     }
+    return answer['known'] == true;
   }
 
   Map<String, Object?> _item(

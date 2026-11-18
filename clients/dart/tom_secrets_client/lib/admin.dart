@@ -13,6 +13,7 @@ export 'src/admin/admin_client.dart';
 export 'src/admin/admin_keyring.dart';
 export 'src/admin/data_directory.dart';
 export 'src/admin/distribution.dart';
+export 'src/admin/integrations.dart';
 export 'src/admin/keychain_names.dart';
 export 'src/admin/pairing_mode.dart';
 export 'src/admin/runtime.dart';
