@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.11
+
+- 0.2.10 exported `tomSecretsBrowserHostName`, which `tom_secrets_service`
+  defines too and exports beside this library, so every importer of the
+  service failed to compile: the client no longer exports it
+  (`tomSecretsBrowserHostBeside` keeps the name).
+
 ## 0.2.10
 
 - The browsers' native-messaging manifests of `tsm-browser-host`

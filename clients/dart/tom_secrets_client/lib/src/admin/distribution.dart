@@ -82,8 +82,10 @@ String tomSecretsBrowserHostBeside(
   final sep = windows ? r'\' : '/';
   final cut = serviceExecutable.lastIndexOf(sep);
   final dir = cut < 0 ? '.' : serviceExecutable.substring(0, cut);
-  return '$dir$sep$tomSecretsBrowserHostName${windows ? '.exe' : ''}';
+  return '$dir$sep$_browserHostName${windows ? '.exe' : ''}';
 }
 
-/// The browser host's executable name, without `.exe`.
-const String tomSecretsBrowserHostName = 'tsm-browser-host';
+/// The browser host's executable name, without `.exe` (the service names
+/// it `tomSecretsBrowserHostName`; not exported here, since the service
+/// exports this library beside its own).
+const String _browserHostName = 'tsm-browser-host';

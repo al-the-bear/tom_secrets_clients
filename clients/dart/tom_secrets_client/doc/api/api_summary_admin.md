@@ -626,7 +626,6 @@ A browser the host can be installed for: `chrome`, `chromium`, `edge`,
 | `tomSecretsToolsFolder` | `String` | The folder of the distribution holding the command-line tools, `tsm` |
 | `tomSecretsAppExecutable` | `String` | The manager app's executable name without `.exe`, `tom_secrets_app` |
 | `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` |
-| `tomSecretsBrowserHostName` | `String` | The browser host's executable name without `.exe`, `tsm-browser-host` |
 | `tomSecretsBrowserHostId` | `String` | The native-messaging host's name, `net.tom.secrets` |
 | `tomSecretsFirefoxExtensionId` | `String` | The Firefox extension's id, `tom-secrets@enterprise-flutter.dev` |
 | `tomSecretsChromiumDevelopmentKey` | `String` | The Chromium development build's public key (the manifest's `key`) |
