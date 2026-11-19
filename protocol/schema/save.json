@@ -43,6 +43,10 @@
           "$ref": "common.json#/$defs/base64"
         }
       }
+    },
+    "recipients": {
+      "description": "[C] A shared vault's recipients file (an age file), written beside the re-keyed vault in the same commit: a member removed (section 6.4); only with a re-keyed save.",
+      "$ref": "common.json#/$defs/base64"
     }
   },
   "x-tsm": {

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/vault.recipients.json",
+  "title": "vault.recipients",
+  "description": "Read a shared vault's recipients file: of a store, or of the vault at a location not listed yet, with that repository's token (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id"
+  ],
+  "properties": {
+    "op": {
+      "const": "vault.recipients"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "location": {
+      "type": "string"
+    },
+    "githubToken": {
+      "description": "The token of the repository at location, used for this read only.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

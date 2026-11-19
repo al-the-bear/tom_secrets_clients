@@ -29,10 +29,8 @@
       "$ref": "common.json#/$defs/base64"
     },
     "keys": {
+      "description": "The vault's keys: its password, key file and repository key; [C] a shared vault (with recipients) has no password.",
       "type": "object",
-      "required": [
-        "password"
-      ],
       "properties": {
         "password": {
           "type": "string"
@@ -44,6 +42,10 @@
           "$ref": "common.json#/$defs/base64"
         }
       }
+    },
+    "recipients": {
+      "description": "[C] A shared vault's recipients file (an age file), written beside the new vault (section 6.4).",
+      "$ref": "common.json#/$defs/base64"
     },
     "githubToken": {
       "description": "The token of a github: vault outside the primary's repository, kept in its entry (section 6.4).",

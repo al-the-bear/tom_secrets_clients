@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/vault.recipients.set.json",
+  "title": "vault.recipients.set",
+  "description": "Write a shared vault's recipients file alone: a member added (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "bytes"
+  ],
+  "properties": {
+    "op": {
+      "const": "vault.recipients.set"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "baseRevision": {
+      "description": "The revision of the file as read; absent when there is none yet.",
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

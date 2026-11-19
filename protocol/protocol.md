@@ -580,9 +580,11 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); **[B]** a vault the service opened with an OS unlock's bundle carries `keys.compositeKey` (base64) in place of `password` and `keyFile`; `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
-| `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`); **[B]** after an OS unlock `keys` may carry the primary's `compositeKey` (base64, 32 bytes) in place of `password` and `keyFile`, with `keyFile` beside it for the keychain |
+| `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}, recipients?}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`); **[B]** after an OS unlock `keys` may carry the primary's `compositeKey` (base64, 32 bytes) in place of `password` and `keyFile`, with `keyFile` beside it for the keychain; **[C]** `recipients` (base64), a shared vault's recipients file written beside the re-keyed vault in the same commit (a member removed, 6.4); with a save that is not re-keyed `malformed` (reason `recipients`) |
 | `vault.move {id, store, location, bytes, baseRevision?, keys{password, keyFile?, outerKey?}}` | `ok {id, location, revision}`, or `error` `malformed` (reason `location`: not the store's locator with `.tsmx` added or removed; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`; `move`), `denied` (reason `stale_base`, `target_exists`, `branch_moving`, `wrong_executable`), `not_found` (no open store), `offline` / `token_expired` (`stores`) | add or remove a store's outer encryption, which moves it to its locator with `.kdbx.tsmx` or `.kdbx` (6.4); **[B]** the primary's `keys` may carry its `compositeKey` in place of `password` and `keyFile`, as for `save`; accepted only from the manager app's executable |
-| `vault.create {id, store, location, bytes, keys{password, keyFile?, outerKey?}, githubToken?, keysDue?}` | `ok {id, store, location, revision}`, or `error` `malformed` (reason `store`: not a store name, or one the primary names already; `location`: not a vault locator, or the primary's or a listed vault's; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`: no base64, or a file that does not open with `keys` or whose metadata cannot be read; `githubToken`: a token for a vault that is not a `github:` vault outside the primary's repository; `create`), `denied` (reason `target_exists`, `wrong_executable`), `offline` / `token_expired` (`stores`) | create a further vault beside the primary: the service writes the new file where it lives and lists it in the primary (6.4); accepted only from the manager app's executable |
+| `vault.create {id, store, location, bytes, keys{password?, keyFile?, outerKey?}, githubToken?, keysDue?, recipients?}` | `ok {id, store, location, revision}`, or `error` `malformed` (reason `store`: not a store name, or one the primary names already; `location`: not a vault locator, or the primary's or a listed vault's; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`: no base64, or a file that does not open with `keys` or whose metadata cannot be read; `githubToken`: a token for a vault that is not a `github:` vault outside the primary's repository; `create`), `denied` (reason `target_exists`, `wrong_executable`), `offline` / `token_expired` (`stores`) | create a further vault beside the primary: the service writes the new file where it lives and lists it in the primary (6.4); **[C]** with `recipients` (base64) a shared vault: `keys` without `password`, the recipients file written beside it after it is listed (a failure there answers `offline` / `token_expired` reason `recipients` with the vault created; the app writes the file with `vault.recipients.set`); accepted only from the manager app's executable |
+| **[C]** `vault.recipients {id, store?, location?, githubToken?}` | `recipientsData {id, store?, location, revision, bytes}`, or `error` `not_found` (no store of that name; reason `no_recipients`: the vault has no recipients file), `malformed` (reason `recipients`: neither or both of `store` and `location`; `location`), `denied` (reason `wrong_executable`), `offline` / `token_expired` | read a shared vault's recipients file beside it (6.4): of a store the service names, or of the vault at `location` not listed yet (joining it), read with `githubToken` for that repository when given, which the service uses for this read only; accepted only from the manager app's executable |
+| **[C]** `vault.recipients.set {id, store, bytes, baseRevision?}` | `ok {id, revision}`, or `error` `not_found`, `denied` (reason `stale_base`: the file moved since `baseRevision`, or one is there when none was given; `branch_moving`; `wrong_executable`), `offline` / `token_expired` | write a shared vault's recipients file alone (a member added, 6.4); accepted only from the manager app's executable |
 | `pair.identity {id}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?}` | this device's public keys for a pairing (9.8); accepted only from the manager app's executable |
 | `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); accepted only from the manager app's executable |
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
@@ -745,6 +747,31 @@ lists nothing. The new vault is served from then on, unless this machine's
 device settings name the stores it serves and not this one; then it is a
 vault not served here, editable through `vaultKeys` and `vaultFile`.
 `store_changed` names the primary and the new store.
+
+**[C] A shared vault's recipients file** (part-sharing). A shared vault is
+opened by a key file alone, and, when outer encrypted, its repository key;
+both are kept in `<vault>.keys.age` beside the vault file (`team.kdbx` and
+`team.kdbx.tsmx` → `team.keys.age`), an `age` v1 file encrypted to every
+member's hybrid recipient (`age1pq1…`, X25519 + ML-KEM-768). Its plaintext
+is UTF-8 JSON
+`{"format": "tsm-shared-vault-keys/1", "vault": <store>, "keyFile": <base64>, "repositoryKey"?: <base64>, "members": [{"name", "recipient"}]}`,
+so any member can write it again. The service never opens it: the app
+reads it (`vault.recipients`), decrypts it with the user's member key, and
+lists the vault in the primary with those keys like any further vault; a
+member's app that finds a listed shared vault no longer opening reads the
+file again and lists the new keys. Writing:
+
+- **created:** `vault.create` with `recipients`, written after the vault
+  is listed (a second commit for a `github:` vault);
+- **a member added:** `vault.recipients.set` writes the file alone over the
+  revision read (`stale_base` when another member changed it meanwhile,
+  who reads it again);
+- **a member removed:** the app lists new keys for the vault in the primary,
+  then `save`s the vault re-keyed with `recipients`: the re-keyed file and
+  the recipients file in one commit on the branch, without force, refused
+  (`stale_base`) when the branch moved since the copy re-keyed (a member
+  who re-keyed at the same time; the app re-keys again on top). A `file:`
+  vault writes the file, then the recipients file.
 
 **[B] The key bundle.** The OS unlock hands key material to the service only
 sealed. The bundle is the vault's composite key (the 32 bytes KDBX derives
@@ -1315,8 +1342,8 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
-| `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
+| `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
@@ -1344,7 +1371,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 90 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 93 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1582,3 +1609,9 @@ part-service) leaves these open; this document fixes them:
     which the Chromium browsers start a host through. A `once` holds for
     the browser, not the connection, for 10 minutes, since the list and the
     fill run in separate host processes.
+40. A shared vault's keys travel in an `age` file beside it, never through
+    the service (part-sharing, DP-63, DP-177): only a member's app holds the
+    member key that opens it, and the file opens with the `age` command line
+    too. The service reads and writes the file as bytes, and a member
+    removed re-keys the vault and rewrites the file in one commit, so no
+    commit pairs a vault with a recipients file that does not open it.

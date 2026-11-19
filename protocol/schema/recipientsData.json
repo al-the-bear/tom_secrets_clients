@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/recipientsData.json",
+  "title": "recipientsData",
+  "description": "The answer to vault.recipients. Endpoint: admin; direction: s2a; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "location",
+    "revision",
+    "bytes"
+  ],
+  "properties": {
+    "op": {
+      "const": "recipientsData"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "location": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "C"
+  }
+}

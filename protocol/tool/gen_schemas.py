@@ -331,7 +331,10 @@ message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service t
         keys={'description': 'The primary\'s new keys when its file is re-keyed (section 6.4).',
               'type': 'object', 'required': ['password'],
               'properties': {'password': STR, 'keyFile': ref('base64'),
-                             'outerKey': ref('base64')}})
+                             'outerKey': ref('base64')}},
+        recipients={'description': '[C] A shared vault\'s recipients file (an age file), '
+                    'written beside the re-keyed vault in the same commit: a member removed '
+                    '(section 6.4); only with a re-keyed save.', **ref('base64')})
 message('vault.move', 'admin', 'a2s', 'A',
         'Add or remove a store\'s outer encryption, moving it (the manager app only).',
         ['id', 'store', 'location', 'bytes', 'keys'], id=ref('id'), store=ref('storeName'),
@@ -344,15 +347,33 @@ message('vault.create', 'admin', 'a2s', 'A',
         'and lists it in the primary (the manager app only).',
         ['id', 'store', 'location', 'bytes', 'keys'], id=ref('id'), store=ref('storeName'),
         location=STR, bytes=ref('base64'),
-        keys={'type': 'object', 'required': ['password'],
+        keys={'description': 'The vault\'s keys: its password, key file and repository key; '
+                             '[C] a shared vault (with recipients) has no password.',
+              'type': 'object',
               'properties': {'password': STR, 'keyFile': ref('base64'),
                              'outerKey': ref('base64')}},
+        recipients={'description': '[C] A shared vault\'s recipients file (an age file), '
+                    'written beside the new vault (section 6.4).', **ref('base64')},
         githubToken={'description': 'The token of a github: vault outside the primary\'s '
                                     'repository, kept in its entry (section 6.4).',
                      'type': 'string', 'minLength': 1},
         keysDue={'description': 'When the vault\'s key file and repository key are due '
                                 'for rotation: its entry\'s Expires (section 6.4).',
                  'type': 'string', 'format': 'date-time'})
+message('vault.recipients', 'admin', 'a2s', 'C',
+        'Read a shared vault\'s recipients file: of a store, or of the vault at a location '
+        'not listed yet, with that repository\'s token (the manager app only).',
+        ['id'], id=ref('id'), store=ref('storeName'), location=STR,
+        githubToken={'description': 'The token of the repository at location, used for '
+                                    'this read only.', 'type': 'string', 'minLength': 1})
+message('recipientsData', 'admin', 's2a', 'C', 'The answer to vault.recipients.',
+        ['id', 'location', 'revision', 'bytes'], id=ref('id'), store=ref('storeName'),
+        location=STR, revision=STR, bytes=ref('base64'))
+message('vault.recipients.set', 'admin', 'a2s', 'C',
+        'Write a shared vault\'s recipients file alone: a member added (the manager app only).',
+        ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
+        baseRevision={'description': 'The revision of the file as read; absent when there is '
+                      'none yet.', 'type': 'string'})
 APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
                 'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
 LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],
