@@ -89,6 +89,10 @@
                 "type": "string"
               }
             }
+          },
+          "keyChanged": {
+            "description": "[C] Served from a copy under the old key, read-only: another device re-keyed the store and its new key is not listed here yet (section 6.4).",
+            "type": "boolean"
           }
         }
       }
@@ -120,7 +124,8 @@
               "vault_keys",
               "approver_key",
               "link_key",
-              "github_app"
+              "github_app",
+              "member_key"
             ]
           },
           "key": {

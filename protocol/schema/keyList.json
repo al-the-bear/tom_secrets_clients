@@ -34,7 +34,8 @@
               "vault_keys",
               "approver_key",
               "link_key",
-              "github_app"
+              "github_app",
+              "member_key"
             ]
           },
           "key": {

@@ -254,14 +254,18 @@ message('shutdown', 'admin', 'a2s', 'A', 'Lock and stop the service.', ['id'], i
 REWRITTEN = {'description': 'The branch was rewritten without a compaction: the head of the '
              'rewritten branch, until the manager app answers with history.resolve (section 6.4).',
              'type': 'object', 'required': ['head'], 'properties': {'head': STR}}
+KEY_CHANGED = {'description': '[C] Served from a copy under the old key, read-only: another '
+               'device re-keyed the store and its new key is not listed here yet (section 6.4).',
+               'type': 'boolean'}
 STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPushed'],
                 'properties': {'name': ref('storeName'), 'state': ref('storeState'),
                                'source': ref('source'), 'fetchedAt': ref('timestamp'),
-                               'notPushed': INT0, 'rewritten': REWRITTEN}}
+                               'notPushed': INT0, 'rewritten': REWRITTEN,
+                               'keyChanged': KEY_CHANGED}}
 EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
                 'properties': {'kind': {'enum': ['github_token', 'vault_keys',
                                                  'approver_key', 'link_key',
-                                                 'github_app']},
+                                                 'github_app', 'member_key']},
                                'key': STR, 'vault': ref('storeName'),
                                'expiresAt': ref('timestamp'),
                                'daysLeft': {'type': 'integer'}}}
@@ -567,7 +571,7 @@ message('store_changed', 'admin', 's2a', 'A', 'A store was reopened with new con
 message('store_state', 'admin', 's2a', 'A', 'A store changed state.',
         ['store', 'state', 'source', 'notPushed'], store=ref('storeName'),
         state=ref('storeState'), source=ref('source'), fetchedAt=ref('timestamp'),
-        notPushed=INT0, rewritten=REWRITTEN)
+        notPushed=INT0, rewritten=REWRITTEN, keyChanged=KEY_CHANGED)
 message('key_expiry', 'admin', 's2a', 'A', 'A key the product rotates expires soon.',
         ['key', 'expiresAt', 'daysLeft'], key=STR, expiresAt=ref('timestamp'),
         daysLeft={'type': 'integer'})

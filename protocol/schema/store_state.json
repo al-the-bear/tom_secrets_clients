@@ -42,6 +42,10 @@
           "type": "string"
         }
       }
+    },
+    "keyChanged": {
+      "description": "[C] Served from a copy under the old key, read-only: another device re-keyed the store and its new key is not listed here yet (section 6.4).",
+      "type": "boolean"
     }
   },
   "x-tsm": {
