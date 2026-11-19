@@ -93,6 +93,7 @@ test('Unix socket: hello names the client; get reads; a drop is not_running and 
     assert.equal(client.welcome?.host, 'demo-host');
     const hello = service.received[0]!;
     assert.deepEqual(hello['client'], { name: 'demo', version: '0.1.0', language: 'typescript' });
+    assert.deepEqual(hello['features'], ['binary', 'getFile']);
     assert.equal(hello['token'], undefined);
     assert.deepEqual(service.received[1], { op: 'get', ref: 'demo/App/Login', field: 'UserName', id: 1 });
 

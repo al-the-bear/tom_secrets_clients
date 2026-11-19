@@ -13,9 +13,11 @@
 
 export {
   SecretsClient,
+  clientFeatures,
   maxGetMany,
   protocolVersion,
   type ClientOptions,
+  type GetFileOptions,
   type GetOptions,
   type RequestOptions,
   type Welcome,
@@ -41,6 +43,7 @@ export {
   type UuidTarget,
 } from './reference';
 export {
+  SecretFile,
   SecretValue,
   sourceFromWire,
   type Pending,

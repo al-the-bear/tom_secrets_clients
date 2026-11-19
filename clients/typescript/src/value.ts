@@ -207,6 +207,64 @@ export class SecretValue {
 }
 
 /**
+ * [B] An attachment or a typed key read with `getFile` (5.5): its name and
+ * bytes, checked against the size and SHA-256 the service sent. Its
+ * printable forms (`toString`, `toJSON`, `util.inspect`) never show the
+ * bytes, and `dispose` overwrites them.
+ */
+export class SecretFile {
+  /** The reference the file was asked for, as given. */
+  readonly reference: string;
+  /** The field's name (an attachment's file name, without `attachment:`). */
+  readonly name: string;
+
+  readonly #bytes: Buffer;
+  #disposed = false;
+
+  /** A file of [bytes]; the file owns the buffer and `dispose` zeroes it. */
+  constructor(reference: string, name: string, bytes: Buffer) {
+    this.reference = reference;
+    this.name = name;
+    this.#bytes = bytes;
+  }
+
+  /** The size in bytes. */
+  get size(): number {
+    return this.#bytes.length;
+  }
+
+  /** Whether `dispose` was called. */
+  get isDisposed(): boolean {
+    return this.#disposed;
+  }
+
+  /** The bytes: the buffer `dispose` overwrites; copy it to keep it. */
+  get bytes(): Buffer {
+    if (this.#disposed) throw new Error(`the file of ${this.reference} was disposed`);
+    return this.#bytes;
+  }
+
+  /** Overwrites the bytes with zeros; the file cannot be read afterwards. */
+  dispose(): void {
+    this.#bytes.fill(0);
+    this.#disposed = true;
+  }
+
+  toString(): string {
+    return `SecretFile(${this.reference}: ${this.name}, ${this.size} bytes)`;
+  }
+
+  /** What `JSON.stringify` writes: the reference, name and size, not the bytes. */
+  toJSON(): Record<string, unknown> {
+    return { reference: this.reference, name: this.name, size: this.size };
+  }
+
+  [inspect.custom](): string {
+    return this.toString();
+  }
+}
+
+/**
  * Why a request waits (`progress`, 5.4): `unlock` (the service is locked and
  * an admin was told) or `approval` (the request went to approval).
  */

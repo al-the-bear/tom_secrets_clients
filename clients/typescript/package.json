@@ -1,7 +1,7 @@
 {
   "name": "@al-the-bear/tom-secrets-client",
   "version": "0.1.0",
-  "description": "The TypeScript and JavaScript client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany) and parses and formats secret references. Node.js only.",
+  "description": "The TypeScript and JavaScript client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany, getFile) and parses and formats secret references. Node.js only.",
   "license": "BSD-3-Clause",
   "homepage": "https://enterprise-flutter.dev",
   "repository": {

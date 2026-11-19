@@ -16,8 +16,8 @@ and returns the value.
 
 This library is the program's side of that. It finds the service in the
 runtime directory of the OS user, connects over a Unix socket (on Windows a
-localhost port), and sends `get` and `getMany` requests. It never opens a
-vault and never resolves a reference: the service does both.
+localhost port), and sends `get`, `getMany` and `getFile` requests. It never
+opens a vault and never resolves a reference: the service does both.
 
 One package serves both languages. It is written in TypeScript and ships as
 CommonJS with its type declarations, so TypeScript, plain JavaScript
@@ -88,6 +88,7 @@ Everything below is exported from the package root.
 | `SecretsClient.shared` | One client per process, created on first use with the defaults. |
 | `get(ref, options?)` | Reads one secret; resolves to a `SecretValue`. |
 | `getMany(requests, options?)` | Reads 1 to 256 secrets under one approval prompt; resolves to `SecretResult[]` in request order, each `{ value }` or `{ error }`. |
+| `getFile(ref, options?)` | Reads an attachment or a typed key as bytes over binary frames, checked against its size and SHA-256; resolves to a `SecretFile`. `unsupported` (`details.features`, the ones missing), with nothing sent, when the service does not offer the features `binary` and `getFile`. |
 | `open()` | Connects, unless a connection is open. |
 | `close()` | Closes the connection; a later call connects again. |
 | `welcome` | The service's `welcome` on the current connection (`protocol`, `serviceVersion`, `features`, `host`, `platform`), or `undefined`. |
@@ -106,7 +107,8 @@ Calls may overlap on the one connection.
 | `operatingSystem` | this process's | `linux`, `macos` or `windows`. |
 | `connectTimeoutMs` | `10000` | How long connecting and the service's `welcome` may take. |
 
-`GetOptions` (for `get`) and `RequestOptions` (for `getMany`):
+`GetOptions` (for `get`), `GetFileOptions` (for `getFile`) and
+`RequestOptions` (for `getMany`):
 
 | Option | Meaning |
 | --- | --- |
@@ -114,8 +116,8 @@ Calls may overlap on the one connection.
 | `timeoutMs` | How long the service may wait, capped by the service. |
 | `onProgress` | Called with a `Progress` (`pending`: `unlock` or `approval`, `approvalCode` when no approver is connected) while the request waits. |
 | `waitOnRateLimit` | Wait out a `rate_limited` answer and send the request again (default off). |
-| `field` (`get` only) | The field, when the reference names none. |
-| `dimensions` (`get` only) | Values for dimensions, `{ env: 'prod' }`, beside the reference. |
+| `field` (`get`, `getFile`) | The field, when the reference names none (for `getFile` `attachment:<name>` or a typed key's field). |
+| `dimensions` (`get`, `getFile`) | Values for dimensions, `{ env: 'prod' }`, beside the reference. |
 | `wantClientToken` (`get` only) | Ask for a client token with an "always" approval. |
 
 A `SecretRequest` for `getMany` is `{ ref, field?, dimensions? }`.
@@ -142,6 +144,31 @@ A `SecretRequest` for `getMany` is `{ ref, field?, dimensions? }`.
 - A client token is yours to keep; pass it as `clientToken` to a later
   client. The library never stores one.
 
+### `SecretFile`
+
+What `getFile` resolves to.
+
+| Member | Meaning |
+| --- | --- |
+| `name` | The field's name: an attachment's file name (without `attachment:`). |
+| `bytes` | The bytes as a `Buffer`, the one `dispose` overwrites; copy it to keep it. |
+| `size` | The size in bytes. |
+| `reference` | The reference as asked for. |
+| `dispose()`, `isDisposed` | Overwrites the bytes with zeros; the file cannot be read afterwards. |
+
+```js
+const key = await client.getFile('fleet/SSH/bomber#attachment%3Aid_ed25519');
+try {
+  writeFileSync(target, key.bytes, { mode: 0o600 });
+} finally {
+  key.dispose();
+}
+```
+
+No printable form shows the bytes: `String(file)` and `console.log` give
+`SecretFile(fleet/SSH/bomber#attachment%3Aid_ed25519: id_ed25519, 411 bytes)`,
+`JSON.stringify` the reference, name and size.
+
 ### `SecretReference`
 
 | Member | What it does |
@@ -160,9 +187,9 @@ SecretReference.parse('[host:server1,env:prod]fleet/Db/Main#Password').canonical
 // '[env:prod,host:server1]fleet/Db/Main'
 ```
 
-`get` and `getMany` parse every reference locally first: a malformed one
-fails without a round trip, and so do a field named twice (`field_twice`) and
-a request over 64 KiB (`frame`).
+`get`, `getMany` and `getFile` parse every reference locally first: a
+malformed one fails without a round trip, and so do a field named twice
+(`field_twice`) and a request over 64 KiB (`frame`).
 
 ### Lower-level exports
 
@@ -173,6 +200,7 @@ a request over 64 KiB (`frame`).
 | `readPortFile(text)` | The port of a Windows port file, or `undefined`. |
 | `errorKindFromWire(kind)`, `sourceFromWire(name)` | Map protocol names to the library's types. |
 | `defaultField`, `maxReferenceBytes`, `maxGetMany` | `Password`, 1024, 256. |
+| `clientFeatures` | The optional features named in every `hello`: `binary`, `getFile`. |
 | `protocolVersion`, `clientVersion` | The protocol version spoken (1) and this library's version. |
 
 ## Errors
@@ -250,11 +278,12 @@ npm run build   # dist/
 
 ## Status
 
-Version 0.1.0, protocol version 1. The tests check the library against every
-vector of the protocol document that a client computes (references,
-discovery, port files, frames) and against a scripted service on a local socket;
-the conformance suite runs it against the fake service. `getFile`
-(attachments and typed keys as bytes) is not part of this version.
+Version 0.1.0, protocol version 1 with the features `binary` and `getFile`.
+The tests check the library against every vector of the protocol document
+that a client computes (references, discovery, port files, frames) and
+against a scripted service on a local socket (values, `getFile` with its
+chunks and checks); the conformance suite runs it against the fake service
+from TypeScript and from JavaScript.
 
 ## Licence
 

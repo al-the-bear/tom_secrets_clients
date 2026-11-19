@@ -7,5 +7,5 @@
     ["node", "../clients/typescript/node_modules/typescript/bin/tsc", "-p", "runners/typescript/tsconfig.json"]
   ],
   "run": ["node", "runners/typescript/build/runner.js"],
-  "actions": ["connect", "get", "getMany", "parse", "format", "concurrent", "sequence"]
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
 }

@@ -1,8 +1,12 @@
 // Copyright (c) 2026 Peter Nicolai Alexis Kyaw
 // SPDX-License-Identifier: BSD-3-Clause
 
-/** The client endpoint (protocol.md section 5): the connection, `hello`, `get`, `getMany`. */
+/**
+ * The client endpoint (protocol.md section 5): the connection, `hello`,
+ * `get`, `getMany` and [B] `getFile`.
+ */
 
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
@@ -12,6 +16,7 @@ import { SecretsError } from './errors';
 import {
   decodePayload,
   encodeFrame,
+  frameBinary,
   frameJson,
   FrameError,
   FrameReader,
@@ -26,6 +31,7 @@ import {
   type ProgressCallback,
   type SecretRequest,
   type SecretResult,
+  SecretFile,
   SecretValue,
 } from './value';
 import { clientVersion } from './version';
@@ -35,6 +41,12 @@ export const protocolVersion = 1;
 
 /** The most references one `getMany` carries. */
 export const maxGetMany = 256;
+
+/**
+ * The optional features this library takes (section 8), named in every
+ * `hello`: binary frames and `getFile`.
+ */
+export const clientFeatures: readonly string[] = Object.freeze(['binary', 'getFile']);
 
 /** What the service said in `welcome`. */
 export interface Welcome {
@@ -88,12 +100,16 @@ export interface RequestOptions {
   waitOnRateLimit?: boolean;
 }
 
-/** The options of a `get`. */
-export interface GetOptions extends RequestOptions {
-  /** The field, when the reference names none. */
+/** The options of a `getFile`. */
+export interface GetFileOptions extends RequestOptions {
+  /** The field, when the reference names none (`attachment:<name>`). */
   field?: string;
   /** Values for dimensions, beside the reference. */
   dimensions?: Readonly<Record<string, string>>;
+}
+
+/** The options of a `get`. */
+export interface GetOptions extends GetFileOptions {
   /** Ask for a client token with an "always" approval. */
   wantClientToken?: boolean;
 }
@@ -235,6 +251,42 @@ export class SecretsClient {
     });
   }
 
+  /**
+   * [B] Reads an attachment or a typed key as bytes, over binary frames,
+   * checked against its size and SHA-256 (5.5). Fails as `unsupported`
+   * (`details.features`, the ones missing) without sending anything when the
+   * service does not offer the features `binary` and `getFile`. The
+   * reference is parsed locally first, as for `get`.
+   */
+  async getFile(ref: string, options: GetFileOptions = {}): Promise<SecretFile> {
+    const item = requestItem(ref, options.field, options.dimensions);
+    const connection = await this.#ensureConnection();
+    const missing = clientFeatures.filter((f) => !connection.welcome.features.has(f));
+    if (missing.length > 0) {
+      throw new SecretsError(
+        'unsupported',
+        `the service does not offer getFile (features ${missing.join(', ')})`,
+        { features: missing },
+      );
+    }
+    const request: Message = { op: 'getFile', ...item };
+    if (options.wait === false) request['wait'] = false;
+    if (options.timeoutMs !== undefined) request['timeoutMs'] = options.timeoutMs;
+    const answer = await this.#request(request, options);
+    const received = receivedFiles.get(answer);
+    if (answer['op'] !== 'end' || received === undefined) {
+      throw protocolError(`getFile was answered ${String(answer['op'])}`);
+    }
+    const { file, bytes } = received;
+    const name = file['name'];
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    if (file['size'] !== bytes.length || answer['sha256'] !== sha256 || typeof name !== 'string') {
+      bytes.fill(0);
+      throw protocolError('the file does not match its size or sha256');
+    }
+    return new SecretFile(ref, name, bytes);
+  }
+
   async #request(request: Message, options: RequestOptions): Promise<Message> {
     for (;;) {
       const connection = await this.#ensureConnection();
@@ -290,6 +342,7 @@ export class SecretsClient {
       op: 'hello',
       protocol: protocolVersion,
       client: { name: this.clientName, version: clientVersion, language: 'typescript' },
+      features: [...clientFeatures],
     };
     if (token !== undefined) hello['token'] = token;
     if (this.clientToken !== undefined) hello['clientToken'] = this.clientToken;
@@ -373,6 +426,23 @@ interface PendingRequest {
   readonly onProgress: ProgressCallback | undefined;
   readonly resolve: (message: Message) => void;
   readonly reject: (error: SecretsError) => void;
+  /** A `getFile`'s `file` message, once it came. */
+  file?: Message;
+  /** The binary chunks received after `file`, in order. */
+  chunks?: Buffer[];
+}
+
+/** The file each `getFile`'s `end` message closes, put together by its connection. */
+const receivedFiles = new WeakMap<Message, ReceivedFile>();
+
+/** A `getFile` answer put together: its `file` message and all chunks joined. */
+interface ReceivedFile {
+  readonly file: Message;
+  readonly bytes: Buffer;
+}
+
+function wipe(chunks: readonly Buffer[] | undefined): void {
+  for (const chunk of chunks ?? []) chunk.fill(0);
 }
 
 /** One connection: frames in and out, the open requests by id. */
@@ -425,9 +495,9 @@ class Connection {
   #onData(bytes: Buffer): void {
     try {
       for (const frame of this.#reader.add(bytes)) {
-        // Binary frames are not negotiated in this version (no `binary` in
-        // hello), so the reader refuses them before they get here.
-        this.#onMessage(decodePayload(frame.payload));
+        // The reader refuses a binary frame unless the welcome named `binary`.
+        if (frame.type === frameBinary) this.#onChunk(frame.payload);
+        else this.#onMessage(decodePayload(frame.payload));
         if (this.closed) return;
       }
     } catch (e) {
@@ -443,6 +513,7 @@ class Connection {
     if (!this.#isWelcomed) {
       if (op === 'welcome') {
         this.welcome = welcomeOf(message);
+        this.#reader.binaryAllowed = this.welcome.features.has('binary');
         this.#isWelcomed = true;
         this.#welcome.resolve();
       } else if (op === 'error' && id === undefined) {
@@ -469,9 +540,25 @@ class Connection {
         pending.onProgress?.(progress);
         break;
       }
+      case 'file':
+        pending.file = message;
+        pending.chunks = [];
+        break;
+      case 'end': {
+        if (pending.file === undefined || pending.chunks === undefined) {
+          throw new FrameError('end without file');
+        }
+        const chunks = pending.chunks;
+        receivedFiles.set(message, { file: pending.file, bytes: Buffer.concat(chunks) });
+        wipe(chunks);
+        this.#pending.delete(id as number);
+        pending.resolve(message);
+        break;
+      }
       case 'value':
       case 'values':
       case 'error':
+        wipe(pending.chunks); // an error may end a getFile after its file
         this.#pending.delete(id as number);
         pending.resolve(message);
         break;
@@ -481,11 +568,25 @@ class Connection {
     }
   }
 
+  /** A binary chunk (2.5): the request id as 8 bytes big-endian, then the bytes. */
+  #onChunk(payload: Buffer): void {
+    if (payload.length < 8) throw new FrameError('a binary chunk without id');
+    const id = payload.readBigUInt64BE(0);
+    const pending = id <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? this.#pending.get(Number(id))
+      : undefined;
+    if (pending?.chunks === undefined) throw new FrameError('a chunk without file');
+    pending.chunks.push(payload.subarray(8));
+  }
+
   #fail(error: SecretsError): void {
     if (this.closed) return;
     this.closed = true;
     if (!this.#isWelcomed) this.#welcome.reject(error);
-    for (const pending of this.#pending.values()) pending.reject(error);
+    for (const pending of this.#pending.values()) {
+      wipe(pending.chunks);
+      pending.reject(error);
+    }
     this.#pending.clear();
     this.#socket.destroy();
   }

@@ -99,6 +99,15 @@ async function run(client, action) {
       });
       return progress.length > 0 ? { ...result, progress } : result;
     }
+    case 'getFile':
+      return guard(async () => {
+        const f = await client.getFile(action.ref, { field: action.field ?? undefined });
+        try {
+          return { file: { name: f.name, size: f.size, base64: f.bytes.toString('base64') } };
+        } finally {
+          f.dispose();
+        }
+      });
     case 'concurrent':
       return { results: await Promise.all(action.actions.map((a) => run(client, a))) };
     case 'sequence': {

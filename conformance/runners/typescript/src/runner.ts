@@ -107,6 +107,17 @@ async function run(client: SecretsClient, action: Json): Promise<Json> {
       });
       return progress.length > 0 ? { ...result, progress } : result;
     }
+    case 'getFile':
+      return guard(async () => {
+        const f = await client.getFile(action['ref'] as string, {
+          ...optional('field', action['field']),
+        });
+        try {
+          return { file: { name: f.name, size: f.size, base64: f.bytes.toString('base64') } };
+        } finally {
+          f.dispose();
+        }
+      });
     case 'concurrent':
       return {
         results: await Promise.all((action['actions'] as Json[]).map((a) => run(client, a))),
