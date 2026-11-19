@@ -1,0 +1,9 @@
+{
+  "language": "java",
+  "toolchain": ["javac", "--version"],
+  "build": [
+    ["javac", "--release", "16", "-Xlint:all", "-Werror", "-d", "ztmp/java", "--source-path", "../clients/java/src/main/java", "runners/java/Runner.java"]
+  ],
+  "run": ["java", "-cp", "ztmp/java", "Runner"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

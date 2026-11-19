@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Java client of the Tom Secrets Manager. It has no dependencies, test
+     ones included: its tests run without a framework (README, Developing). -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>net.kyaw.tom</groupId>
+  <artifactId>tom-secrets-client</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <name>Tom Secrets Manager client</name>
+  <description>The Java client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany, getFile) and parses and formats secret references.</description>
+  <url>https://enterprise-flutter.dev</url>
+
+  <licenses>
+    <license>
+      <name>BSD-3-Clause</name>
+      <url>https://opensource.org/license/bsd-3-clause</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Peter Nicolai Alexis Kyaw</name>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/al-the-bear/tom_secrets_clients/tree/main/clients/java</url>
+    <connection>scm:git:https://github.com/al-the-bear/tom_secrets_clients.git</connection>
+  </scm>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- UnixDomainSocketAddress needs Java 16. -->
+    <maven.compiler.release>16</maven.compiler.release>
+    <!-- The tests are a plain main class, not a framework's: they run with
+         javac and java (README, Developing; the product's CI runs them). -->
+    <maven.test.skip>true</maven.test.skip>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>net.kyaw.tom.secrets</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
