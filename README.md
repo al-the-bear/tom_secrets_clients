@@ -159,7 +159,7 @@ tom_secrets_clients/
     java/                    net.kyaw.tom:tom-secrets-client (Java)
     c/                       the C client (CMake, tsm::tsm)
     cpp/                     the C++ client (header-only, tsm::cpp)
-  _copilot_guidelines/       development notes for contributors
+  _agent_guidelines/       development notes for contributors
   LICENSE                    BSD-3-Clause
 ```
 
