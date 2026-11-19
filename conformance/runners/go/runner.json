@@ -1,0 +1,10 @@
+{
+  "language": "go",
+  "toolchain": ["go", "version"],
+  "build": [
+    ["go", "-C", "../clients/go", "vet", "./..."],
+    ["go", "-C", "../clients/go", "build", "-o", "../../conformance/ztmp/bin/runner_go{exe}", "../../conformance/runners/go/main.go"]
+  ],
+  "run": ["ztmp/bin/runner_go{exe}"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

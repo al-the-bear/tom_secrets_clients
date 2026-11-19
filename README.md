@@ -17,7 +17,8 @@ no code of the service or the core.
 [`tsm`](clients/dart/tsm/README.md); from a Dart program, with
 [`tom_secrets_client`](clients/dart/tom_secrets_client/README.md); from
 Node.js, with [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md);
-from Python, with [`tom-secrets-client`](clients/python/README.md).
+from Python, with [`tom-secrets-client`](clients/python/README.md); from Go,
+with the [Go client](clients/go/README.md).
 To write a client in another language, start with the
 [protocol](protocol/README.md).
 
@@ -54,8 +55,9 @@ To write a client in another language, start with the
 | [`tsm`](clients/dart/tsm/README.md) | the command line: `get`, `run`, `ref`, and the admin commands (`pair`, `start`, `unlock`, `status`, `approve`, `grants`, `audit`, …); its integration suite runs the real service | pub.dev, as `tom_secrets_tsm` | `tsm` |
 | [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md) | the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, waiting for an unlock or an approval, the reference grammar | npm | — |
 | [`tom-secrets-client`](clients/python/README.md) (Python) | the Python client (import name `tsm`, standard library only): finding the service, frames, `get`, `getMany`, `getFile`, waiting for an unlock or an approval, the reference grammar; a blocking, thread-safe `tsm.Client` and `tsm.aio.Client` for asyncio | PyPI | — |
+| [Go client](clients/go/README.md) (`clients/go`, package `tsm`) | the Go client (standard library only): finding the service, frames, `Get`, `GetMany`, `GetFile`, waiting for an unlock or an approval, the reference grammar; a `Client` safe for concurrent use, every call with a `context.Context`, `*tsm.Error` with `Kind` for `errors.As` | Go module path | — |
 
-Client libraries for C, C++, Go, Java and Rust are planned for a later
+Client libraries for C, C++, Java and Rust are planned for a later
 phase. Each will be written from the protocol document and released when its
 conformance runner passes every table.
 
@@ -97,7 +99,8 @@ standard library computes the same signatures, codes, tokens and handshake
 (Go 1.27 or later); and that every client library passes the conformance
 suite. Each Dart package's own suite runs with `testkit :test` from its
 folder; the TypeScript package's with `npm test`; the Python package's with
-`PYTHONPATH=src python3 -m unittest discover -s tests` from its folder.
+`PYTHONPATH=src python3 -m unittest discover -s tests` from its folder; the Go
+module's with `go test -race ./...` from its folder.
 
 ## Documentation
 
@@ -110,6 +113,7 @@ folder; the TypeScript package's with `npm test`; the Python package's with
 | The command line | [`tsm` README](clients/dart/tsm/README.md) |
 | The TypeScript and JavaScript client | [TypeScript client README](clients/typescript/README.md) |
 | The Python client | [Python client README](clients/python/README.md) |
+| The Go client | [Go client README](clients/go/README.md) |
 | The service the clients talk to | [`tom_secrets_service` README](https://github.com/al-the-bear/tom_secrets_manager/blob/main/tom_secrets_service/README.md) |
 
 The design decisions the code and documents cite (`DP-`, `BP-`, `TD-` and
@@ -131,13 +135,14 @@ tom_secrets_clients/
     fake_service/            the fake service (Dart)
     cases/                   the case tables
     runners/                 one runner per language: dart, typescript,
-                             javascript, python
+                             javascript, python, go
     tool/                    the driver, run_all.sh, parity_gate.sh
   clients/
     dart/tom_secrets_client/ the Dart client and its admin library
     dart/tsm/                the command line tsm
     typescript/              @al-the-bear/tom-secrets-client (TypeScript and JavaScript)
     python/                  tom-secrets-client (Python, import name tsm)
+    go/                      the Go client (package tsm)
   _copilot_guidelines/       development notes for contributors
   LICENSE                    BSD-3-Clause
 ```

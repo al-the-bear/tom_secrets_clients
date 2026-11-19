@@ -32,7 +32,8 @@ conformance/
                          dart, typescript (the npm package from TypeScript),
                          javascript (the same compiled package from plain
                          JavaScript: one package serves both languages),
-                         python (tom-secrets-client, blocking client)
+                         python (tom-secrets-client, blocking client),
+                         go (built inside the client's module)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -57,7 +58,8 @@ It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
 `referencing`, and each runner's toolchain (Node.js 18+ with npm for
 `typescript` and `javascript`, whose build runs `npm ci` and the package's
 build in `clients/typescript`; Python 3.9+ for `python`, which runs the
-library from `clients/python/src`). A runner whose toolchain is
+library from `clients/python/src`; Go for `go`, whose build runs `go vet`
+and `go build` in `clients/go`). A runner whose toolchain is
 missing is reported **NOT MEASURED**, never passed; `--strict` (and the
 `:conformance` stage of the product's build in
 [`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
@@ -196,8 +198,9 @@ A new client library joins the suite with a runner of its own:
    compact). The actions and result shapes are the tables above; the runners
    of [`dart`](runners/dart/bin/runner.dart),
    [`typescript`](runners/typescript/src/runner.ts),
-   [`javascript`](runners/javascript/runner.js) and
-   [`python`](runners/python/runner.py) are the models.
+   [`javascript`](runners/javascript/runner.js),
+   [`python`](runners/python/runner.py) and
+   [`go`](runners/go/main.go) are the models.
 2. Describe it in `runners/<lang>/runner.json`:
 
    ```json
