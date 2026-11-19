@@ -414,7 +414,8 @@ For a helper no prompt is raised (but see `pick` below); an entry no grant
 covers is left out. The browser host is never given an entry of a system
 vault (the vault's kind, its metadata `tsm.kind`), and never a system
 vault's value either: its `get`, `getMany` and `getFile` of one are
-answered `denied` (reason `system_vault`), whatever a grant says. `url` and `frameUrl` are strings of at most 4 KiB (else
+answered `denied` (reason `system_vault`), whatever a grant says. `url`
+and `frameUrl` are strings of at most 4 KiB (else
 `malformed`, reason `url`). With `frameUrl` (a login form in a frame) the
 frame is matched instead of the page, and only when it is the same site as
 the page (its host, or its registrable domain); a frame of another site
