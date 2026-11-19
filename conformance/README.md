@@ -33,7 +33,8 @@ conformance/
                          javascript (the same compiled package from plain
                          JavaScript: one package serves both languages),
                          python (tom-secrets-client, blocking client),
-                         go (built inside the client's module)
+                         go (built inside the client's module),
+                         rust (a crate with a path dependency on the client)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -59,8 +60,8 @@ It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
 `typescript` and `javascript`, whose build runs `npm ci` and the package's
 build in `clients/typescript`; Python 3.9+ for `python`, which runs the
 library from `clients/python/src`; Go for `go`, whose build runs `go vet`
-and `go build` in `clients/go`). A runner whose toolchain is
-missing is reported **NOT MEASURED**, never passed; `--strict` (and the
+and `go build` in `clients/go`; Rust with `cargo` for `rust`). A runner
+whose toolchain is missing is reported **NOT MEASURED**, never passed; `--strict` (and the
 `:conformance` stage of the product's build in
 [`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
 makes that a failure. Scratch goes to `conformance/ztmp/` (the compiled fake
@@ -199,8 +200,9 @@ A new client library joins the suite with a runner of its own:
    of [`dart`](runners/dart/bin/runner.dart),
    [`typescript`](runners/typescript/src/runner.ts),
    [`javascript`](runners/javascript/runner.js),
-   [`python`](runners/python/runner.py) and
-   [`go`](runners/go/main.go) are the models.
+   [`python`](runners/python/runner.py),
+   [`go`](runners/go/main.go) and
+   [`rust`](runners/rust/src/main.rs) are the models.
 2. Describe it in `runners/<lang>/runner.json`:
 
    ```json

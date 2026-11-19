@@ -18,7 +18,8 @@ no code of the service or the core.
 [`tom_secrets_client`](clients/dart/tom_secrets_client/README.md); from
 Node.js, with [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md);
 from Python, with [`tom-secrets-client`](clients/python/README.md); from Go,
-with the [Go client](clients/go/README.md).
+with the [Go client](clients/go/README.md); from Rust, with the
+[`tom-secrets-client` crate](clients/rust/README.md).
 To write a client in another language, start with the
 [protocol](protocol/README.md).
 
@@ -56,9 +57,10 @@ To write a client in another language, start with the
 | [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md) | the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, waiting for an unlock or an approval, the reference grammar | npm | — |
 | [`tom-secrets-client`](clients/python/README.md) (Python) | the Python client (import name `tsm`, standard library only): finding the service, frames, `get`, `getMany`, `getFile`, waiting for an unlock or an approval, the reference grammar; a blocking, thread-safe `tsm.Client` and `tsm.aio.Client` for asyncio | PyPI | — |
 | [Go client](clients/go/README.md) (`clients/go`, package `tsm`) | the Go client (standard library only): finding the service, frames, `Get`, `GetMany`, `GetFile`, waiting for an unlock or an approval, the reference grammar; a `Client` safe for concurrent use, every call with a `context.Context`, `*tsm.Error` with `Kind` for `errors.As` | Go module path | — |
+| [`tom-secrets-client`](clients/rust/README.md) (Rust crate) | the Rust client (no dependency without the `tokio` feature): finding the service, frames, `get`, `get_many`, `get_file`, waiting for an unlock or an approval, the reference grammar; a blocking `Client` that is `Send` and `Sync`, an async client with the feature `tokio`, `Error` with one variant per kind | crates.io | — |
 
-Client libraries for C, C++, Java and Rust are planned for a later
-phase. Each will be written from the protocol document and released when its
+Client libraries for C, C++ and Java are planned for a later phase. Each
+will be written from the protocol document and released when its
 conformance runner passes every table.
 
 ## Getting started
@@ -100,7 +102,8 @@ standard library computes the same signatures, codes, tokens and handshake
 suite. Each Dart package's own suite runs with `testkit :test` from its
 folder; the TypeScript package's with `npm test`; the Python package's with
 `PYTHONPATH=src python3 -m unittest discover -s tests` from its folder; the Go
-module's with `go test -race ./...` from its folder.
+module's with `go test -race ./...` and the Rust crate's with
+`cargo test --all-features` from their folders.
 
 ## Documentation
 
@@ -114,6 +117,7 @@ module's with `go test -race ./...` from its folder.
 | The TypeScript and JavaScript client | [TypeScript client README](clients/typescript/README.md) |
 | The Python client | [Python client README](clients/python/README.md) |
 | The Go client | [Go client README](clients/go/README.md) |
+| The Rust client | [Rust client README](clients/rust/README.md) |
 | The service the clients talk to | [`tom_secrets_service` README](https://github.com/al-the-bear/tom_secrets_manager/blob/main/tom_secrets_service/README.md) |
 
 The design decisions the code and documents cite (`DP-`, `BP-`, `TD-` and
@@ -135,7 +139,7 @@ tom_secrets_clients/
     fake_service/            the fake service (Dart)
     cases/                   the case tables
     runners/                 one runner per language: dart, typescript,
-                             javascript, python, go
+                             javascript, python, go, rust
     tool/                    the driver, run_all.sh, parity_gate.sh
   clients/
     dart/tom_secrets_client/ the Dart client and its admin library
@@ -143,6 +147,7 @@ tom_secrets_clients/
     typescript/              @al-the-bear/tom-secrets-client (TypeScript and JavaScript)
     python/                  tom-secrets-client (Python, import name tsm)
     go/                      the Go client (package tsm)
+    rust/                    tom-secrets-client (Rust crate)
   _copilot_guidelines/       development notes for contributors
   LICENSE                    BSD-3-Clause
 ```

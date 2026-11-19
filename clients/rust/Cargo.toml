@@ -1,0 +1,23 @@
+[package]
+name = "tom-secrets-client"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "The Rust client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany, getFile) and parses and formats secret references."
+license = "BSD-3-Clause"
+authors = ["Peter Nicolai Alexis Kyaw"]
+homepage = "https://enterprise-flutter.dev"
+repository = "https://github.com/al-the-bear/tom_secrets_clients"
+readme = "README.md"
+keywords = ["secrets", "tom-secrets-manager", "keepass", "kdbx"]
+categories = ["authentication", "api-bindings"]
+# The tests read the repository's protocol vectors; they stay in the repository.
+include = ["src/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
+
+[features]
+default = []
+# An async client over tokio's blocking pool (tom_secrets_client::tokio).
+tokio = ["dep:tokio"]
+
+[dependencies]
+tokio = { version = "1", default-features = false, features = ["rt"], optional = true }

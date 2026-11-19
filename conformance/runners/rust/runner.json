@@ -1,0 +1,9 @@
+{
+  "language": "rust",
+  "toolchain": ["cargo", "--version"],
+  "build": [
+    ["cargo", "build", "--release", "--locked", "--manifest-path", "runners/rust/Cargo.toml", "--target-dir", "ztmp/cargo"]
+  ],
+  "run": ["ztmp/cargo/release/conformance-runner-rust{exe}"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

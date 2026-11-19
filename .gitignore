@@ -10,6 +10,8 @@ pubspec.lock
 # Node (TypeScript client, browser extension)
 node_modules/
 dist/
+# Rust (clients/rust, the Rust conformance runner)
+target/
 # Editors and OS
 .idea/
 *.iml

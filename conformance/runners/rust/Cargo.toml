@@ -1,0 +1,10 @@
+[package]
+name = "conformance-runner-rust"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+publish = false
+description = "The conformance runner of the Rust client of the Tom Secrets Manager."
+
+[dependencies]
+tom-secrets-client = { path = "../../../clients/rust" }
