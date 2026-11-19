@@ -671,25 +671,43 @@ static void accept_loop(void *arg) {
     }
 }
 
+/* The services of the run: static, as their detached threads may still be
+ * ending when a test moves on. */
+static service services[4];
+
 static service *service_start(const char *features) {
     static int counter;
-    service *s = (service *)calloc(1, sizeof *s);
+    service *s;
     struct sockaddr_un a;
     const char *tmp = getenv("TMPDIR");
+    if (counter >= (int)(sizeof services / sizeof services[0])) {
+        printf("FAIL too many services\n");
+        exit(1);
+    }
+    s = &services[counter];
     /* The system's temporary folder: a Unix socket's path is short. */
-    snprintf(s->dir, sizeof s->dir, "%.150s/tsm-c-test-%d-%d", tmp && *tmp ? tmp : "/tmp", (int)getpid(),
-             ++counter);
+    {
+        /* Both names from a local buffer: s->dir and s->path are parts of
+         * one static object. */
+        char dir[200];
+        snprintf(dir, sizeof dir, "%.150s/tsm-c-test-%d-%d", tmp && *tmp ? tmp : "/tmp", (int)getpid(), ++counter);
+        snprintf(s->dir, sizeof s->dir, "%s", dir);
+        snprintf(s->path, sizeof s->path, "%s/client.sock", dir);
+    }
     if (mkdir(s->dir, 0700) != 0) {
         printf("FAIL mkdir %s\n", s->dir);
         exit(1);
     }
-    snprintf(s->path, sizeof s->path, "%s/client.sock", s->dir);
     s->features = features;
     tsm_mutex_init(&s->mu);
     s->listener = socket(AF_UNIX, SOCK_STREAM, 0);
     memset(&a, 0, sizeof a);
     a.sun_family = AF_UNIX;
-    snprintf(a.sun_path, sizeof a.sun_path, "%s", s->path);
+    if (strlen(s->path) >= sizeof a.sun_path) {
+        printf("FAIL socket path too long: %s\n", s->path);
+        exit(1);
+    }
+    memcpy(a.sun_path, s->path, strlen(s->path) + 1);
     if (bind(s->listener, (struct sockaddr *)&a, sizeof a) != 0 || listen(s->listener, 16) != 0) {
         printf("FAIL bind %s\n", s->path);
         exit(1);
@@ -704,7 +722,6 @@ static void service_stop(service *s) {
     drop_all(s);
     unlink(s->path);
     rmdir(s->dir);
-    /* The service's threads may still be ending: s stays allocated. */
 }
 
 static tsm_client *client_of(service *s) {

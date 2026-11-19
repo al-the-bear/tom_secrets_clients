@@ -19,7 +19,10 @@ set_target_properties(conformance-runner-c PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
   RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin
   RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
-if(NOT WIN32)
+if(WIN32)
+  # The portable C functions, not MSVC's _s variants.
+  target_compile_definitions(conformance-runner-c PRIVATE WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
+else()
   target_compile_definitions(conformance-runner-c PRIVATE _POSIX_C_SOURCE=200809L)
   if(APPLE)
     target_compile_definitions(conformance-runner-c PRIVATE _DARWIN_C_SOURCE)

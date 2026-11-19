@@ -59,7 +59,10 @@ if(TSM_BUILD_TESTS)
   # The tests reach the library's internals (frames, JSON).
   target_include_directories(tsm_tests PRIVATE src)
   set_target_properties(tsm_tests PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
-  if(NOT WIN32)
+  if(WIN32)
+    # The portable C functions (sscanf, getenv), not MSVC's _s variants.
+    target_compile_definitions(tsm_tests PRIVATE WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
+  else()
     target_compile_definitions(tsm_tests PRIVATE _POSIX_C_SOURCE=200809L)
     if(APPLE)
       target_compile_definitions(tsm_tests PRIVATE _DARWIN_C_SOURCE)

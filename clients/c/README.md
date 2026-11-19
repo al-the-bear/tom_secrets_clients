@@ -249,7 +249,9 @@ ctest --test-dir build --output-on-failure
 ```
 
 The tests run from this folder (they read `../../protocol/vectors`); `ctest`
-sets that.
+sets that. On Windows, MSBuild refuses paths over 260 characters: a clone
+deep in the file system, with a build folder below it, can exceed that
+(enable long paths in Windows, or clone to a shorter path).
 
 ## Status
 
@@ -257,10 +259,12 @@ Version 0.1.0, protocol version 1 with the features `binary` and `getFile`.
 The tests check the library against every vector of the protocol document
 that a client computes (references, discovery, port files, frames) and
 against a small service on a local socket; the conformance suite runs it
-against the fake service. Both also pass under AddressSanitizer, UBSan and
-(the tests) ThreadSanitizer. It is built and tested on macOS with Apple
-clang; the Windows code (Winsock, Windows threads) and Linux are not built
-yet.
+against the fake service. It builds with warnings as errors and passes its
+tests and every conformance table on macOS (Apple clang), Linux (gcc 13 and
+clang 18) and Windows (MSVC 2022, `/W4 /WX`; the conformance case for the
+Windows endpoint included). The tests also pass under AddressSanitizer and
+UBSan (with LeakSanitizer on Linux) and ThreadSanitizer, and the
+conformance tables under AddressSanitizer and UBSan.
 
 ## Licence
 

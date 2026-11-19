@@ -150,7 +150,11 @@ def command(cmd: list[str]) -> list[str]:
 
 def run_quiet(cmd: list[str]) -> tuple[bool, str]:
     try:
+        # A build tool writes in its own code page (MSBuild in the
+        # system's language on Windows): read as UTF-8, undecodable bytes
+        # replaced, as it only goes to the log.
         done = subprocess.run(command(cmd), cwd=ROOT, capture_output=True, text=True,
+                              encoding='utf-8', errors='replace',
                               shell=os.name == 'nt')
     except OSError as e:
         return False, str(e)
@@ -234,7 +238,7 @@ def run_case(runner, lines: Lines, case: dict, index: int, validate) -> list[str
         if case.get('transport'):
             cmd += ['--transport', case['transport']]
         fake = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                text=True)
+                                text=True, encoding='utf-8')
         if Lines(fake.stdout).next(30) != 'ready':
             fake.kill()
             return ['the fake service did not start']
@@ -297,6 +301,12 @@ def cmd_run(args) -> int:
         if lang not in commands:
             continue
         run_command, supported = commands[lang]
+        program = pathlib.Path(run_command[0])
+        if not program.is_absolute() and len(program.parts) > 1:
+            # A path in conformance/ (a built runner): Windows' CreateProcess
+            # resolves a relative program against this process's directory,
+            # not cwd, so it is made absolute here.
+            run_command = [str(ROOT / program)] + run_command[1:]
         runner = subprocess.Popen(run_command, cwd=ROOT, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, text=True, encoding='utf-8')
         lines = Lines(runner.stdout)
