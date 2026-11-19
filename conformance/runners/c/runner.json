@@ -1,0 +1,10 @@
+{
+  "language": "c",
+  "toolchain": ["cmake", "--version"],
+  "build": [
+    ["cmake", "-S", "runners/c", "-B", "ztmp/cbuild", "-DCMAKE_BUILD_TYPE=Release", "-DTSM_WERROR=ON"],
+    ["cmake", "--build", "ztmp/cbuild", "--config", "Release"]
+  ],
+  "run": ["ztmp/cbuild/bin/conformance-runner-c{exe}"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}
