@@ -15,8 +15,9 @@ dist/
 *.iml
 .vscode/
 .DS_Store
-# Python caches of protocol/tool
+# Python caches and packaging output (protocol/tool, clients/python)
 __pycache__/
+*.egg-info/
 # Workspace scratch and test artifacts
 ztmp/
 testlog/

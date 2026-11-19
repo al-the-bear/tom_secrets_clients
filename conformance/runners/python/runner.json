@@ -1,0 +1,7 @@
+{
+  "language": "python",
+  "toolchain": ["{python}", "--version"],
+  "build": [["{python}", "-m", "compileall", "-q", "../clients/python/src", "runners/python"]],
+  "run": ["{python}", "-u", "runners/python/runner.py"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

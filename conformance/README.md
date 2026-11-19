@@ -31,7 +31,8 @@ conformance/
   runners/<lang>/        one thin runner per language, with its runner.json:
                          dart, typescript (the npm package from TypeScript),
                          javascript (the same compiled package from plain
-                         JavaScript: one package serves both languages)
+                         JavaScript: one package serves both languages),
+                         python (tom-secrets-client, blocking client)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -55,7 +56,8 @@ Run from the repository root.
 It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
 `referencing`, and each runner's toolchain (Node.js 18+ with npm for
 `typescript` and `javascript`, whose build runs `npm ci` and the package's
-build in `clients/typescript`). A runner whose toolchain is
+build in `clients/typescript`; Python 3.9+ for `python`, which runs the
+library from `clients/python/src`). A runner whose toolchain is
 missing is reported **NOT MEASURED**, never passed; `--strict` (and the
 `:conformance` stage of the product's build in
 [`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
@@ -193,8 +195,9 @@ A new client library joins the suite with a runner of its own:
    `{"case": name, "result": {...}}`, as canonical JSON (keys sorted,
    compact). The actions and result shapes are the tables above; the runners
    of [`dart`](runners/dart/bin/runner.dart),
-   [`typescript`](runners/typescript/src/runner.ts) and
-   [`javascript`](runners/javascript/runner.js) are the models.
+   [`typescript`](runners/typescript/src/runner.ts),
+   [`javascript`](runners/javascript/runner.js) and
+   [`python`](runners/python/runner.py) are the models.
 2. Describe it in `runners/<lang>/runner.json`:
 
    ```json
@@ -210,7 +213,8 @@ A new client library joins the suite with a runner of its own:
    `toolchain` is the command whose failure makes the runner NOT MEASURED;
    `build` the commands that build the library and the runner; `run` the
    command that starts it; `actions` the actions the library offers. Commands
-   run in `conformance/`; `{exe}` becomes `.exe` on Windows. Build output goes
+   run in `conformance/`; `{exe}` becomes `.exe` on Windows,
+   `{python}` the interpreter running the driver. Build output goes
    to `ztmp/bin/`.
 3. Run `conformance/tool/run_all.sh --runner <lang> -v` until every table
    passes, then `conformance/tool/parity_gate.sh --runner <lang>`, which must

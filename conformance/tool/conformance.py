@@ -142,7 +142,10 @@ def schema_validator():
 # --------------------------------------------------------------------------
 
 def command(cmd: list[str]) -> list[str]:
-    return [c.replace('{exe}', EXE) for c in cmd]
+    # {python}: the interpreter running this driver (Python 3.9+, which the
+    # suite needs anyway), so a runner never depends on `python3` being on
+    # PATH (on Windows it is often missing).
+    return [c.replace('{exe}', EXE).replace('{python}', sys.executable) for c in cmd]
 
 
 def run_quiet(cmd: list[str]) -> tuple[bool, str]:

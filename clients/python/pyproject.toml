@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tom-secrets-client"
+version = "0.1.0"
+description = "The Python client of the Tom Secrets Manager: finds the local secrets service, speaks its client protocol (frames, hello, get, getMany, getFile) and parses and formats secret references."
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Peter Nicolai Alexis Kyaw" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["secrets", "tom-secrets-manager", "keepass", "kdbx"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://enterprise-flutter.dev"
+Source = "https://github.com/al-the-bear/tom_secrets_clients/tree/main/clients/python"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["tsm"]
+
+[tool.setuptools.package-data]
+tsm = ["py.typed"]
