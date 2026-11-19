@@ -36,7 +36,8 @@ conformance/
                          go (built inside the client's module),
                          rust (a crate with a path dependency on the client),
                          java (compiled with the client's sources),
-                         c (a CMake project adding the client's)
+                         c (a CMake project adding the client's),
+                         cpp (the same, for the C++ client)
   tool/conformance.py    the driver: run, gen, coverage, parity, all
   tool/run_all.sh        self-test, reference table, coverage gate, every runner
   tool/parity_gate.sh    breaks an expectation and an input; every runner must go red
@@ -63,7 +64,7 @@ It needs Dart (the fake service is Dart), Python 3.9+ with `jsonschema` and
 build in `clients/typescript`; Python 3.9+ for `python`, which runs the
 library from `clients/python/src`; Go for `go`, whose build runs `go vet`
 and `go build` in `clients/go`; Rust with `cargo` for `rust`; a JDK 16+ for
-`java`; CMake 3.16+ with a C99 compiler for `c`). A runner whose toolchain
+`java`; CMake 3.16+ with a C99 compiler for `c`, and a C++17 one too for `cpp`). A runner whose toolchain
 is missing is reported **NOT MEASURED**, never passed; `--strict` (and the
 `:conformance` stage of the product's build in
 [`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
@@ -206,8 +207,9 @@ A new client library joins the suite with a runner of its own:
    [`python`](runners/python/runner.py),
    [`go`](runners/go/main.go),
    [`rust`](runners/rust/src/main.rs),
-   [`java`](runners/java/Runner.java) and
-   [`c`](runners/c/runner.c) are the models.
+   [`java`](runners/java/Runner.java),
+   [`c`](runners/c/runner.c) and
+   [`cpp`](runners/cpp/runner.cpp) are the models.
 2. Describe it in `runners/<lang>/runner.json`:
 
    ```json

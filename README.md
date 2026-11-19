@@ -21,7 +21,8 @@ from Python, with [`tom-secrets-client`](clients/python/README.md); from Go,
 with the [Go client](clients/go/README.md); from Rust, with the
 [`tom-secrets-client` crate](clients/rust/README.md); from Java, with
 [`net.kyaw.tom:tom-secrets-client`](clients/java/README.md); from C, with
-the [C client](clients/c/README.md).
+the [C client](clients/c/README.md); from C++, with the
+[C++ client](clients/cpp/README.md).
 To write a client in another language, start with the
 [protocol](protocol/README.md).
 
@@ -62,9 +63,7 @@ To write a client in another language, start with the
 | [`tom-secrets-client`](clients/rust/README.md) (Rust crate) | the Rust client (no dependency without the `tokio` feature): finding the service, frames, `get`, `get_many`, `get_file`, waiting for an unlock or an approval, the reference grammar; a blocking `Client` that is `Send` and `Sync`, an async client with the feature `tokio`, `Error` with one variant per kind | crates.io | — |
 | [`net.kyaw.tom:tom-secrets-client`](clients/java/README.md) (Java) | the Java client (Java 16+, no dependencies): finding the service, frames, `get`, `getMany`, `getFile`, waiting for an unlock or an approval, the reference grammar; a thread-safe `SecretsClient` (`AutoCloseable`), `SecretsException` with a `Kind` | Maven Central | — |
 | [C client](clients/c/README.md) (`clients/c`, CMake target `tsm::tsm`) | the C client (C99, Winsock on Windows, no dependencies): finding the service, frames, `tsm_get`, `tsm_get_many`, `tsm_get_file`, waiting for an unlock or an approval, the reference grammar; a thread-safe client, `tsm_error_kind` codes and `tsm_last_error` | source with CMake | — |
-
-A client library for C++, over the C library, is planned for a later
-phase; it is released when its conformance runner passes every table.
+| [C++ client](clients/cpp/README.md) (`clients/cpp`, CMake target `tsm::cpp`) | the C++17 client, header-only over the C client: RAII (`Client`, `Value`, `File`, move-only), `get`, `get_many`, `get_file`, the reference grammar, `tsm::Error` with `kind()` | source with CMake | — |
 
 ## Getting started
 
@@ -108,7 +107,7 @@ folder; the TypeScript package's with `npm test`; the Python package's with
 module's with `go test -race ./...` and the Rust crate's with
 `cargo test --all-features` from their folders; the Java client's with
 `javac` and its `AllTests` (its README, Developing); the C client's with
-CMake and `ctest`.
+CMake and `ctest`, as is the C++ client's.
 
 ## Documentation
 
@@ -125,6 +124,7 @@ CMake and `ctest`.
 | The Rust client | [Rust client README](clients/rust/README.md) |
 | The Java client | [Java client README](clients/java/README.md) |
 | The C client | [C client README](clients/c/README.md) |
+| The C++ client | [C++ client README](clients/cpp/README.md) |
 | The service the clients talk to | [`tom_secrets_service` README](https://github.com/al-the-bear/tom_secrets_manager/blob/main/tom_secrets_service/README.md) |
 
 The design decisions the code and documents cite (`DP-`, `BP-`, `TD-` and
@@ -146,7 +146,8 @@ tom_secrets_clients/
     fake_service/            the fake service (Dart)
     cases/                   the case tables
     runners/                 one runner per language: dart, typescript,
-                             javascript, python, go, rust, java, c
+                             javascript, python, go, rust, java, c,
+                             cpp
     tool/                    the driver, run_all.sh, parity_gate.sh
   clients/
     dart/tom_secrets_client/ the Dart client and its admin library
@@ -157,6 +158,7 @@ tom_secrets_clients/
     rust/                    tom-secrets-client (Rust crate)
     java/                    net.kyaw.tom:tom-secrets-client (Java)
     c/                       the C client (CMake, tsm::tsm)
+    cpp/                     the C++ client (header-only, tsm::cpp)
   _copilot_guidelines/       development notes for contributors
   LICENSE                    BSD-3-Clause
 ```

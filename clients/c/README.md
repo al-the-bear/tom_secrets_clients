@@ -114,6 +114,7 @@ Every call that can fail returns a `tsm_error_kind` (`TSM_OK` on success).
 | `runtime_dir` | none | The runtime directory instead of the environment's (as `TSM_RUNTIME_DIR` names one). |
 | `operating_system` | this platform's | `linux`, `macos` or `windows`. |
 | `connect_timeout_ms` | 10000 | How long connecting and the service's `welcome` may take. |
+| `client_language` | `c` | The language `hello` names for the library; the C++ client sets `cpp`. |
 
 `tsm_get_options` (start from `TSM_GET_OPTIONS_INIT`):
 

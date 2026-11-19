@@ -1,0 +1,10 @@
+{
+  "language": "cpp",
+  "toolchain": ["cmake", "--version"],
+  "build": [
+    ["cmake", "-S", "runners/cpp", "-B", "ztmp/cppbuild", "-DCMAKE_BUILD_TYPE=Release", "-DTSM_WERROR=ON"],
+    ["cmake", "--build", "ztmp/cppbuild", "--config", "Release"]
+  ],
+  "run": ["ztmp/cppbuild/bin/conformance-runner-cpp{exe}"],
+  "actions": ["connect", "get", "getMany", "getFile", "parse", "format", "concurrent", "sequence"]
+}

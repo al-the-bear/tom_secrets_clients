@@ -52,6 +52,7 @@ struct tsm_client {
     char *token;
     char *runtime_dir;
     char *os;
+    char *language;
     int connect_timeout_ms;
     tsm_mutex mu;
     connection *conn;
@@ -520,7 +521,8 @@ tsm_error_kind tsm_client_new(tsm_client **out, const tsm_client_options *option
     c->os = tsm_strdup(options && options->operating_system ? options->operating_system
                                                             : tsm_current_operating_system());
     c->connect_timeout_ms = options && options->connect_timeout_ms > 0 ? options->connect_timeout_ms : 10000;
-    if (!c->name || !c->os || (options && options->client_token && !c->token) ||
+    c->language = tsm_strdup(options && options->client_language ? options->client_language : "c");
+    if (!c->name || !c->os || !c->language || (options && options->client_token && !c->token) ||
         (options && options->runtime_dir && !c->runtime_dir)) {
         tsm_client_free(c);
         return tsm_no_memory();
@@ -614,7 +616,7 @@ static tsm_error_kind connect_once(tsm_client *client, connection **out) {
                  tsm_json_set(hello, "protocol", tsm_json_int(TSM_PROTOCOL_VERSION)) &&
                  tsm_json_set(info, "name", tsm_json_str(client->name)) &&
                  tsm_json_set(info, "version", tsm_json_str(TSM_CLIENT_VERSION)) &&
-                 tsm_json_set(info, "language", tsm_json_str("c")) &&
+                 tsm_json_set(info, "language", tsm_json_str(client->language)) &&
                  tsm_json_push(features, tsm_json_str("binary")) &&
                  tsm_json_push(features, tsm_json_str("getFile")) && tsm_json_set(hello, "client", info) &&
                  tsm_json_set(hello, "features", features) &&
@@ -746,6 +748,7 @@ void tsm_client_free(tsm_client *client) {
     free(client->token);
     free(client->runtime_dir);
     free(client->os);
+    free(client->language);
     tsm_mutex_destroy(&client->mu);
     free(client);
 }

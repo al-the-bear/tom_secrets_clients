@@ -173,9 +173,12 @@ typedef struct tsm_client_options {
     const char *operating_system;
     /* How long connecting and the welcome may take, in ms. Default 10000. */
     int connect_timeout_ms;
+    /* The language hello names for the library. Default "c"; a binding
+     * over this library names its own ("cpp"). */
+    const char *client_language;
 } tsm_client_options;
 
-#define TSM_CLIENT_OPTIONS_INIT {NULL, NULL, NULL, NULL, 0}
+#define TSM_CLIENT_OPTIONS_INIT {NULL, NULL, NULL, NULL, 0, NULL}
 
 /*
  * The options of one tsm_get or tsm_get_file. Initialise with
