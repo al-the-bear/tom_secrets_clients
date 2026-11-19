@@ -236,7 +236,14 @@ java -cp build/test-classes net.kyaw.tom.secrets.AllTests
 
 `AllTests` is a plain main class (no test framework) and exits 1 when a test
 fails. The `pom.xml` describes the artifact for Maven Central; its build
-skips the tests, which the product's CI runs as above.
+skips the tests, which the product's CI runs as above. Its profile `release`
+adds the sources and javadoc jars, signs them with GPG and uploads them
+through the Central Portal:
+
+```sh
+mvn -Prelease -Dgpg.skip verify   # the jars, unsigned, in target/
+mvn -Prelease deploy              # signed and uploaded (server id central)
+```
 
 ## Status
 
@@ -245,8 +252,9 @@ The tests check the library against every vector of the protocol document
 that a client computes (references, discovery, port files, frames) and
 against a small service on a local socket; the conformance suite runs it
 against the fake service. It is built and tested with `javac --release 16`
-on a JDK 17; the Maven build of the `pom.xml` is not run here yet (its
-release to Maven Central is to come).
+on a JDK 17, and the `pom.xml`'s release profile builds with Maven 3.10.
+Its first release on Maven Central waits for the verified namespace
+`net.kyaw.tom`.
 
 ## Licence
 

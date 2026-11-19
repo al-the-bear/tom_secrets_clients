@@ -26,6 +26,18 @@ add_subdirectory(path/to/clients/cpp tsm_cpp)
 target_link_libraries(my_program PRIVATE tsm::cpp)
 ```
 
+or fetch a release by its tag (CMake 3.18 or later):
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(tsm_cpp
+  GIT_REPOSITORY https://github.com/al-the-bear/tom_secrets_clients.git
+  GIT_TAG clients/cpp/v0.1.0
+  SOURCE_SUBDIR clients/cpp)
+FetchContent_MakeAvailable(tsm_cpp)
+target_link_libraries(my_program PRIVATE tsm::cpp)
+```
+
 CMake 3.16 or later, a C++17 compiler and a C99 compiler, on Linux, macOS
 or Windows. The secrets service must run on the same machine, for the same
 OS user: the manager app starts it on a desktop, `tsm start` on a server.

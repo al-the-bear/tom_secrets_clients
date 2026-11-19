@@ -33,10 +33,22 @@ add_subdirectory(path/to/clients/c tsm)
 target_link_libraries(my_program PRIVATE tsm::tsm)
 ```
 
+or fetch a release by its tag (CMake 3.18 or later):
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(tsm
+  GIT_REPOSITORY https://github.com/al-the-bear/tom_secrets_clients.git
+  GIT_TAG clients/c/v0.1.0
+  SOURCE_SUBDIR clients/c)
+FetchContent_MakeAvailable(tsm)
+target_link_libraries(my_program PRIVATE tsm::tsm)
+```
+
 or build and install it (`cmake -S clients/c -B build`, `cmake --build
 build`, `cmake --install build --prefix /usr/local`) and find it with
-`find_package(tsm)`, then link `tsm::tsm`. CMake 3.16 or later and a C99 compiler, on
-Linux, macOS or Windows. The secrets service must run on the same machine,
+`find_package(tsm)`, then link `tsm::tsm`. CMake 3.16 or later and a C99
+compiler, on Linux, macOS or Windows. The secrets service must run on the same machine,
 for the same OS user: the manager app starts it on a desktop, `tsm start` on
 a server.
 
