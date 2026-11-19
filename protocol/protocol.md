@@ -380,7 +380,7 @@ command line can show it.
 | Request | Answer | What |
 | --- | --- | --- |
 | **[B]** `getFile {id, ref, dimensions?, field?, wait?, timeoutMs?}` | `file {id, name, size}`, binary chunks (2.5), `end {id, sha256}` | an attachment or a typed key as bytes, for the ssh-agent and `tsm run --file` |
-| **[B]** `match {id, url, frameUrl?, userName?, pick?, wait?, timeoutMs?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host and the helpers, others get `denied` (reason `not_allowed_op`); `pick` (the helpers) asks for one login of the host; audited |
+| **[B]** `match {id, url, frameUrl?, userName?, pick?, wait?, timeoutMs?}` | `matches {id, candidates[{entryId, title, userName, matchedUrl, hasTotp}]}` | the login entries matching a page, never a value; only for the browser host and the helpers, others get `denied` (reason `not_allowed_op`); `pick` (the helpers) asks for one login of the host; the browser host's match that no grant covers asks the approvers (a browser prompt); audited |
 | **[B]** `propose {id, url, title?, userName, password, wait?, timeoutMs?}` | `accepted {id, known?}` | a login for the app to save, passed to the attached app as the event `proposal`; with no app attached `unavailable` (reason `no_app`); only for the browser host or a helper holding a grant; a helper's credential the vaults hold already is not passed on (`known`) |
 
 **`getFile`** is checked and decided as `get` is (5.6) and answered with the
@@ -409,10 +409,12 @@ of the open stores whose URLs match `url` by 5.7, among the entries an
 `allow` grant of the client covers: for an entry, the grants whose subject
 names the client (7.3) are ranked as for a value (subject, then secret: a
 reference naming that entry, its store, `all`), and the entry is covered
-when the best of them is `allow` (`never` beats `allow` at equal rank). No
-prompt is raised; an entry no grant covers is left out. The browser host
-is never given an entry of a system vault (the vault's kind, its metadata
-`tsm.kind`). `url` and `frameUrl` are strings of at most 4 KiB (else
+when the best of them is `allow` (`never` beats `allow` at equal rank).
+For a helper no prompt is raised (but see `pick` below); an entry no grant
+covers is left out. The browser host is never given an entry of a system
+vault (the vault's kind, its metadata `tsm.kind`), and never a system
+vault's value either: its `get`, `getMany` and `getFile` of one are
+answered `denied` (reason `system_vault`), whatever a grant says. `url` and `frameUrl` are strings of at most 4 KiB (else
 `malformed`, reason `url`). With `frameUrl` (a login form in a frame) the
 frame is matched instead of the page, and only when it is the same site as
 the page (its host, or its registrable domain); a frame of another site
@@ -424,6 +426,29 @@ or another value. Every `match` is audited (`refs` `match <host>`, the
 outcome and the candidates' entries). A locked service waits for an unlock
 as `get` does. With `userName` (a string) only that user's logins are
 answered.
+
+**The browser prompt** (the browser host, DP-44): when the browser host's
+`match` finds no login a grant covers, but the personal and shared vaults
+hold logins of the page, the approvers are asked once for all of those
+(`approval_needed` with `browser` `true` and `url`, the logins as `refs`
+`<store>/~<32 hex>` and `resolved`; `progress` `pending` `approval`). Logins
+a grant decides already are not asked about (a `never` keeps one out).
+
+1. `always` writes the grants as for a value (7.2): the scope picked
+   (these logins, their stores, or `all`), the subject always the browser
+   host as started by its browser (`exe-from <browser> => <host>`, 7.3), so
+   each browser gets its own grant; `never` writes `never` grants the same
+   way; `folder` is refused (`malformed`). The logins allowed are answered.
+2. `once` writes nothing; the browser host started by that browser may list
+   those logins and read each once (all the fields of one `get` or
+   `getMany`) for 10 minutes, from any of its connections (the
+   extension's list and its fill are separate host processes). The lock
+   forgets it.
+3. Refused, unanswered within the approval timeout, or with no approver
+   connected (a browser prompt has no approval code): no candidate.
+
+A page whose logins are covered asks nothing, even when other logins of it
+are not covered.
 
 **`match` with `pick`** (the helpers only, else `denied`; git's credential
 lookup, part-os-integration) answers one login of the host, by the host
@@ -749,7 +774,7 @@ After `subscribe` the service pushes events on that connection (no `id`):
 | Event | Members | When |
 | --- | --- | --- |
 | `unlock_needed` | `identity?` | a client waits for an unlock |
-| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?, pick?, url?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6); `pick` and `url` for a helper's pick prompt (5.5) |
+| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?, pick?, url?, browser?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6); `pick` and `url` for a helper's pick prompt (5.5); `browser` and `url` for a browser prompt (5.5) |
 | `approval_closed` | `approvalId, outcome` (`approved`, `denied`, `timeout`, `abandoned`, `no_approver`) | a prompt was answered or ended elsewhere |
 | `locked`, `unlocked` | — | the service locked or unlocked |
 | `store_changed` | `store, revision?` | a store was reopened with new content |
@@ -782,7 +807,7 @@ object shown, matched and audited is:
 | `interpreter`, `script`, `scriptHash`, `packageRoot` | for an interpreted client: the interpreter, the script, its SHA-256 and the package root (`dart run`, `python -m`) |
 | `args` | the arguments |
 | `cwd` | the working directory |
-| `parent` | `{exe, args?}` of the parent process |
+| `parent` | `{exe, args?}` of the parent process; for the browser host started through `cmd.exe` (the Chromium browsers on Windows), the shell's parent, the browser |
 | `uid` | the OS user (a number, or a SID string on Windows) |
 
 ### 7.2 The approval flow
@@ -1289,7 +1314,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
 | `not_found` | no candidate, or the winning entry lacks the field | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field` |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -1513,10 +1538,12 @@ part-service) leaves these open; this document fixes them:
     so the integer is not raised; `welcome.features` is the handshake.
 34. `match` and `propose` know the browser host and the helpers by their
     measured executables beside the service (5.5), and `match` lists only
-    the entries an `allow` grant of the client covers, without a prompt,
-    never a system vault's to the browser host. URL matching (5.7) uses the
-    Public Suffix List, so `example.github.io` and `other.github.io` are
-    different sites.
+    the entries an `allow` grant of the client covers, never a system
+    vault's to the browser host, which gets no system vault's value either.
+    A helper's `match` raises no prompt but for `pick`; the browser host's
+    raises the browser prompt when nothing is covered (decision 39). URL
+    matching (5.7) uses the Public Suffix List, so `example.github.io` and
+    `other.github.io` are different sites.
 35. The ssh-agent (7.6) speaks OpenSSH's agent protocol on an endpoint of
     its own, not these frames. Its grants are grants of 7.3, so they are
     signed, listed, revoked and re-signed as every grant is: what they cover
@@ -1545,3 +1572,12 @@ part-service) leaves these open; this document fixes them:
     file needs the password typed, and the next unlock writes a new bundle. Lock mode (c)
     (`osUnlock`) relocks the service like (b) on idle; the attached app,
     which senses the screen lock, sends `lock` then.
+39. The browser host gets its grant by a prompt at its first `match` that
+    nothing covers (DP-44): an extension can only ask by listing, and a
+    grant made by hand or by switching the browser on in the app would not
+    know which browser starts the host. The prompt's lasting answer names
+    the measured browser (`exe-from`), so each browser is approved once and
+    on its own; on Windows the measured parent is taken above `cmd.exe`,
+    which the Chromium browsers start a host through. A `once` holds for
+    the browser, not the connection, for 10 minutes, since the list and the
+    fill run in separate host processes.

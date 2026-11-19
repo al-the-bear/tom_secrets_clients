@@ -528,7 +528,11 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
                   'type': 'object', 'required': ['entryId', 'title', 'userName', 'matchedUrl'],
                   'properties': {'entryId': STR, 'title': STR, 'userName': STR,
                                  'matchedUrl': STR}}},
-        url={'description': '[B] The page or host the logins of a pick prompt match.', **STR})
+        url={'description': '[B] The page or host the logins of a pick or browser prompt '
+             'match.', **STR},
+        browser={'description': '[B] A browser prompt: the browser host asks for the logins of '
+                 'the page `url`; a lasting answer names the browser (`exe-from`, '
+                 'section 5.5).', **BOOL})
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})
