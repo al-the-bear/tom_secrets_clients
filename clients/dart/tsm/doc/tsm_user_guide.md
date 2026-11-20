@@ -168,6 +168,28 @@ disk. `tsm` passes standard input and output through, forwards Ctrl-C and
 SIGTERM, and exits with the command's exit code. If any reference fails, the
 command is not started.
 
+### Key material as a file: `--file`
+
+A program that wants a certificate's private key, a key file or a PGP key
+as a file gets it with `--file`: the value is written to a temporary file
+only you can read, the variable holds its path, and the file is gone when
+the command ends:
+
+```sh
+tsm run --file TLS_KEY=fleet/Certs/Web \
+        --file TLS_CERT='fleet/Certs/Web#attachment%3Acertificate.pem' \
+        -- ./server --key "$TLS_KEY"
+```
+
+- Without a field, a certificate entry gives its private key
+  (`private-key.pem`, or its PKCS#12 bundle `certificate.p12`), a PGP key
+  entry its secret key (`private-key.asc`), any other entry its Password.
+  A `#field` names another field or attachment.
+- The file is in a directory of its own (mode 700) and has mode 600; it is
+  named after the field. `tsm` overwrites it with zeros and deletes it when
+  the command ends, also when it fails or is interrupted with Ctrl-C.
+- `--file` and `--map` combine; all references are approved in one prompt.
+
 ### An environment file: `--env-file`
 
 An env file maps variables to references. It holds no secrets, so it can be
@@ -333,7 +355,8 @@ store    infra  offline  cache  fetched 9 days ago  (GitHub not reachable; offli
   `GitHub not reachable`, or `token expired: enter a new one`. A copy older
   than 7 days is flagged.
 - Lines starting with `expiring` name the keys a reminder is due for, with
-  their expiry date.
+  their expiry date: GitHub tokens, the vaults' keys, and the certificates
+  and PGP keys stored in the vaults (from 30 days before they expire).
 - `tsm status` exits 3 and prints `not running` when no service runs, so a
   script can check it.
 

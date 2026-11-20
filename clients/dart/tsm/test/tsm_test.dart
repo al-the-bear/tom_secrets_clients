@@ -140,8 +140,49 @@ void main() {
       expect(r.code, 2, reason: 'no command after --');
       r = await demo.tsm(['run', '--map', '1A=primary/Db/Main', '--', 'x']);
       expect(r.code, 2, reason: 'no variable name');
-      r = await demo.tsm(['run', '--file', 'A=x/y', '--', 'x']);
-      expect(r.code, 10, reason: 'phase B');
+      r = await demo.tsm(['run', '--file', 'A=team/Nothing', '--', 'x']);
+      expect(r.code, 6, reason: 'no such entry');
+      expect(r.err, contains('A:'));
+    });
+
+    test('run --file: a certificate\'s private key as a temporary file only '
+        'this user reads, gone when the command ends', () async {
+      final cert = await demo.addCertificate('team', 'Web');
+      await running();
+      String? keyPath;
+      String? keyText;
+      String? certText;
+      int? mode;
+      int? dirMode;
+      final r = await demo.tsm(
+        [
+          'run',
+          '--file',
+          'TLS_KEY=team/Web',
+          '--map',
+          'TOKEN=team/Api/Token',
+          '--',
+          'server',
+        ],
+        run: (cmd, env) async {
+          keyPath = env['TLS_KEY'];
+          keyText = File(keyPath!).readAsStringSync();
+          mode = File(keyPath!).statSync().mode & 0x1ff;
+          dirMode = File(keyPath!).parent.parent.statSync().mode & 0x1ff;
+          certText = env['TOKEN'];
+          return 0;
+        },
+      );
+      expect(r.code, 0, reason: '$r');
+      expect(keyText, cert.privateKeyPem);
+      expect(keyPath, endsWith('${Platform.pathSeparator}private-key.pem'));
+      expect(certText, 'demo-api-token');
+      if (!Platform.isWindows) {
+        expect(mode, 0x180, reason: 'rw------- for the user alone');
+        expect(dirMode, 0x1c0, reason: 'rwx------');
+      }
+      expect(File(keyPath!).existsSync(), isFalse);
+      expect(File(keyPath!).parent.parent.existsSync(), isFalse);
     });
 
     test('ref parse and ref format', () async {

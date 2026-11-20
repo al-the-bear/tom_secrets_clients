@@ -147,14 +147,17 @@ Future<int> tsmGet(TsmContext c, TsmArgs a) async {
 final RegExp _variable = RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
 
 /// `tsm run`: the variables of `--map VAR=ref` (repeated) and of
-/// `--env-file`, every reference in one `getMany` (one approval); the
-/// command after `--` is started with them in its environment only when all
-/// of them were answered, and its exit code is tsm's.
+/// `--env-file`, every reference in one `getMany` (one approval); **[C]**
+/// `--file VAR=ref` (repeated): the value as a temporary file (`getFile`;
+/// a typed certificate's or PGP key's private key when the reference names
+/// no field), the variable its path, in a directory only this user may
+/// read, overwritten and deleted when the command ends. The command after
+/// `--` is started with them in its environment only when all of them were
+/// answered, and its exit code is tsm's.
 Future<int> tsmRun(TsmContext c, TsmArgs a) async {
-  if (a.all('file').isNotEmpty) {
-    c.io.err.writeln('tsm: --file comes with getFile (phase B)');
-    return TsmExit.of('unsupported');
-  }
+  final files = <(String, String)>[
+    for (final f in a.all('file')) _pair(f, 'file'),
+  ];
   final command = a.passthrough;
   if (command.isEmpty) {
     throw TsmFailure.usage('name the command after --');
@@ -172,21 +175,27 @@ Future<int> tsmRun(TsmContext c, TsmArgs a) async {
       mapped.add(_pair(text, 'env-file'));
     }
   }
-  if (mapped.isEmpty) {
-    throw TsmFailure.usage('map at least one variable (--map, --env-file)');
+  if (mapped.isEmpty && files.isEmpty) {
+    throw TsmFailure.usage(
+      'map at least one variable (--map, --env-file, --file)',
+    );
   }
-  for (final (name, _) in mapped) {
+  for (final (name, _) in [...mapped, ...files]) {
     if (!_variable.hasMatch(name)) {
       throw TsmFailure.usage('"$name" is no environment variable name');
     }
   }
   final dims = _dimensions(a);
   final client = await _client(c);
-  final Map<String, String> environment;
+  final Map<String, String> environment = {};
+  Directory? temp;
   try {
-    final results = await client.getMany([
-      for (final (_, ref) in mapped) TomSecretRequest(ref, dimensions: dims),
-    ], onProgress: (p) => _progress(c, p));
+    final results = mapped.isEmpty
+        ? const <TomSecretResult>[]
+        : await client.getMany([
+            for (final (_, ref) in mapped)
+              TomSecretRequest(ref, dimensions: dims),
+          ], onProgress: (p) => _progress(c, p));
     int? failed;
     for (var i = 0; i < results.length; i++) {
       final error = results[i].error;
@@ -195,7 +204,6 @@ Future<int> tsmRun(TsmContext c, TsmArgs a) async {
         failed ??= c.clientError(error);
       }
     }
-    environment = {};
     for (var i = 0; i < results.length; i++) {
       final value = results[i].value;
       if (value == null) continue;
@@ -211,14 +219,82 @@ Future<int> tsmRun(TsmContext c, TsmArgs a) async {
       value.dispose();
     }
     if (failed != null) return failed;
+    for (final (name, ref) in files) {
+      final TomSecretFile file;
+      try {
+        file = await client.getFile(
+          ref,
+          dimensions: dims,
+          onProgress: (p) => _progress(c, p),
+        );
+      } on TomSecretsClientException catch (e) {
+        c.io.err.write('tsm: $name: ');
+        return c.clientError(e);
+      }
+      try {
+        temp ??= _privateDirectory();
+        environment[name] = _writePrivate(temp, name, file);
+      } finally {
+        file.dispose();
+      }
+    }
   } on TomSecretsClientException catch (e) {
+    _removePrivate(temp);
     return c.clientError(e);
+  } on Object {
+    _removePrivate(temp);
+    rethrow;
   } finally {
     await client.close();
   }
-  final code = await c.io.runCommand(command, environment);
-  c.processExitCode = code;
-  return code;
+  try {
+    final code = await c.io.runCommand(command, environment);
+    c.processExitCode = code;
+    return code;
+  } finally {
+    _removePrivate(temp);
+  }
+}
+
+/// A new temporary directory only this user may enter (mode 700 on Unix;
+/// the user's own temporary folder on Windows).
+Directory _privateDirectory() {
+  final dir = Directory.systemTemp.createTempSync('tsm-run-');
+  if (!Platform.isWindows) {
+    final r = Process.runSync('chmod', ['700', dir.path]);
+    if (r.exitCode != 0) {
+      dir.deleteSync(recursive: true);
+      throw TsmFailure.usage('the temporary directory cannot be made private');
+    }
+  }
+  return dir;
+}
+
+/// Writes [file] as `<dir>/<variable>/<its name>` (mode 600 on Unix) and
+/// answers the path.
+String _writePrivate(Directory dir, String variable, TomSecretFile file) {
+  final sub = Directory('${dir.path}${Platform.pathSeparator}$variable')
+    ..createSync();
+  final base = file.name.split(RegExp(r'[/\\]')).last;
+  final path =
+      '${sub.path}${Platform.pathSeparator}${base.isEmpty ? 'value' : base}';
+  final out = File(path)..createSync();
+  if (!Platform.isWindows) Process.runSync('chmod', ['600', path]);
+  out.writeAsBytesSync(file.bytes, flush: true);
+  return path;
+}
+
+/// Overwrites every file under [dir] with zeros, then deletes it.
+void _removePrivate(Directory? dir) {
+  if (dir == null || !dir.existsSync()) return;
+  for (final f in dir.listSync(recursive: true).whereType<File>()) {
+    try {
+      f.writeAsBytesSync(List<int>.filled(f.lengthSync(), 0), flush: true);
+    } on FileSystemException {
+      // Deleted below all the same.
+    }
+  }
+  dir.deleteSync(recursive: true);
 }
 
 /// `tsm ref parse <ref>` (the parse result as JSON) and `tsm ref format

@@ -125,7 +125,9 @@
               "approver_key",
               "link_key",
               "github_app",
-              "member_key"
+              "member_key",
+              "certificate",
+              "pgp_key"
             ]
           },
           "key": {

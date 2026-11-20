@@ -101,7 +101,7 @@ tsm status
 | Command | What it does |
 | --- | --- |
 | `get <ref> [--field F] [--dim name=value]… [--no-wait] [--timeout S] [--base64] [-n]` | Prints the value of the reference's field to standard output, as it is, without a trailing line break unless `-n` (`--newline`). A binary value is printed only with `--base64`. `--no-wait` answers at once instead of waiting for an unlock or an approval; `--timeout` waits at most that many whole seconds. |
-| `run [--map VAR=ref]… [--env-file FILE] [--dim name=value]… -- <command> [args…]` | Fetches every reference with one `getMany`, so one approval prompt lists them all, then starts the command with the variables added to its environment. |
+| `run [--map VAR=ref]… [--file VAR=ref]… [--env-file FILE] [--dim name=value]… -- <command> [args…]` | Fetches every reference with one `getMany`, so one approval prompt lists them all, then starts the command with the variables added to its environment; each `--file` value is written to a temporary file whose path is the variable. |
 | `ref parse <ref>` | Prints the parse result as JSON (`canonical`, `target`, `field`, `fieldGiven`, `qualifiers`). |
 | `ref format (--key K \| --store S --path SEG… \| --store S --uuid HEX) [--field F] [--qualifier name:value]…` | Prints the canonical form of a reference built from its parts; `--path` is repeated per segment, `--uuid` takes the entry UUID's 32 hex digits without the `~`. |
 
@@ -117,8 +117,14 @@ About `run`:
   starting with `#` are skipped. It contains no secrets, so it may be
   committed beside a project.
 - `--dim` applies to every reference of the run.
-- `--file VAR=ref` (a value in a temporary file) is reserved and answers
-  `unsupported` in this version.
+- `--file VAR=ref` fetches the value with `getFile` and writes it to a
+  temporary file only the user can read (mode 600, in a directory of mode
+  700; on Windows under the user's own temporary folder), named after the
+  field; `VAR` holds its path. Without a `#field`, a certificate entry
+  gives its private key (`private-key.pem`, or its PKCS#12 bundle), a PGP
+  key entry its secret key (`private-key.asc`), any other entry its
+  Password. The files are overwritten with zeros and deleted when the
+  command ends, also when it fails.
 
 ### Setting up and running the service
 
@@ -260,7 +266,6 @@ stores the service named.
   across a VPN; the other machine's Pairing screen shows the address.
 - **No GitHub token command.** A store whose token expired keeps serving its
   offline copy; the new token is entered in the manager app.
-- **`run --file`** is reserved and answers `unsupported`.
 - A `run` carries at most 256 references; a reference is at most 1,024 bytes.
 
 ## Further documentation

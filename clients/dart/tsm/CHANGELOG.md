@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.7
+
+- `tsm run --file VAR=ref`: the value fetched with `getFile` is written to a
+  temporary file only the user reads (600 in a 700 directory), `VAR` its
+  path; overwritten and deleted when the command ends. Without a field a
+  certificate entry gives its private key and a PGP key entry its secret
+  key (BP-33). `tsm status` and `tsm keys` list the certificates' and PGP
+  keys' expiry. Tested with `tom_secrets_service` 0.21.0.
+
 ## 0.2.6
 
 - `tsm login [--client-id ID]`: "Sign in with GitHub" on a headless

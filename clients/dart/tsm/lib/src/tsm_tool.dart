@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.6';
+const String tsmVersion = '0.2.7';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -153,11 +153,17 @@ final ToolDefinition tsmTool = ToolDefinition(
         _dim,
         OptionDefinition.multi(
           name: 'file',
-          description: 'A value in a temporary file (phase B).',
+          description:
+              'A value as a temporary file (its path in VAR), deleted when '
+              'the command ends; a certificate or PGP key entry gives its '
+              'private key.',
           valueName: 'VAR=ref',
         ),
       ],
-      examples: const ['tsm run --map BOT_TOKEN=telegram.bot_token -- ./bot'],
+      examples: const [
+        'tsm run --map BOT_TOKEN=telegram.bot_token -- ./bot',
+        'tsm run --file TLS_KEY=web/Cert -- ./server',
+      ],
     ),
     _command(
       'ref',

@@ -148,6 +148,33 @@ final class Demo {
     return demo;
   }
 
+  /// **[C]** Adds a typed certificate entry [title] to the vault file of
+  /// [store] (`team`), before the service starts; answers it.
+  Future<TomSecretsGeneratedCertificate> addCertificate(
+    String store,
+    String title,
+  ) async {
+    final path = store == 'team' ? teamPath : primaryPath;
+    final credentials = Credentials(
+      ProtectedValue.fromString(store == 'team' ? teamPassword : primaryPassword),
+    );
+    final file = await KdbxFormat().read(
+      File(path).readAsBytesSync(),
+      credentials,
+    );
+    final cert = tomSecretsGenerateCertificate(commonName: 'web.example');
+    final entry = KdbxEntry.create(file, file.body.rootGroup)
+      ..setString(KdbxKeyCommon.TITLE, PlainValue(title));
+    file.body.rootGroup.addEntry(entry);
+    tomSecretsWriteCertificate(
+      entry,
+      certificatePem: cert.certificatePem,
+      privateKeyPem: cert.privateKeyPem,
+    );
+    File(path).writeAsBytesSync(await file.save());
+    return cert;
+  }
+
   /// The directory.
   final String dir;
 
