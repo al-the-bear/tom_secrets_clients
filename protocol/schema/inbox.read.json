@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/inbox.read.json",
+  "title": "inbox.read",
+  "description": "Read one package of an inbox folder (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "member",
+    "name"
+  ],
+  "properties": {
+    "op": {
+      "const": "inbox.read"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "member": {
+      "description": "A member id: the fingerprint of the member key (base32).",
+      "type": "string",
+      "pattern": "^[a-z2-7]{16,}$"
+    },
+    "name": {
+      "description": "A package name: <date>-<random>.age.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9a-f]{16}[.]age$"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

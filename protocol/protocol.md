@@ -585,6 +585,10 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `vault.create {id, store, location, bytes, keys{password?, keyFile?, outerKey?}, githubToken?, keysDue?, recipients?}` | `ok {id, store, location, revision}`, or `error` `malformed` (reason `store`: not a store name, or one the primary names already; `location`: not a vault locator, or the primary's or a listed vault's; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`: no base64, or a file that does not open with `keys` or whose metadata cannot be read; `githubToken`: a token for a vault that is not a `github:` vault outside the primary's repository; `create`), `denied` (reason `target_exists`, `wrong_executable`), `offline` / `token_expired` (`stores`) | create a further vault beside the primary: the service writes the new file where it lives and lists it in the primary (6.4); **[C]** with `recipients` (base64) a shared vault: `keys` without `password`, the recipients file written beside it after it is listed (a failure there answers `offline` / `token_expired` reason `recipients` with the vault created; the app writes the file with `vault.recipients.set`); accepted only from the manager app's executable |
 | **[C]** `vault.recipients {id, store?, location?, githubToken?}` | `recipientsData {id, store?, location, revision, bytes}`, or `error` `not_found` (no store of that name; reason `no_recipients`: the vault has no recipients file), `malformed` (reason `recipients`: neither or both of `store` and `location`; `location`), `denied` (reason `wrong_executable`), `offline` / `token_expired` | read a shared vault's recipients file beside it (6.4): of a store the service names, or of the vault at `location` not listed yet (joining it), read with `githubToken` for that repository when given, which the service uses for this read only; accepted only from the manager app's executable |
 | **[C]** `vault.recipients.set {id, store, bytes, baseRevision?}` | `ok {id, revision}`, or `error` `not_found`, `denied` (reason `stale_base`: the file moved since `baseRevision`, or one is there when none was given; `branch_moving`; `wrong_executable`), `offline` / `token_expired` | write a shared vault's recipients file alone (a member added, 6.4); accepted only from the manager app's executable |
+| **[C]** `inbox.list {id, store}` | `inbox {id, store, files[{member, name, revision}]}`, or `error` `not_found`, `malformed` (reason `inbox`), `denied` (reason `wrong_executable`), `offline` / `token_expired` | the packages in the inbox folders beside a shared vault (6.4): every file `inbox/<member>/<name>` whose `<member>` is a member id; accepted only from the manager app's executable |
+| **[C]** `inbox.read {id, store, member, name}` | `inboxFile {id, store, member, name, revision, bytes}`, or `error` `not_found` (no store; reason `inbox`: the package is gone), `malformed` (reason `inbox`: not a member id or a package name), `denied` (reason `wrong_executable`), `offline` / `token_expired` | one package of an inbox (6.4); accepted only from the manager app's executable |
+| **[C]** `inbox.put {id, store, members[], bytes}` | `ok {id, name}`, or `error` `not_found`, `malformed` (reason `inbox`), `denied` (reason `wrong_executable`, `stale_base`: a file of that name is there, `branch_moving`), `offline` / `token_expired` | put one package into the inbox of each member id in `members` under one new name `<date>-<random>.age` (6.4); a `github:` vault one commit per member; accepted only from the manager app's executable |
+| **[C]** `inbox.delete {id, store, files[{member, name}]}` | `ok {id}`, or `error` `not_found`, `malformed` (reason `inbox`), `denied` (reason `wrong_executable`, `stale_base`, `branch_moving`), `offline` / `token_expired` | delete packages from the inbox folders (6.4): imported, declined, or past their 30 days; a `github:` vault in one commit, a package gone already skipped; accepted only from the manager app's executable |
 | `pair.identity {id}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?}` | this device's public keys for a pairing (9.8); accepted only from the manager app's executable |
 | `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); accepted only from the manager app's executable |
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
@@ -772,6 +776,18 @@ file again and lists the new keys. Writing:
   (`stale_base`) when the branch moved since the copy re-keyed (a member
   who re-keyed at the same time; the app re-keys again on top). A `file:`
   vault writes the file, then the recipients file.
+
+**[C] The inbox folders** (part-sharing). A shared vault may carry, in its
+folder, `inbox/<member>/` folders, `<member>` a member key's fingerprint:
+the mailbox of single-entry exports. A package is an `age` file (to the
+member's key or under a passphrase) named `<date>-<random>.age`, the date
+the day it was put in (UTC, `YYYY-MM-DD`), the random part 16 hex digits.
+The service handles the files as bytes and never opens them: the app
+encrypts a package and puts it into the recipients' folders (`inbox.put`),
+lists the folders at its sync (`inbox.list`), reads its own packages
+(`inbox.read`), and deletes what the user imported or declined, together
+with every package of any folder more than 30 days old (`inbox.delete`).
+The folder names show who receives packages and when, never what.
 
 **[C] A key changed on another device** (part-key-rotation, the migration
 period). When the current file of a further vault no longer opens with the
@@ -1354,7 +1370,7 @@ type and adds `not_running` (section 3).
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
 | `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
-| `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4) |
+| `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4), `inbox` (an `inbox.read` of a package that is gone, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
@@ -1382,7 +1398,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 93 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 99 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1631,3 +1647,8 @@ part-service) leaves these open; this document fixes them:
     (part-key-rotation, the migration period): during a rotation the
     devices take up the new key one by one, and refusing every write keeps
     a device from committing a file under a key the others have left.
+42. Single-entry exports travel in `inbox/<member>/` folders beside a
+    shared vault as opaque `age` files (part-sharing, BP-34): the service
+    lists, reads, writes and deletes them but never holds a key to them, a
+    package is never merged or rewritten, and the date in its name lets any
+    member's app expire it after 30 days without opening it.

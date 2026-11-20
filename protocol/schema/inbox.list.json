@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/inbox.list.json",
+  "title": "inbox.list",
+  "description": "List the packages in the inbox folders beside a shared vault (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store"
+  ],
+  "properties": {
+    "op": {
+      "const": "inbox.list"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

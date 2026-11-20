@@ -378,6 +378,39 @@ message('vault.recipients.set', 'admin', 'a2s', 'C',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
         baseRevision={'description': 'The revision of the file as read; absent when there is '
                       'none yet.', 'type': 'string'})
+INBOX_MEMBER = {'description': 'A member id: the fingerprint of the member key (base32).',
+                'type': 'string', 'pattern': '^[a-z2-7]{16,}$'}
+INBOX_NAME = {'description': 'A package name: <date>-<random>.age.', 'type': 'string',
+              'pattern': '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9a-f]{16}[.]age$'}
+message('inbox.list', 'admin', 'a2s', 'C',
+        'List the packages in the inbox folders beside a shared vault (the manager app only).',
+        ['id', 'store'], id=ref('id'), store=ref('storeName'))
+message('inbox', 'admin', 's2a', 'C', 'The answer to inbox.list.',
+        ['id', 'store', 'files'], id=ref('id'), store=ref('storeName'),
+        files={'type': 'array', 'items': {
+            'type': 'object', 'required': ['member', 'name', 'revision'],
+            'additionalProperties': False,
+            'properties': {'member': INBOX_MEMBER, 'name': STR, 'revision': STR}}})
+message('inbox.read', 'admin', 'a2s', 'C',
+        'Read one package of an inbox folder (the manager app only).',
+        ['id', 'store', 'member', 'name'], id=ref('id'), store=ref('storeName'),
+        member=INBOX_MEMBER, name=INBOX_NAME)
+message('inboxFile', 'admin', 's2a', 'C', 'The answer to inbox.read.',
+        ['id', 'store', 'member', 'name', 'revision', 'bytes'], id=ref('id'),
+        store=ref('storeName'), member=INBOX_MEMBER, name=INBOX_NAME, revision=STR,
+        bytes=ref('base64'))
+message('inbox.put', 'admin', 'a2s', 'C',
+        'Put one package into the inbox folder of each member (the manager app only).',
+        ['id', 'store', 'members', 'bytes'], id=ref('id'), store=ref('storeName'),
+        members={'type': 'array', 'minItems': 1, 'items': INBOX_MEMBER},
+        bytes=ref('base64'))
+message('inbox.delete', 'admin', 'a2s', 'C',
+        'Delete packages from the inbox folders: imported, declined or expired '
+        '(the manager app only).',
+        ['id', 'store', 'files'], id=ref('id'), store=ref('storeName'),
+        files={'type': 'array', 'items': {
+            'type': 'object', 'required': ['member', 'name'], 'additionalProperties': False,
+            'properties': {'member': INBOX_MEMBER, 'name': INBOX_NAME}}})
 APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
                 'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
 LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],

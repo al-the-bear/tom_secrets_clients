@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/inbox.json",
+  "title": "inbox",
+  "description": "The answer to inbox.list. Endpoint: admin; direction: s2a; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "store",
+    "files"
+  ],
+  "properties": {
+    "op": {
+      "const": "inbox"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "store": {
+      "$ref": "common.json#/$defs/storeName"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "member",
+          "name",
+          "revision"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "member": {
+            "description": "A member id: the fingerprint of the member key (base32).",
+            "type": "string",
+            "pattern": "^[a-z2-7]{16,}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "C"
+  }
+}
