@@ -600,6 +600,11 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | **[C]** `inbox.read {id, store, member, name}` | `inboxFile {id, store, member, name, revision, bytes}`, or `error` `not_found` (no store; reason `inbox`: the package is gone), `malformed` (reason `inbox`: not a member id or a package name), `denied` (reason `wrong_executable`), `offline` / `token_expired` | one package of an inbox (6.4); accepted only from the manager app's executable |
 | **[C]** `inbox.put {id, store, members[], bytes}` | `ok {id, name}`, or `error` `not_found`, `malformed` (reason `inbox`), `denied` (reason `wrong_executable`, `stale_base`: a file of that name is there, `branch_moving`), `offline` / `token_expired` | put one package into the inbox of each member id in `members` under one new name `<date>-<random>.age` (6.4); a `github:` vault one commit per member; accepted only from the manager app's executable |
 | **[C]** `inbox.delete {id, store, files[{member, name}]}` | `ok {id}`, or `error` `not_found`, `malformed` (reason `inbox`), `denied` (reason `wrong_executable`, `stale_base`, `branch_moving`), `offline` / `token_expired` | delete packages from the inbox folders (6.4): imported, declined, or past their 30 days; a `github:` vault in one commit, a package gone already skipped; accepted only from the manager app's executable |
+| **[C]** `relay.revision {id, store, folder}` | `relayRevision {id, revision}` (null: nothing there), or `error` `not_found`, `malformed` (reason `relay`), `denied` (reason `wrong_executable`, `not_github`), `offline` / `token_expired` | the revision of a folder below `relay/` in the `github:` store's repository (6.4, part-relay): GitHub's, answered by a conditional request while the branch is unchanged; accepted only from the manager app's executable |
+| **[C]** `relay.list {id, store, folder}` | `relayFiles {id, files{<path>: <revision>}}`, or `error` as `relay.revision` | the files below a folder below `relay/` (6.4), each path relative to the folder |
+| **[C]** `relay.read {id, store, path}` | `relayFile {id, bytes}` (null: not there), or `error` as `relay.revision` | one file below `relay/` (6.4) |
+| **[C]** `relay.create {id, store, path, bytes, message?}` | `ok {id}`, or `error` as `relay.revision`, `denied` (reason `exists`: the file is there already), `malformed` (a file over 1 MiB) | create one file below `relay/` in one commit, once (6.4); `message` is the commit message |
+| **[C]** `relay.deleteFolder {id, store, folder}` / `relay.deleteFile {id, store, path}` | `ok {id}`, or `error` as `relay.revision` | delete a folder below `relay/` with its files in one commit, or one file; nothing there: nothing done (6.4) |
 | `pair.identity {id}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?}` | this device's public keys for a pairing (9.8); accepted only from the manager app's executable |
 | `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); accepted only from the manager app's executable |
 | `pair.revoke {id, device}` | `ok`, or `error` `not_found` | revoke a paired device: what this device recorded of it goes, and its device record in the primary is marked revoked; accepted only from the manager app's executable |
@@ -834,6 +839,24 @@ lists the folders at its sync (`inbox.list`), reads its own packages
 (`inbox.read`), and deletes what the user imported or declined, together
 with every package of any folder more than 30 days old (`inbox.delete`).
 The folder names show who receives packages and when, never what.
+
+**[C] The relay folder** (part-relay: GitHub as the relay). A pairing the
+app gives can also wait on a GitHub repository, for a new machine that
+reaches the repository already but not this machine over the LAN or the
+VPN. Its files live at the repository's root under `relay/pair/<nameplate>/`
+(`<nameplate>` the pairing code's number): `offer` (a small JSON with the
+time it was opened), the frames of each side numbered in order (`h-0001`,
+… for the giving side, `j-0001`, … for the receiving side) and an end
+marker per side (`h-end`, `j-end`). The app runs the pairing itself and
+reaches the files through the `relay.*` requests of any `github:` store in
+that repository; the receiving machine reaches them directly with its own
+token. The service only stores and lists the bytes (the frames are the
+pairing's own, which reveal nothing about the code and seal the bundle
+under the hybrid session key), and it answers `relay.revision` from the
+repository's branch snapshot, revalidated by a conditional request, so a
+pairing's polls every 2 seconds cost no rate limit while nothing moves.
+Each file is one commit; the side that ends second deletes the folder, and
+folders older than an hour are deleted by the next pairing opened there.
 
 **[C] A key changed on another device** (part-key-rotation, the migration
 period). When the current file of a further vault no longer opens with the
@@ -1415,14 +1438,14 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4), `inbox` (an `inbox.read` of a package that is gone, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
 | `offline` | admin only: a `reload` whose fetch failed for a network reason, or a `save` that cannot be taken while offline | `stores` |
 | `token_expired` | admin only: as `offline`, because GitHub answered 401 or 403 or the token is past its expiry | `stores` |
-| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4) |
+| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4; **[C]** `relay` for a `relay.*` request without a store or a path below `relay/`, or a file over 1 MiB) |
 | `timeout` | an approval was not answered in time | — |
 | `rate_limited` | the identity is held back (section 11) | `retryAfterMs`; `reason`: `requests` (the token bucket), `connections` (a connection over the caps, answered at its `hello` and closed), `held_back` (three refusals at prompts), `too_many_prompts` |
 | `unsupported` | an unknown `op`, or a protocol the service does not speak; a `token.set` whose token has nowhere to be kept | `op`, or `protocols`; `reason` `no_keychain` |
@@ -1444,7 +1467,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 99 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 108 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1709,3 +1732,9 @@ part-service) leaves these open; this document fixes them:
     gets the key it needs to use it, `get` keeps answering `Password` (the
     key's passphrase), and naming a field always wins, so no reference
     changes its meaning.
+45. A pairing through GitHub keeps its frames as files in the repository
+    the receiving machine reaches with its own token (part-relay): no
+    server of ours, the pairing protocol unchanged over the files, the
+    service only a store of bytes for the app (`relay.*`, the `relay/`
+    folder only, so no request reaches the vaults' files); every frame is
+    a commit, which the conditional reads keep within GitHub's rate limit.

@@ -423,6 +423,40 @@ message('inbox.delete', 'admin', 'a2s', 'C',
         files={'type': 'array', 'items': {
             'type': 'object', 'required': ['member', 'name'], 'additionalProperties': False,
             'properties': {'member': INBOX_MEMBER, 'name': INBOX_NAME}}})
+RELAY_PATH = {'description': 'A path below the relay folder of the repository: relay/...',
+              'type': 'string', 'pattern': '^relay(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'}
+message('relay.revision', 'admin', 'a2s', 'C',
+        'The revision of a folder below relay/ in a github: store\'s repository (the manager '
+        'app only).',
+        ['id', 'store', 'folder'], id=ref('id'), store=ref('storeName'), folder=RELAY_PATH)
+message('relayRevision', 'admin', 's2a', 'C', 'The answer to relay.revision.',
+        ['id', 'revision'], id=ref('id'),
+        revision={'description': 'The folder\'s revision; null when nothing is there.',
+                  'type': ['string', 'null']})
+message('relay.list', 'admin', 'a2s', 'C',
+        'The files below a folder below relay/ (the manager app only).',
+        ['id', 'store', 'folder'], id=ref('id'), store=ref('storeName'), folder=RELAY_PATH)
+message('relayFiles', 'admin', 's2a', 'C', 'The answer to relay.list.',
+        ['id', 'files'], id=ref('id'),
+        files={'description': 'Each file\'s path relative to the folder and its revision.',
+               'type': 'object', 'additionalProperties': STR})
+message('relay.read', 'admin', 'a2s', 'C', 'One file below relay/ (the manager app only).',
+        ['id', 'store', 'path'], id=ref('id'), store=ref('storeName'), path=RELAY_PATH)
+message('relayFile', 'admin', 's2a', 'C', 'The answer to relay.read.',
+        ['id', 'bytes'], id=ref('id'),
+        bytes={'description': 'The file as base64; null when it is not there.',
+               'anyOf': [ref('base64'), {'type': 'null'}]})
+message('relay.create', 'admin', 'a2s', 'C',
+        'Create a file below relay/ in one commit, once (the manager app only).',
+        ['id', 'store', 'path', 'bytes'], id=ref('id'), store=ref('storeName'),
+        path=RELAY_PATH, bytes=ref('base64'),
+        message={'description': 'The commit message.', 'type': 'string'})
+message('relay.deleteFolder', 'admin', 'a2s', 'C',
+        'Delete a folder below relay/ with its files, in one commit (the manager app only).',
+        ['id', 'store', 'folder'], id=ref('id'), store=ref('storeName'), folder=RELAY_PATH)
+message('relay.deleteFile', 'admin', 'a2s', 'C',
+        'Delete one file below relay/ (the manager app only).',
+        ['id', 'store', 'path'], id=ref('id'), store=ref('storeName'), path=RELAY_PATH)
 APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
                 'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
 LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],

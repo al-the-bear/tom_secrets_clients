@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/relayFiles.json",
+  "title": "relayFiles",
+  "description": "The answer to relay.list. Endpoint: admin; direction: s2a; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "files"
+  ],
+  "properties": {
+    "op": {
+      "const": "relayFiles"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "files": {
+      "description": "Each file's path relative to the folder and its revision.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "C"
+  }
+}
