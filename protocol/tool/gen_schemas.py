@@ -321,6 +321,13 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
                                     'properties': {'password': STR,
                                                    'keyFile': ref('base64'),
                                                    'outerKey': ref('base64'),
+                                                   'previousOuterKey': {
+                                                       'description': '[C] The old '
+                                                       'repository key the .tsmx file keeps '
+                                                       'a slot for during a guided '
+                                                       'rotation\'s migration period '
+                                                       '(section 6.4).',
+                                                       **ref('base64')},
                                                    'compositeKey': ref('base64_32')}}}}})
 message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of a store the service holds, for editing: an open store, or a vault the primary lists that this machine does not serve.',
         ['id', 'store'], id=ref('id'), store=ref('storeName'))
@@ -335,7 +342,11 @@ message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service t
         keys={'description': 'The primary\'s new keys when its file is re-keyed (section 6.4).',
               'type': 'object', 'required': ['password'],
               'properties': {'password': STR, 'keyFile': ref('base64'),
-                             'outerKey': ref('base64')}},
+                             'outerKey': ref('base64'),
+                             'previousOuterKey': {
+                                 'description': '[C] The old repository key the re-keyed '
+                                 'file keeps a second slot for: a guided rotation of the '
+                                 'repository key alone (section 6.4).', **ref('base64')}}},
         recipients={'description': '[C] A shared vault\'s recipients file (an age file), '
                     'written beside the re-keyed vault in the same commit: a member removed '
                     '(section 6.4); only with a re-keyed save.', **ref('base64')})

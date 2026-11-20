@@ -41,6 +41,10 @@
         },
         "outerKey": {
           "$ref": "common.json#/$defs/base64"
+        },
+        "previousOuterKey": {
+          "description": "[C] The old repository key the re-keyed file keeps a second slot for: a guided rotation of the repository key alone (section 6.4).",
+          "$ref": "common.json#/$defs/base64"
         }
       }
     },

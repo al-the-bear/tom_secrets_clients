@@ -68,6 +68,10 @@
               "outerKey": {
                 "$ref": "common.json#/$defs/base64"
               },
+              "previousOuterKey": {
+                "description": "[C] The old repository key the .tsmx file keeps a slot for during a guided rotation's migration period (section 6.4).",
+                "$ref": "common.json#/$defs/base64"
+              },
               "compositeKey": {
                 "$ref": "common.json#/$defs/base64_32"
               }

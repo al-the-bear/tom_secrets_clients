@@ -578,9 +578,9 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
 | `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}, keyChanged?}], admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}], agent?, github?{state, login?}}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); **[C]** `keyChanged` (with `needs_unlock`, `source` `cache`) marks a store served read-only from a copy under its old key, because another device re-keyed it and its new key is not listed here yet (6.4); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key), **[B]** `github_app` (key `github-app:<device>`, this device's GitHub App sign-in, from the warning period of the GitHub token before its refresh token runs out unused); **[C]** `member_key` (key `member-key:<the first 16 characters of its fingerprint>`, the user's member key, from 30 days before its rotation age, `memberKeyAgeMonths`, default 24 months, counted from its entry's creation, is over); `tsm status` shows it where no app is attached; **[B]** `agent` is the ssh-agent's endpoint (`{socket}` or `{pipe}`) while it runs; **[B]** `github` is the GitHub App sign-in's `state` (as `github.app`) and the signed-in user's `login` |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
-| `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); **[B]** a vault the service opened with an OS unlock's bundle carries `keys.compositeKey` (base64) in place of `password` and `keyFile`; `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
+| `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); **[B]** a vault the service opened with an OS unlock's bundle carries `keys.compositeKey` (base64) in place of `password` and `keyFile`; **[C]** during a guided rotation's migration period `keys.previousOuterKey` (base64) names the old repository key the `.tsmx` file keeps a slot for, which every write keeps (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
-| `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?}, recipients?}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`); **[B]** after an OS unlock `keys` may carry the primary's `compositeKey` (base64, 32 bytes) in place of `password` and `keyFile`, with `keyFile` beside it for the keychain; **[C]** `recipients` (base64), a shared vault's recipients file written beside the re-keyed vault in the same commit (a member removed, 6.4); with a save that is not re-keyed `malformed` (reason `recipients`) |
+| `save {id, store, bytes, baseRevision?, keys?{password, keyFile?, outerKey?, previousOuterKey?}, recipients?}` | `ok` | hand an edited store file to the service, which writes it (6.4); a re-keyed file is taken as 6.4 says, `keys` carrying the primary's own new keys (a further vault's save with `keys` is `malformed`, reason `keys`); **[B]** after an OS unlock `keys` may carry the primary's `compositeKey` (base64, 32 bytes) in place of `password` and `keyFile`, with `keyFile` beside it for the keychain; **[C]** `recipients` (base64), a shared vault's recipients file written beside the re-keyed vault in the same commit (a member removed, 6.4); with a save that is not re-keyed `malformed` (reason `recipients`) |
 | `vault.move {id, store, location, bytes, baseRevision?, keys{password, keyFile?, outerKey?}}` | `ok {id, location, revision}`, or `error` `malformed` (reason `location`: not the store's locator with `.tsmx` added or removed; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`; `move`), `denied` (reason `stale_base`, `target_exists`, `branch_moving`, `wrong_executable`), `not_found` (no open store), `offline` / `token_expired` (`stores`) | add or remove a store's outer encryption, which moves it to its locator with `.kdbx.tsmx` or `.kdbx` (6.4); **[B]** the primary's `keys` may carry its `compositeKey` in place of `password` and `keyFile`, as for `save`; accepted only from the manager app's executable |
 | `vault.create {id, store, location, bytes, keys{password?, keyFile?, outerKey?}, githubToken?, keysDue?, recipients?}` | `ok {id, store, location, revision}`, or `error` `malformed` (reason `store`: not a store name, or one the primary names already; `location`: not a vault locator, or the primary's or a listed vault's; `keys`: an outer-encrypted file without its repository key, or a plain one with one; `bytes`: no base64, or a file that does not open with `keys` or whose metadata cannot be read; `githubToken`: a token for a vault that is not a `github:` vault outside the primary's repository; `create`), `denied` (reason `target_exists`, `wrong_executable`), `offline` / `token_expired` (`stores`) | create a further vault beside the primary: the service writes the new file where it lives and lists it in the primary (6.4); **[C]** with `recipients` (base64) a shared vault: `keys` without `password`, the recipients file written beside it after it is listed (a failure there answers `offline` / `token_expired` reason `recipients` with the vault created; the app writes the file with `vault.recipients.set`); accepted only from the manager app's executable |
 | **[C]** `vault.recipients {id, store?, location?, githubToken?}` | `recipientsData {id, store?, location, revision, bytes}`, or `error` `not_found` (no store of that name; reason `no_recipients`: the vault has no recipients file), `malformed` (reason `recipients`: neither or both of `store` and `location`; `location`), `denied` (reason `wrong_executable`), `offline` / `token_expired` | read a shared vault's recipients file beside it (6.4): of a store the service names, or of the vault at `location` not listed yet (joining it), read with `githubToken` for that repository when given, which the service uses for this read only; accepted only from the manager app's executable |
@@ -776,6 +776,41 @@ file again and lists the new keys. Writing:
   (`stale_base`) when the branch moved since the copy re-keyed (a member
   who re-keyed at the same time; the app re-keys again on top). A `file:`
   vault writes the file, then the recipients file.
+
+**[C] The guided rotation of the own vaults** (part-key-rotation, DP-84,
+DP-85). The app rotates a vault's key file or repository key in three
+steps, each a write of the primary, with the rotation record in
+`.tom-secrets/rotations` (the lock, its migration period, who is pending):
+
+- **prepare:** the new keys are written beside the old ones, in the
+  vault's entry of the primary (`tsm.next-outer-key`, the attachment
+  `next-keyfile`) or, for the primary's own keys, in the entry `primary`
+  of `.tom-secrets/next-keys`. Nothing is re-encrypted. Every service takes
+  them at its unlock and at each load of the primary: the primary's own
+  next keys go into its keychain beside its keys (`<handle>.next`), and the
+  ids of the keys it now holds (a key file's hash, a repository key's id,
+  as pairing records them) into its device record in
+  `.tom-secrets/devices`; it leaves the record's `pending`. The app lists
+  the devices whose record lacks the new key id;
+- **switch:** the vault is re-keyed under the new keys (a further vault's
+  entry naming them first, the primary's own with `save`'s `keys`). A
+  repository key rotated alone is written with two slots, the new key's
+  first (`keys.previousOuterKey`, the entry's `tsm.previous-outer-key`, the
+  `next-keys` entry's): a device holding only the old key still reads the
+  file, its store reported with `keyChanged`, and its `save` is refused
+  (`needs_unlock`, reason `key_changed`) as long as the file's first slot
+  is for a key it does not hold; a device holding both writes both slots.
+  A service whose primary no longer opens with its keys opens it with the
+  next keys it took (at the refresh and at the unlock) and keeps them as
+  its keys; a repository key rotated alone is taken up as soon as the file
+  has a slot for the next one. A key file or master password change leaves
+  a device without the new key on its copy under the old one, read-only;
+- **finish:** after the migration period or at once ("finish now"): the
+  old key leaves the entry (or the `next-keys` entry goes), the file is
+  written again with the new key's slot only, and the GitHub history is
+  compacted. A device that never took the new key is listed; it opens no
+  later version. Before the switch a rotation can be cancelled: the next
+  keys and the record go.
 
 **[C] The inbox folders** (part-sharing). A shared vault may carry, in its
 folder, `inbox/<member>/` folders, `<member>` a member key's fingerprint:
@@ -1652,3 +1687,9 @@ part-service) leaves these open; this document fixes them:
     lists, reads, writes and deletes them but never holds a key to them, a
     package is never merged or rewritten, and the date in its name lets any
     member's app expire it after 30 days without opening it.
+43. The guided rotation of the own vaults keeps the next keys in the
+    primary, which every device already reads, and lets each service take
+    them on its own (part-key-rotation): no message carries a key between
+    devices, the device records say who holds the new key, and a two-slot
+    `.tsmx` lets a device that has not yet taken it keep reading while it
+    writes nothing.
