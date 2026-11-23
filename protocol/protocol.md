@@ -1408,6 +1408,16 @@ its service opens the link as soon as the new machine's service listens.
 An `approvalLink` is `host:port` of one VPN or LAN address (an IPv6
 address in brackets), never every interface (`0.0.0.0`, `::`).
 
+**[C] Over the relay server.** The relay server (`tom_secrets_relay`,
+`tsm:<url>`) carries the pairing's bytes unchanged: the giving side
+allocates the nameplate (the code's number) with `POST /v1/pair`, both
+sides open the WebSocket `/v1/pair/<nameplate>`, and every binary message
+of one reaches the other. The relay sees only the frames above, never the
+code. The same server carries the approval link's bytes on
+`/v1/link/<link-id>` (with its instance token in token mode) and holds
+mailbox items, `age` packages a recipient reads after proving its member
+key; its API is in that package's README.
+
 ### 9.9 Test vectors
 
 - [`vectors/signatures.json`](vectors/signatures.json): three approver keys
@@ -1738,3 +1748,9 @@ part-service) leaves these open; this document fixes them:
     service only a store of bytes for the app (`relay.*`, the `relay/`
     folder only, so no request reaches the vaults' files); every frame is
     a commit, which the conditional reads keep within GitHub's rate limit.
+46. The relay server knows nothing of the protocols it carries (part-relay,
+    DP-65): a pairing and an approval link are opaque bytes between two
+    WebSockets, a mailbox item an `age` package; a recipient proves it holds
+    the member key by reading a token the relay encrypted to it, so the
+    relay needs no account, and only an instance token (in its default
+    token mode) decides who may send.
