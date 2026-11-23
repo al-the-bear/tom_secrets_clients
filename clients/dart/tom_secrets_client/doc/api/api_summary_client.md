@@ -21,7 +21,7 @@
   - [TomSecretFile](#tomsecretfile)
   - [TomSecretsLoginCandidate](#tomsecretslogincandidate)
   - [TomSecretsPasskeyCandidate](#tomsecretspasskeycandidate)
-  - [TomSecretsPasskeyAssertion](#tomsecretspasskeyassertion)
+  - [TomSecretsPasskeySignature](#tomsecretspasskeysignature)
   - [TomSecretsPasskeyCreated](#tomsecretspasskeycreated)
   - [TomSecretRequest](#tomsecretrequest)
   - [TomSecretResult](#tomsecretresult)
@@ -72,7 +72,7 @@ Object
 ├── TomSecretFile
 ├── TomSecretsLoginCandidate
 ├── TomSecretsPasskeyCandidate
-├── TomSecretsPasskeyAssertion
+├── TomSecretsPasskeySignature
 ├── TomSecretsPasskeyCreated
 ├── TomSecretRequest
 ├── TomSecretResult
@@ -150,7 +150,7 @@ TomSecretsClient({
 | `match(String url, {String? frameUrl, bool wait = true, Duration? timeout})` | `Future<List<TomSecretsLoginCandidate>>` | The login entries of a web page this client's grants cover, never a value (protocol.md 5.5); only for the browser host and the helpers (`denied`, `not_allowed_op` otherwise); `unsupported` when the service lacks the feature `match` |
 | `propose({required String url, required String userName, required String password, String? title})` | `Future<void>` | A login for the user to save in the manager app (protocol.md 5.5); only for the browser host with a grant; `unavailable` (`no_app`) with no app attached; `unsupported` when the service lacks the feature `propose` |
 | `passkeys(String url, String rpId, {List<String>? allowCredentials, bool wait = true, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<List<TomSecretsPasskeyCandidate>>` | **[C]** The passkeys of `rpId` for the page `url` this client may use, by name and credential id, never a key (protocol.md 5.8); the browser host only (`denied`, `not_allowed_op` otherwise), a relying party the page may not use `denied` (`rp_id`); `unsupported` when the service lacks the feature `passkey` |
-| `passkeyGet({required String url, required String rpId, required String entryId, required List<int> clientDataHash})` | `Future<TomSecretsPasskeyAssertion>` | **[C]** A sign-in signed by the service with the passkey `entryId` the user picked; `denied` (`not_matched`) for one that is no passkey of the page |
+| `passkeyGet({required String url, required String rpId, required String entryId, required List<int> clientDataHash})` | `Future<TomSecretsPasskeySignature>` | **[C]** A sign-in signed by the service with the passkey `entryId` the user picked; `denied` (`not_matched`) for one that is no passkey of the page |
 | `passkeyCreate({required String url, required String rpId, required List<int> userId, required String userName, String? displayName, required List<int> algorithms, List<String>? excludeCredentials, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<TomSecretsPasskeyCreated>` | **[C]** A new passkey once the user confirms it in the app, ES256 or Ed25519 by the site's order, kept in a vault before it answers; `denied` (`excluded`, `refused`, `timeout`, `no_approver`), `unsupported` (`algorithm`), `unavailable` (no vault written) |
 
 ---
@@ -480,15 +480,15 @@ factory TomSecretsPasskeyCandidate.fromJson(Map<String, Object?> json)
 
 ---
 
-### TomSecretsPasskeyAssertion
+### TomSecretsPasskeySignature
 
 **[C]** A sign-in signed with a passkey (`passkeyAssertion`); every byte value base64url without padding.
 
 #### Constructors
 
 ```dart
-const TomSecretsPasskeyAssertion({required String credentialId, required String authenticatorData, required String signature, String? userHandle})
-factory TomSecretsPasskeyAssertion.fromJson(Map<String, Object?> json)
+const TomSecretsPasskeySignature({required String credentialId, required String authenticatorData, required String signature, String? userHandle})
+factory TomSecretsPasskeySignature.fromJson(Map<String, Object?> json)
 ```
 
 #### Properties

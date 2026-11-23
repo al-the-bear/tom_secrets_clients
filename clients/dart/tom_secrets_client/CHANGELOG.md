@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.18
+
+- The answer of `passkeyGet` is `TomSecretsPasskeySignature`: 0.2.17's
+  name `TomSecretsPasskeyAssertion` is `tom_secrets_core`'s authenticator
+  type too, and a library importing both could not name either.
+
 ## 0.2.17
 
 - Passkeys for the browser host (protocol.md 5.8, feature `passkey`):

@@ -390,7 +390,7 @@ final class TomSecretsClient {
   /// service signs; the key never leaves it. Only a passkey `passkeys`
   /// answers for the page (else `denied`, reason `not_matched`). Fails as
   /// `unsupported` when the service does not offer `passkey`.
-  Future<TomSecretsPasskeyAssertion> passkeyGet({
+  Future<TomSecretsPasskeySignature> passkeyGet({
     required String url,
     required String rpId,
     required String entryId,
@@ -409,7 +409,7 @@ final class TomSecretsClient {
     if (answer['op'] != 'passkeyAssertion') {
       throw _protocolError('passkeyGet was answered ${answer['op']}');
     }
-    return TomSecretsPasskeyAssertion.fromJson(answer);
+    return TomSecretsPasskeySignature.fromJson(answer);
   }
 
   /// **[C]** A new passkey at [rpId] for the page [url] and the user

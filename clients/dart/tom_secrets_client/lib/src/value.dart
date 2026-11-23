@@ -375,9 +375,9 @@ final class TomSecretsPasskeyCandidate {
 /// **[C]** A sign-in signed with a passkey (protocol.md 5.8
 /// `passkeyAssertion`); every byte value base64url without padding, as
 /// WebAuthn's JSON carries it.
-final class TomSecretsPasskeyAssertion {
+final class TomSecretsPasskeySignature {
   /// An assertion.
-  const TomSecretsPasskeyAssertion({
+  const TomSecretsPasskeySignature({
     required this.credentialId,
     required this.authenticatorData,
     required this.signature,
@@ -385,8 +385,8 @@ final class TomSecretsPasskeyAssertion {
   });
 
   /// From a `passkeyAssertion` answer.
-  factory TomSecretsPasskeyAssertion.fromJson(Map<String, Object?> json) =>
-      TomSecretsPasskeyAssertion(
+  factory TomSecretsPasskeySignature.fromJson(Map<String, Object?> json) =>
+      TomSecretsPasskeySignature(
         credentialId: '${json['credentialId'] ?? ''}',
         authenticatorData: '${json['authenticatorData'] ?? ''}',
         signature: '${json['signature'] ?? ''}',

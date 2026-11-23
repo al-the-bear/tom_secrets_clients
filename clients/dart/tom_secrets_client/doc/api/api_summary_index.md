@@ -46,7 +46,7 @@ manager app, `tsm` and the service.
 | `TomSecretFile` | What a `getFile` answers: an attachment or a typed key as bytes. | [→](api_summary_client.md#tomsecretfile) |
 | `TomSecretsLoginCandidate` | A login entry `match` found for a page: never a value. | [→](api_summary_client.md#tomsecretslogincandidate) |
 | `TomSecretsPasskeyCandidate` | A passkey of a page: its entry, names and credential id, never its key. | [→](api_summary_client.md#tomsecretspasskeycandidate) |
-| `TomSecretsPasskeyAssertion` | A sign-in signed with a passkey. | [→](api_summary_client.md#tomsecretspasskeyassertion) |
+| `TomSecretsPasskeySignature` | A sign-in signed with a passkey. | [→](api_summary_client.md#tomsecretspasskeysignature) |
 | `TomSecretsPasskeyCreated` | A passkey just made and kept. | [→](api_summary_client.md#tomsecretspasskeycreated) |
 | `TomSecretRequest` | One reference of a `getMany`. | [→](api_summary_client.md#tomsecretrequest) |
 | `TomSecretResult` | One result of a `getMany`, in request order: a value or an error. | [→](api_summary_client.md#tomsecretresult) |
