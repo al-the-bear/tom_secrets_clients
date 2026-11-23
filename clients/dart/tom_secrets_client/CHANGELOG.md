@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.14
+
+- `tomSecretsClientVersion` (sent in `hello`) is the package's version
+  again; 0.2.13 sent 0.2.12.
+
 ## 0.2.13
 
 - The pairing handover's relay may be a relay server (`tsm:<url>`) too,

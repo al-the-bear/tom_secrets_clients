@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.10
+
+- `tsm --version` names the package's version again; 0.2.9 named 0.2.8.
+
 ## 0.2.9
 
 - `tsm pair --relay tsm:<url>` pairs through a relay server
