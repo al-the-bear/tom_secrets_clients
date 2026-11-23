@@ -49,6 +49,54 @@ void main() {
     );
   });
 
+  test('the handover through a relay (part-relay): alone or after the '
+      'address, with this machine\'s token; refused without one', () {
+    const alone = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      code: '42-guitar-orbit',
+      device: 'bigbeast',
+      relay: 'github:demo-owner/demo-vaults',
+      relayToken: 'github_pat_demo',
+      relayApi: 'http://127.0.0.1:9',
+    );
+    final back = TomSecretsPairingHandover.fromJson(
+      jsonDecode(alone.toLine()),
+    )!;
+    expect(back.address, isNull);
+    expect(back.port, isNull);
+    expect(back.relay, 'github:demo-owner/demo-vaults');
+    expect(back.relayToken, 'github_pat_demo');
+    expect(back.relayApi, 'http://127.0.0.1:9');
+    expect(back.toLine(), alone.toLine());
+    const both = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      address: '10.8.0.7',
+      port: 47900,
+      code: '42-guitar-orbit',
+      device: 'bigbeast',
+      relay: 'github:demo-owner/demo-vaults',
+      relayToken: 'github_pat_demo',
+    );
+    expect(
+      TomSecretsPairingHandover.fromJson(jsonDecode(both.toLine()))!.address,
+      '10.8.0.7',
+    );
+    final base = jsonDecode(alone.toLine()) as Map<String, Object?>;
+    for (final bad in <Map<String, Object?>>[
+      {...base}..remove('relayToken'),
+      {...base, 'relay': 'tsm:https://relay.example'},
+      {...base}..remove('relay'),
+      {...base, 'address': '10.8.0.7'},
+      {...base, 'relayApi': 7},
+    ]) {
+      expect(
+        () => TomSecretsPairingHandover.fromJson(bad),
+        throwsFormatException,
+        reason: '$bad',
+      );
+    }
+  });
+
   test('the handover carries the approval link, checked', () {
     const h = TomSecretsPairingHandover(
       dataDirectory: '/demo/data',

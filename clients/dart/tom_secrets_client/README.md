@@ -412,6 +412,12 @@ token). `setUp` sends the master password; after the code
 `wrong_password` another may be sent, three in all. Then the caller starts
 the service as usual and unlocks it.
 
+A machine that reaches neither the other machine's network nor the VPN
+pairs through a GitHub repository as the relay (phase C) when the other
+machine's pairing waits there too: the handover names `relay`
+(`github:<owner>/<repo>`) and `relayToken`, this machine's own token for
+that repository, with or without an address (the address is tried first).
+
 ## Configuration
 
 | Variable | Used for |

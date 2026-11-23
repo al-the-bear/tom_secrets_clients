@@ -27,9 +27,12 @@
   - [TomSecretsBrowserHosts](#tomsecretsbrowserhosts)
   - [TomSecretsBrowserHostState](#tomsecretsbrowserhoststate)
   - [TomSecretsRegistry](#tomsecretsregistry)
+  - [TomSecretsIntegrationState](#tomsecretsintegrationstate)
+  - [TomSecretsIntegrations](#tomsecretsintegrations)
 - [Enums](#enums)
   - [TomSecretsTransport](#tomsecretstransport)
   - [TomSecretsBrowser](#tomsecretsbrowser)
+  - [TomSecretsIntegration](#tomsecretsintegration)
 - [Typedefs](#typedefs)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -205,6 +208,9 @@ joined with the separator of the OS asked for (`\` for `windows`, else
 | `separator` | `String` | The path separator the files are joined with (default this platform's) |
 | `clientSocket` | `String` | `client.sock` |
 | `adminSocket` | `String` | `admin.sock` |
+| `agentSocket` | `String` | `agent.sock`, the ssh-agent's Unix domain socket (Linux, macOS): what `SSH_AUTH_SOCK` or `IdentityAgent` names |
+| `agentPipe` | `String` (static) | The ssh-agent's named pipe on Windows, `\\.\pipe\tsm-ssh-agent` |
+| `agentEndpoint` | `String` | Where `ssh` finds the agent on this runtime's OS: the pipe on Windows, else the socket |
 | `clientPortFile` | `String` | `client.port` |
 | `clientTokenFile` | `String` | `client.token` |
 | `adminPortFile` | `String` | `admin.port` |
@@ -388,19 +394,23 @@ const TomSecretsStartFailed(String code, String message)
 
 The pairing mode's handover line: set the machine up in a data directory by
 receiving the pairing at an address and port with the code the giving
-machine shows.
+machine shows, or **[C]** through a GitHub repository as the relay (after
+the address, or alone) with this machine's own token for it.
 
 #### Constructors
 
 ```dart
 const TomSecretsPairingHandover({
   required String dataDirectory,
-  required String address,
-  required int port,
+  String? address,
+  int? port,
   required String code,
   required String device,
   String? deviceKey,
   String? approvalLink,
+  String? relay,
+  String? relayToken,
+  String? relayApi,
 })
 ```
 
@@ -408,19 +418,22 @@ const TomSecretsPairingHandover({
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member or names an `approvalLink` that is no approval link |
+| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member, names neither an address and port nor a relay, a relay that is no `github:` relay or without its token, or an `approvalLink` that is no approval link |
 
 #### Properties
 
 | Property | Type | Description |
 | --- | --- | --- |
 | `dataDirectory` | `String` | The data directory the machine is set up in |
-| `address` | `String` | The giving machine's address |
-| `port` | `int` | Its pairing window's port |
+| `address` | `String?` | The giving machine's address, or null (a relay only) |
+| `port` | `int?` | Its pairing window's port, or null (a relay only) |
 | `code` | `String` | The code its Pairing screen shows |
 | `device` | `String` | This machine's name |
 | `deviceKey` | `String?` | Where the device settings container's key is kept, or null (`auto`) |
 | `approvalLink` | `String?` | The address this machine's approval link listens on (`address:port`), or null: it goes into the device settings, and the giving machine records it so its service opens the link at once |
+| `relay` | `String?` | **[C]** The GitHub repository the pairing also goes through (`github:<owner>/<repo>`), tried after the address, or null |
+| `relayToken` | `String?` | **[C]** This machine's own token for the relay's repository; it also opens the primary when that is there. Never a command-line argument |
+| `relayApi` | `String?` | **[C]** The GitHub API's URL for the relay, or null (`https://api.github.com`) |
 
 #### Methods
 
@@ -582,6 +595,57 @@ The Windows registry as far as the manifests need it: `read(key)` (the
 default value, or null), `write(key, value)`, `delete(key)`.
 `TomSecretsRegExe` implements it with `reg.exe`.
 
+### TomSecretsIntegrationState
+
+The state of one developer-tool integration (`tsm integrations`, the app's
+Settings › Integrations): `integration`, `installed` (its block is in the
+tool's file), `current` (it names this machine's own agent endpoint and
+helper), `file`, `problems` (in words), `hosts` (the ssh block's host
+patterns); `toJson()` as `tsm integrations status --json` prints it.
+
+### TomSecretsIntegrations
+
+The integrations of one user on this machine, each written in a marked
+block of the tool's file and removed again (nothing outside the block
+changes).
+
+#### Constructors
+
+```dart
+TomSecretsIntegrations({
+  required String home,
+  String? agentEndpoint,
+  String? tsmExecutable,
+  String? operatingSystem,
+  String? path,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `home` | `String` | The user's home folder |
+| `agentEndpoint` | `String?` | Where the service's agent listens (`statusReport.agent`) |
+| `tsmExecutable` | `String?` | `tsm`'s executable |
+| `operatingSystem` | `String` | The OS the files are for |
+| `path` | `String` | The `PATH` git looks for the helper on |
+| `sshConfig` | `String` | `~/.ssh/config` |
+| `gitConfig` | `String` | `~/.gitconfig` |
+| `helperLink` | `String?` | `git-credential-tsm` beside `tsm` |
+| `gitBlock` | `List<String>` (static) | The git block: `[credential]`, `helper = tsm` |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `fileOf(integration)` | `String` | The file of an integration |
+| `sshBlock({hosts})` | `List<String>` | The ssh block for the host patterns (`Host *` by default) |
+| `status(integration)` | `Future<TomSecretsIntegrationState>` | The state of an integration |
+| `install(integration, {hosts})` | `Future<TomSecretsIntegrationState>` | Writes its block (and for git the helper link); `StateError` when the endpoint or `tsm` is not known |
+| `uninstall(integration)` | `Future<TomSecretsIntegrationState>` | Removes its block (and for git the helper link) |
+| `repair()` | `Future<List<TomSecretsIntegration>>` | Installs again every installed integration that no longer names this machine's agent or helper; answers those it repaired |
+
 ---
 
 ## Enums
@@ -601,6 +665,12 @@ How the endpoints are offered.
 
 A browser the host can be installed for: `chrome`, `chromium`, `edge`,
 `brave`, `firefox`; `label` (its name), `isFirefox`.
+
+### TomSecretsIntegration
+
+A developer tool the product configures: `ssh` (the service's agent as
+`IdentityAgent` in `~/.ssh/config`), `git` (the credential helper
+`git-credential-tsm`, `credential.helper tsm` in `~/.gitconfig`).
 
 ---
 
@@ -633,6 +703,11 @@ A browser the host can be installed for: `chrome`, `chromium`, `edge`,
 | `tomSecretsChromiumExtensionIds` | `List<String>` | The Chromium extension ids the host serves; `tomSecretsChromiumExtensionOrigins` their origins |
 | `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` |
 | `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) |
+| `tomSecretsBlockBegin` | `String` | The first line of a block the product writes, `# >>> tom secrets >>>` |
+| `tomSecretsBlockEnd` | `String` | The last line of a block the product writes, `# <<< tom secrets <<<` |
+| `tomSecretsBundleInfo` | `String` | The HKDF info of the bundle key, `tsm-bundle-v1` |
+| `tomSecretsBundleNonceBytes` | `int` | The length of a sealed bundle's nonce (12) |
+| `tomSecretsCompositeKeyBytes` | `int` | The length of a composite key (32) |
 
 ### Functions
 
@@ -655,3 +730,5 @@ A browser the host can be installed for: `chrome`, `chromium`, `edge`,
 | `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin |
 | `tomSecretsApprovalLinkProblem` | `String? tomSecretsApprovalLinkProblem(String text, {bool anyPort = false})` | Why a text cannot be the device setting `approvalLink`, or null: `host:port` (an IPv6 address in brackets), a port 1–65535 (with `anyPort` also 0), never every interface (`0.0.0.0`, `::`) |
 | `tomSecretsStartService` | `Future<TomSecretsStartResult> tomSecretsStartService({required String executable, List<String> arguments = const [], required String bootstrap, Map<String, String>? environment, Duration timeout = const Duration(seconds: 60)})` | Starts the service detached with a fresh admin key handed on its standard input; waits for its answer line |
+| `tomSecretsBlockOf` | `List<String>? tomSecretsBlockOf(String text)` | The lines between the marks of a text's block, or null when it has none |
+| `tomSecretsWithBlock` | `String tomSecretsWithBlock(String text, List<String>? block, {bool atTop = false})` | The text with its block's lines replaced (marks added), or the block removed when `block` is null; a new block at the top or the end, every other line kept |

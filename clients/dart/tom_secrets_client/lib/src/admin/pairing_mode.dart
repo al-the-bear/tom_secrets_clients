@@ -6,11 +6,17 @@
 /// starts the service executable (attached, not detached) and talks to it
 /// in JSON lines:
 ///
-/// 1. tsm writes the handover, `{"mode":"pair","dataDirectory","address",
-///    "port","code","device","deviceKey"?,"approvalLink"?}`; `approvalLink`
-///    (`address:port`, [tomSecretsApprovalLinkProblem]) goes into the device
-///    settings, and the giving machine is told it so it opens the approval
-///    link to this one.
+/// 1. tsm writes the handover, `{"mode":"pair","dataDirectory","address"?,
+///    "port"?,"code","device","deviceKey"?,"approvalLink"?,"relay"?,
+///    "relayToken"?,"relayApi"?}`; `approvalLink` (`address:port`,
+///    [tomSecretsApprovalLinkProblem]) goes into the device settings, and
+///    the giving machine is told it so it opens the approval link to this
+///    one. **[C]** `relay` (`github:<owner>/<repo>`, part-relay) is a
+///    GitHub repository the pairing also goes through, tried after the
+///    address (or alone, without one), with `relayToken`, this machine's
+///    own token for that repository (from tsm's `--token-env`, never a
+///    command-line argument); `relayApi` is the GitHub API's URL (default
+///    `https://api.github.com`; GitHub Enterprise Server or a test).
 /// 2. The service receives the pairing and answers `{"status":"received",
 ///    "giver","vaults":[{"name","locator","primary"}],"config","tokens"}`
 ///    (nothing stored yet), or `{"status":"error","code","message",
@@ -73,15 +79,20 @@ final class TomSecretsPairingHandover {
   /// pairing at [address]:[port] with [code], as [device]; [deviceKey]
   /// names where the device settings container's key is kept (default
   /// `auto`); [approvalLink] is the address this machine's approval link
-  /// listens on (none: no link).
+  /// listens on (none: no link). With [relay] (and [relayToken]) the
+  /// pairing goes through that GitHub repository after the address, or
+  /// alone when no address is given.
   const TomSecretsPairingHandover({
     required this.dataDirectory,
-    required this.address,
-    required this.port,
+    this.address,
+    this.port,
     required this.code,
     required this.device,
     this.deviceKey,
     this.approvalLink,
+    this.relay,
+    this.relayToken,
+    this.relayApi,
   });
 
   /// The handover in [json], or null when it is not a pairing handover.
@@ -89,13 +100,42 @@ final class TomSecretsPairingHandover {
   static TomSecretsPairingHandover? fromJson(Object? json) {
     if (json is! Map || json['mode'] != 'pair') return null;
     final port = json['port'];
-    for (final key in ['dataDirectory', 'address', 'code', 'device']) {
+    for (final key in ['dataDirectory', 'code', 'device']) {
       if (json[key] is! String || (json[key] as String).isEmpty) {
         throw FormatException('the pairing handover names $key');
       }
     }
-    if (port is! int || port < 1 || port > 65535) {
-      throw const FormatException('the pairing handover names a port');
+    final address = json['address'];
+    final relay = json['relay'];
+    final relayToken = json['relayToken'];
+    final relayApi = json['relayApi'];
+    if (address != null || port != null) {
+      if (address is! String || address.isEmpty) {
+        throw const FormatException('the pairing handover names an address');
+      }
+      if (port is! int || port < 1 || port > 65535) {
+        throw const FormatException('the pairing handover names a port');
+      }
+    }
+    if (relay != null || relayToken != null) {
+      if (relay is! String || !relay.startsWith('github:')) {
+        throw const FormatException(
+          'the pairing handover\'s relay is github:<owner>/<repo>',
+        );
+      }
+      if (relayToken is! String || relayToken.isEmpty) {
+        throw const FormatException(
+          'a pairing through a relay needs this machine\'s token for it',
+        );
+      }
+    }
+    if (relayApi != null && relayApi is! String) {
+      throw const FormatException('relayApi is a URL');
+    }
+    if (address == null && relay == null) {
+      throw const FormatException(
+        'the pairing handover names an address and port, or a relay',
+      );
     }
     final link = json['approvalLink'];
     if (link != null) {
@@ -107,23 +147,26 @@ final class TomSecretsPairingHandover {
     }
     return TomSecretsPairingHandover(
       dataDirectory: json['dataDirectory'] as String,
-      address: json['address'] as String,
-      port: port,
+      address: address as String?,
+      port: port as int?,
       code: json['code'] as String,
       device: json['device'] as String,
       deviceKey: json['deviceKey'] as String?,
       approvalLink: link as String?,
+      relay: relay as String?,
+      relayToken: relayToken as String?,
+      relayApi: relayApi as String?,
     );
   }
 
   /// The data directory the machine is set up in.
   final String dataDirectory;
 
-  /// The giving machine's address.
-  final String address;
+  /// The giving machine's address, or null (a relay only).
+  final String? address;
 
-  /// Its pairing window's port.
-  final int port;
+  /// Its pairing window's port, or null (a relay only).
+  final int? port;
 
   /// The code its Pairing screen shows.
   final String code;
@@ -139,16 +182,32 @@ final class TomSecretsPairingHandover {
   /// records it so its service opens the link at once.
   final String? approvalLink;
 
+  /// **[C]** The GitHub repository the pairing also goes through
+  /// (`github:<owner>/<repo>`), or null.
+  final String? relay;
+
+  /// **[C]** This machine's own token for [relay]'s repository (a pairing
+  /// through GitHub needs the repository reachable first); it also opens
+  /// the primary when that is there. Never a command-line argument.
+  final String? relayToken;
+
+  /// **[C]** The GitHub API's URL for [relay], or null
+  /// (`https://api.github.com`).
+  final String? relayApi;
+
   /// The JSON line.
   String toLine() => jsonEncode({
     'mode': 'pair',
     'dataDirectory': dataDirectory,
-    'address': address,
-    'port': port,
+    'address': ?address,
+    'port': ?port,
     'code': code,
     'device': device,
     'deviceKey': ?deviceKey,
     'approvalLink': ?approvalLink,
+    'relay': ?relay,
+    'relayToken': ?relayToken,
+    'relayApi': ?relayApi,
   });
 }
 

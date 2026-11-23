@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.12
+
+- The pairing mode's handover through a relay (part-relay): `address` and
+  `port` are optional; `relay` (a `github:<owner>/<repo>` repository the
+  pairing also goes through, after the address or alone), `relayToken`
+  (this machine's own token for it) and `relayApi` (the GitHub API's URL).
+- The API summary documents the developer-tool integrations, the unlock
+  bundle's constants and the runtime's ssh-agent endpoint.
+
 ## 0.2.11
 
 - 0.2.10 exported `tomSecretsBrowserHostName`, which `tom_secrets_service`

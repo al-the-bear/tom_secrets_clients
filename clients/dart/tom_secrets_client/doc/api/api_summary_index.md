@@ -108,11 +108,14 @@ manager app, `tsm` and the service.
 | `TomSecretsStarted` | A new service runs with the admin key. | [→](api_summary_admin.md#tomsecretsstarted) |
 | `TomSecretsAlreadyStarted` | A service was already running: attach to it, with the key held or by `claim`. | [→](api_summary_admin.md#tomsecretsalreadystarted) |
 | `TomSecretsStartFailed` | The service could not start. | [→](api_summary_admin.md#tomsecretsstartfailed) |
-| `TomSecretsPairingHandover` | The pairing mode's handover line: set the machine up in a data directory by receiving the pairing at an address and port with the code the giving machine shows. | [→](api_summary_admin.md#tomsecretspairinghandover) |
+| `TomSecretsPairingHandover` | The pairing mode's handover line: set the machine up in a data directory by receiving the pairing at an address and port, or through a GitHub relay, with the code the giving machine shows. | [→](api_summary_admin.md#tomsecretspairinghandover) |
 | `TomSecretsPairingReport` | What a pairing gave, as the pairing mode reports it (no key, no token). | [→](api_summary_admin.md#tomsecretspairingreport) |
 | `TomSecretsPairingModeException` | The pairing mode answered an error. | [→](api_summary_admin.md#tomsecretspairingmodeexception) |
 | `TomSecretsServicePairing` | A conversation with the service in its pairing mode, as `tsm pair` drives it: the service executable runs attached and talks in JSON lines. | [→](api_summary_admin.md#tomsecretsservicepairing) |
 | `TomSecretsTransport` | How the endpoints are offered. | [→](api_summary_admin.md#tomsecretstransport) |
+| `TomSecretsIntegration` | A developer tool the product configures: `ssh`, `git`. | [→](api_summary_admin.md#tomsecretsintegration) |
+| `TomSecretsIntegrationState` | The state of one developer-tool integration. | [→](api_summary_admin.md#tomsecretsintegrationstate) |
+| `TomSecretsIntegrations` | The integrations of one user on this machine, in marked blocks of the tools' files. | [→](api_summary_admin.md#tomsecretsintegrations) |
 
 ### Functions
 
@@ -132,6 +135,8 @@ manager app, `tsm` and the service.
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder | [→](api_summary_admin.md#functions) |
 | `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsStartService` | `Future<TomSecretsStartResult> tomSecretsStartService({required String executable, List<String> arguments = const [], required String bootstrap, Map<String, String>? environment, Duration timeout = const Duration(seconds: 60)})` | Starts the service detached with a fresh admin key handed on its standard input; waits for its answer line | [→](api_summary_admin.md#functions) |
+| `tomSecretsBlockOf` | `List<String>? tomSecretsBlockOf(String text)` | The lines between the marks of a text's block, or null when it has none | [→](api_summary_admin.md#functions) |
+| `tomSecretsWithBlock` | `String tomSecretsWithBlock(String text, List<String>? block, {bool atTop = false})` | The text with its block's lines replaced (marks added), or the block removed when `block` is null; a new block at the top or the end, every other line kept | [→](api_summary_admin.md#functions) |
 
 ### Constants
 
@@ -147,12 +152,20 @@ manager app, `tsm` and the service.
 | `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` | [→](api_summary_admin.md#constants) |
 | `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` | [→](api_summary_admin.md#constants) |
 | `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) | [→](api_summary_admin.md#constants) |
+| `tomSecretsBlockBegin` | `String` | The first line of a block the product writes, `# >>> tom secrets >>>` | [→](api_summary_admin.md#constants) |
+| `tomSecretsBlockEnd` | `String` | The last line of a block the product writes, `# <<< tom secrets <<<` | [→](api_summary_admin.md#constants) |
+| `tomSecretsBundleInfo` | `String` | The HKDF info of the bundle key, `tsm-bundle-v1` | [→](api_summary_admin.md#constants) |
+| `tomSecretsBundleNonceBytes` | `int` | The length of a sealed bundle's nonce (12) | [→](api_summary_admin.md#constants) |
+| `tomSecretsCompositeKeyBytes` | `int` | The length of a composite key (32) | [→](api_summary_admin.md#constants) |
 
 ---
 
 ## Alphabetical Type Index
 
 | Type | Module | Link |
+| `TomSecretsIntegration` | Admin | [→](api_summary_admin.md#tomsecretsintegration) |
+| `TomSecretsIntegrations` | Admin | [→](api_summary_admin.md#tomsecretsintegrations) |
+| `TomSecretsIntegrationState` | Admin | [→](api_summary_admin.md#tomsecretsintegrationstate) |
 | --- | --- | --- |
 | `TomSecretBinding` | Client | [→](api_summary_client.md#tomsecretbinding) |
 | `TomSecretEncoding` | Client | [→](api_summary_client.md#tomsecretencoding) |
@@ -204,6 +217,8 @@ manager app, `tsm` and the service.
 ## Alphabetical Function Index
 
 | Function | Module | Link |
+| `tomSecretsBlockOf` | Admin | [→](api_summary_admin.md#functions) |
+| `tomSecretsWithBlock` | Admin | [→](api_summary_admin.md#functions) |
 | --- | --- | --- |
 | `currentUid` | Client | [→](api_summary_client.md#functions) |
 | `discoverTomSecrets` | Client | [→](api_summary_client.md#functions) |
@@ -229,6 +244,11 @@ manager app, `tsm` and the service.
 ## Alphabetical Constant Index
 
 | Constant | Module | Link |
+| `tomSecretsBlockBegin` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsBlockEnd` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsBundleInfo` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsBundleNonceBytes` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsCompositeKeyBytes` | Admin | [→](api_summary_admin.md#constants) |
 | --- | --- | --- |
 | `tomSecretsAdminKeyIndexHandle` | Admin | [→](api_summary_admin.md#constants) |
 | `tomSecretsAdminLabel` | Admin | [→](api_summary_admin.md#constants) |
