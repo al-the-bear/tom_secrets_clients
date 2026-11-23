@@ -10,6 +10,7 @@
 @TestOn('mac-os || linux')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -160,6 +161,151 @@ void main() {
           followLinks: false,
         ),
         FileSystemEntityType.notFound,
+      );
+    });
+
+    test('aws: per profile credential_process naming tsm and the reference, '
+        'at the end of a config the user has; as botocore reads it (Python\'s '
+        'configparser and shlex); a profile the user defines outside the '
+        'block is refused; repair names a moved tsm; one profile removed, '
+        'then the block', () async {
+      Directory('${home.path}/.aws').createSync();
+      final config = File('${home.path}/.aws/config')
+        ..writeAsStringSync('[profile own]\nregion = eu-central-1\n');
+      final i = integrations();
+      expect((await i.status(TomSecretsIntegration.aws)).installed, isFalse);
+      var state = await i.install(
+        TomSecretsIntegration.aws,
+        awsProfiles: {'demo': "team/Cloud/AWS demo's key", 'default': 'aws.ci'},
+      );
+      expect(state.current, isTrue, reason: '${state.problems}');
+      expect(state.profiles, {
+        'demo': "team/Cloud/AWS demo's key",
+        'default': 'aws.ci',
+      });
+      final text = config.readAsStringSync();
+      expect(text, startsWith('[profile own]\nregion = eu-central-1\n\n'));
+      expect(
+        text,
+        contains(
+          '[default]\ncredential_process = $tsm '
+          'aws-credentials aws.ci\n',
+        ),
+      );
+      final python = await Process.run('python3', [
+        '-c',
+        'import configparser, shlex, sys\n'
+            'c = configparser.RawConfigParser()\n'
+            'c.read(sys.argv[1])\n'
+            'for s in ("profile demo", "default"):\n'
+            '    print(shlex.split(c.get(s, "credential_process")))\n',
+        config.path,
+      ]);
+      expect(python.exitCode, 0, reason: '${python.stderr}');
+      expect('${python.stdout}'.trim().split('\n'), [
+        "['$tsm', 'aws-credentials', \"team/Cloud/AWS demo's key\"]",
+        "['$tsm', 'aws-credentials', 'aws.ci']",
+      ]);
+      // A profile the user has outside the block.
+      await expectLater(
+        i.install(TomSecretsIntegration.aws, awsProfiles: {'own': 'x'}),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        () => i.install(TomSecretsIntegration.aws, awsProfiles: {'a b': 'x'}),
+        throwsA(isA<StateError>()),
+      );
+      // tsm moved: the block is stale, repair rewrites it with the profiles.
+      final moved = TomSecretsIntegrations(
+        home: home.path,
+        tsmExecutable: '${home.path}/bin2/tsm',
+        path: '/usr/bin',
+      );
+      state = await moved.status(TomSecretsIntegration.aws);
+      expect(state.current, isFalse);
+      expect(state.problems.single, contains('${home.path}/bin2/tsm'));
+      expect(await moved.repair(), contains(TomSecretsIntegration.aws));
+      state = await moved.status(TomSecretsIntegration.aws);
+      expect(state.current, isTrue);
+      expect(state.profiles.keys, ['demo', 'default']);
+      state = await moved.uninstall(
+        TomSecretsIntegration.aws,
+        awsProfile: 'demo',
+      );
+      expect(state.profiles.keys, ['default']);
+      await moved.uninstall(TomSecretsIntegration.aws);
+      expect(
+        config.readAsStringSync(),
+        '[profile own]\nregion = eu-central-1\n',
+      );
+    });
+
+    test('docker: credHelpers per registry and credsStore, the user\'s keys '
+        'kept, docker-credential-tsm beside tsm; one registry removed; '
+        'uninstall restores the rest and removes the link', () async {
+      Directory('${home.path}/.docker').createSync();
+      final config = File('${home.path}/.docker/config.json')
+        ..writeAsStringSync(
+          '{"auths": {"old.example": {}}, "credHelpers": '
+          '{"gcr.io": "gcloud"}}',
+        );
+      final i = integrations();
+      expect((await i.status(TomSecretsIntegration.docker)).installed, isFalse);
+      var state = await i.install(
+        TomSecretsIntegration.docker,
+        dockerRegistries: ['ghcr.io', 'registry.example:5000'],
+      );
+      expect(state.current, isTrue, reason: '${state.problems}');
+      expect(state.registries, ['ghcr.io', 'registry.example:5000']);
+      expect(state.everyRegistry, isFalse);
+      expect(Link('${home.path}/bin/docker-credential-tsm').targetSync(), tsm);
+      var json = jsonDecode(config.readAsStringSync()) as Map;
+      expect(json['auths'], {'old.example': <String, Object?>{}});
+      expect(json['credHelpers'], {
+        'gcr.io': 'gcloud',
+        'ghcr.io': 'tsm',
+        'registry.example:5000': 'tsm',
+      });
+      state = await i.install(
+        TomSecretsIntegration.docker,
+        dockerEveryRegistry: true,
+      );
+      expect(state.everyRegistry, isTrue);
+      expect(state.registries, hasLength(2));
+      state = await i.uninstall(
+        TomSecretsIntegration.docker,
+        dockerRegistry: 'ghcr.io',
+      );
+      expect(state.registries, ['registry.example:5000']);
+      expect(state.everyRegistry, isTrue);
+      expect(
+        File('${home.path}/bin/docker-credential-tsm').existsSync(),
+        isTrue,
+      );
+      state = await i.uninstall(TomSecretsIntegration.docker);
+      expect(state.installed, isFalse);
+      json = jsonDecode(config.readAsStringSync()) as Map;
+      expect(json, {
+        'auths': {'old.example': <String, Object?>{}},
+        'credHelpers': {'gcr.io': 'gcloud'},
+      });
+      expect(
+        FileSystemEntity.typeSync(
+          '${home.path}/bin/docker-credential-tsm',
+          followLinks: false,
+        ),
+        FileSystemEntityType.notFound,
+      );
+      // A configuration that is no JSON is left alone.
+      config.writeAsStringSync('not json');
+      await expectLater(
+        i.install(TomSecretsIntegration.docker, dockerRegistries: ['x.io']),
+        throwsA(isA<StateError>()),
+      );
+      expect(config.readAsStringSync(), 'not json');
+      expect(
+        (await i.status(TomSecretsIntegration.docker)).problems.single,
+        contains('no JSON'),
       );
     });
   });

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.16
+
+- `TomSecretsIntegrations` configures AWS and Docker too
+  (part-os-integration): `TomSecretsIntegration.aws` writes per profile
+  `credential_process = <tsm> aws-credentials <ref>` into the marked block
+  of `~/.aws/config` (`awsBlock`, the words quoted as botocore splits
+  them; a profile also defined outside the block refused);
+  `TomSecretsIntegration.docker` names `tsm` in `~/.docker/config.json`'s
+  `credHelpers` per registry or as `credsStore`, keeping every other key,
+  with `docker-credential-tsm` beside tsm (`helperLinkOf`,
+  `tomSecretsDockerHelperName`). `install` takes `awsProfiles`,
+  `dockerRegistries`, `dockerEveryRegistry`; `uninstall` takes
+  `awsProfile`, `dockerRegistry` to remove one; the state names
+  `profiles`, `registries`, `everyRegistry`; `repair` covers both.
+
 ## 0.2.15
 
 - `TomSecretsPairingHandover`'s `relay` may be a magic-wormhole mailbox

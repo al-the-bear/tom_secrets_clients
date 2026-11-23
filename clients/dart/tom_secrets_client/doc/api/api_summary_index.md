@@ -153,6 +153,8 @@ manager app, `tsm` and the service.
 | `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` | [→](api_summary_admin.md#constants) |
 | `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) | [→](api_summary_admin.md#constants) |
 | `tomSecretsBlockBegin` | `String` | The first line of a block the product writes, `# >>> tom secrets >>>` | [→](api_summary_admin.md#constants) |
+| `tomSecretsGitHelperName` | `String` | The name git runs the helper under | [→](api_summary_admin.md#constants) |
+| `tomSecretsDockerHelperName` | `String` | The name Docker runs the helper under | [→](api_summary_admin.md#constants) |
 | `tomSecretsBlockEnd` | `String` | The last line of a block the product writes, `# <<< tom secrets <<<` | [→](api_summary_admin.md#constants) |
 | `tomSecretsBundleInfo` | `String` | The HKDF info of the bundle key, `tsm-bundle-v1` | [→](api_summary_admin.md#constants) |
 | `tomSecretsBundleNonceBytes` | `int` | The length of a sealed bundle's nonce (12) | [→](api_summary_admin.md#constants) |
@@ -249,6 +251,8 @@ manager app, `tsm` and the service.
 | `tomSecretsBundleInfo` | Admin | [→](api_summary_admin.md#constants) |
 | `tomSecretsBundleNonceBytes` | Admin | [→](api_summary_admin.md#constants) |
 | `tomSecretsCompositeKeyBytes` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsDockerHelperName` | Admin | [→](api_summary_admin.md#constants) |
+| `tomSecretsGitHelperName` | Admin | [→](api_summary_admin.md#constants) |
 | --- | --- | --- |
 | `tomSecretsAdminKeyIndexHandle` | Admin | [→](api_summary_admin.md#constants) |
 | `tomSecretsAdminLabel` | Admin | [→](api_summary_admin.md#constants) |

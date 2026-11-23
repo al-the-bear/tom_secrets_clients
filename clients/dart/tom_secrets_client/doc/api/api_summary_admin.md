@@ -602,13 +602,17 @@ The state of one developer-tool integration (`tsm integrations`, the app's
 Settings › Integrations): `integration`, `installed` (its block is in the
 tool's file), `current` (it names this machine's own agent endpoint and
 helper), `file`, `problems` (in words), `hosts` (the ssh block's host
-patterns); `toJson()` as `tsm integrations status --json` prints it.
+patterns), **[C]** `profiles` (the AWS block's profile name → reference),
+`registries` (the Docker registries `credHelpers` names the helper for)
+and `everyRegistry` (`credsStore`); `toJson()` as
+`tsm integrations status --json` prints it.
 
 ### TomSecretsIntegrations
 
 The integrations of one user on this machine, each written in a marked
 block of the tool's file and removed again (nothing outside the block
-changes).
+changes); Docker's JSON has no comments, so its block is the product's own
+keys (`credHelpers` entries `tsm`, `credsStore` `tsm`).
 
 #### Constructors
 
@@ -633,6 +637,8 @@ TomSecretsIntegrations({
 | `path` | `String` | The `PATH` git looks for the helper on |
 | `sshConfig` | `String` | `~/.ssh/config` |
 | `gitConfig` | `String` | `~/.gitconfig` |
+| `awsConfig` | `String` | **[C]** `~/.aws/config` |
+| `dockerConfig` | `String` | **[C]** `~/.docker/config.json` |
 | `helperLink` | `String?` | `git-credential-tsm` beside `tsm` |
 | `gitBlock` | `List<String>` (static) | The git block: `[credential]`, `helper = tsm` |
 
@@ -642,10 +648,12 @@ TomSecretsIntegrations({
 | --- | --- | --- |
 | `fileOf(integration)` | `String` | The file of an integration |
 | `sshBlock({hosts})` | `List<String>` | The ssh block for the host patterns (`Host *` by default) |
+| `awsBlock(profiles)` | `List<String>` | **[C]** The AWS block: per profile its section (`[default]` for the default one) and `credential_process = <tsm> aws-credentials <ref>`, each word quoted as botocore splits it (shlex; the Windows rules on Windows) |
+| `helperLinkOf(name)` | `String?` | **[C]** The helper `name` (`git-credential-tsm`, `docker-credential-tsm`) beside `tsm` |
 | `status(integration)` | `Future<TomSecretsIntegrationState>` | The state of an integration |
-| `install(integration, {hosts})` | `Future<TomSecretsIntegrationState>` | Writes its block (and for git the helper link); `StateError` when the endpoint or `tsm` is not known |
-| `uninstall(integration)` | `Future<TomSecretsIntegrationState>` | Removes its block (and for git the helper link) |
-| `repair()` | `Future<List<TomSecretsIntegration>>` | Installs again every installed integration that no longer names this machine's agent or helper; answers those it repaired |
+| `install(integration, {hosts, awsProfiles, dockerRegistries, dockerEveryRegistry})` | `Future<TomSecretsIntegrationState>` | Writes its block (and for git and Docker the helper link): **[C]** the AWS profiles added to those the block has, the Docker registries to `credHelpers` and with `dockerEveryRegistry` `credsStore`; `StateError` when the endpoint or `tsm` is not known, when AWS has no profile or one is defined outside the block, when Docker has nothing to name or its file is no JSON object |
+| `uninstall(integration, {awsProfile, dockerRegistry})` | `Future<TomSecretsIntegrationState>` | Removes its block (and for git and Docker the helper link); **[C]** with `awsProfile` or `dockerRegistry` only that one (the link stays while something is left) |
+| `repair()` | `Future<List<TomSecretsIntegration>>` | Installs again every installed integration that no longer names this machine's agent, helper or tsm, with the hosts, profiles and registries it has; answers those it repaired |
 
 ---
 
@@ -671,7 +679,10 @@ A browser the host can be installed for: `chrome`, `chromium`, `edge`,
 
 A developer tool the product configures: `ssh` (the service's agent as
 `IdentityAgent` in `~/.ssh/config`), `git` (the credential helper
-`git-credential-tsm`, `credential.helper tsm` in `~/.gitconfig`).
+`git-credential-tsm`, `credential.helper tsm` in `~/.gitconfig`), **[C]**
+`aws` (`credential_process = tsm aws-credentials <ref>` per profile in
+`~/.aws/config`), `docker` (the credential helper `docker-credential-tsm`,
+`credHelpers` or `credsStore` in `~/.docker/config.json`).
 
 ---
 
@@ -705,6 +716,8 @@ A developer tool the product configures: `ssh` (the service's agent as
 | `tomSecretsPairingWrongPassword` | `String` | The code of a wrong master password, `wrong_password` |
 | `tomSecretsPairingPasswordTries` | `int` | How many master passwords the pairing mode takes (3) |
 | `tomSecretsBlockBegin` | `String` | The first line of a block the product writes, `# >>> tom secrets >>>` |
+| `tomSecretsGitHelperName` | `String` | The name git runs the helper under: `git-credential-tsm` |
+| `tomSecretsDockerHelperName` | `String` | **[C]** The name Docker runs the helper under: `docker-credential-tsm` |
 | `tomSecretsBlockEnd` | `String` | The last line of a block the product writes, `# <<< tom secrets <<<` |
 | `tomSecretsBundleInfo` | `String` | The HKDF info of the bundle key, `tsm-bundle-v1` |
 | `tomSecretsBundleNonceBytes` | `int` | The length of a sealed bundle's nonce (12) |
