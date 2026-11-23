@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.8
+
+- `tsm pair` through a GitHub relay (part-relay): `--relay
+  github:<owner>/<repo>` with `--token-env <VAR>` (this machine's own token
+  for the repository, read from that variable, handed to the service on its
+  standard input, never an argument) and `--relay-api <URL>`; the code
+  alone, or after an address (tried first). Needs `tom_secrets_service`
+  0.23.0 and `tom_secrets_client` 0.2.12.
+
 ## 0.2.7
 
 - `tsm run --file VAR=ref`: the value fetched with `getFile` is written to a

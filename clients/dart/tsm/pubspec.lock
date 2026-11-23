@@ -762,7 +762,7 @@ packages:
     source: hosted
     version: "0.2.0"
   tom_github_api:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: tom_github_api
       sha256: "034e4309a376ea09aa40201218ee3d9c55d48c9f738e30f8d7dac55f7b496c0b"
@@ -797,26 +797,26 @@ packages:
     dependency: "direct main"
     description:
       name: tom_secrets_client
-      sha256: f1a9426bff680971e0951722ab75c4dfc865b06beaa9a6b57aa9ac3e366dbec6
+      sha256: "05cef243100f56001a8b160929aac58f1f463af01c294dd178786906f46d6d3e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.11"
+    version: "0.2.12"
   tom_secrets_core:
     dependency: "direct dev"
     description:
       name: tom_secrets_core
-      sha256: "92ed25f78f54c94869bf9e7d5f4e982107d8b08112c90c9831c4e6b8eb9a9907"
+      sha256: "8b6b2b90d947c15fb5a149f43434f2bd465a3fe563d866f0723e5db8f345d38f"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.18"
+    version: "0.2.21"
   tom_secrets_service:
     dependency: "direct dev"
     description:
       name: tom_secrets_service
-      sha256: e36fb4ba95f60257f115feeb360e2d262252bb05a824466a1f7a637ce406f22d
+      sha256: f8a580398c1bd20a9b933885822f11c0697b0c3b4506096defa8560ae05704d2
       url: "https://pub.dev"
     source: hosted
-    version: "0.21.0"
+    version: "0.23.0"
   typed_data:
     dependency: transitive
     description:

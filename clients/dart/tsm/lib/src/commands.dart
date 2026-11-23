@@ -476,19 +476,56 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
   return (host, port);
 }
 
-/// `tsm pair <host:port> <code> [--device NAME] [--device-key MODE]
-/// [--link ADDRESS:PORT] [--service EXE]`: sets this machine up by pairing
+/// `tsm pair [<host:port>] <code> [--relay github:OWNER/REPO --token-env
+/// VAR [--relay-api URL]] [--device NAME] [--device-key MODE] [--link
+/// ADDRESS:PORT] [--service EXE]`: sets this machine up by pairing
 /// (part-sharing, BP-13). The service executable receives the pairing in
 /// its pairing mode (tsm links no core); tsm shows what the other machine
 /// gave, asks for the master password, then starts the service and unlocks
 /// it. `--link` is where this machine's approval link listens (the device
 /// setting `approvalLink`): the other machine is told it, so its service
-/// opens the link and its app answers this machine's prompts.
+/// opens the link and its app answers this machine's prompts. `--relay`
+/// (part-relay) pairs through that GitHub repository when the other
+/// machine's pairing waits there too — after the address when one is given,
+/// else alone — with this machine's own token for it, read from the
+/// environment variable `--token-env` names (never a command-line
+/// argument); `--relay-api` is the GitHub API's URL (GitHub Enterprise
+/// Server).
 Future<int> tsmPair(TsmContext c, TsmArgs a) async {
-  final shown = a.positionalAt(0, "the other machine's address (host:port)");
-  final code = a.positionalAt(1, 'the code its Pairing screen shows');
-  final address = tsmPairingAddress(shown);
-  if (address == null) {
+  final relay = a.option('relay')?.trim();
+  final tokenEnv = a.option('token-env')?.trim();
+  final relayApi = a.option('relay-api')?.trim();
+  String? token;
+  if (relay != null) {
+    if (!RegExp(r'^github:[A-Za-z0-9-]+/[A-Za-z0-9._-]+$').hasMatch(relay)) {
+      throw TsmFailure.usage(
+        'a relay is a GitHub repository, github:<owner>/<repo>: $relay',
+      );
+    }
+    if (tokenEnv == null || tokenEnv.isEmpty) {
+      throw TsmFailure.usage(
+        '--relay needs --token-env: the environment variable holding this '
+        "machine's token for the repository",
+      );
+    }
+    token = c.io.environment[tokenEnv]?.trim();
+    if (token == null || token.isEmpty) {
+      throw TsmFailure.usage(
+        'the environment variable $tokenEnv holds no token',
+      );
+    }
+  } else if (tokenEnv != null || relayApi != null) {
+    throw TsmFailure.usage('--token-env and --relay-api go with --relay');
+  }
+  final alone = relay != null && a.positional.length == 1;
+  final shown = alone
+      ? null
+      : a.positionalAt(0, "the other machine's address (host:port)");
+  final code = alone
+      ? a.positionalAt(0, 'the code its Pairing screen shows')
+      : a.positionalAt(1, 'the code its Pairing screen shows');
+  final address = shown == null ? null : tsmPairingAddress(shown);
+  if (shown != null && address == null) {
     throw TsmFailure.usage('not an address and port (host:port): $shown');
   }
   final link = a.option('link')?.trim();
@@ -512,19 +549,25 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
     environment: env,
     handover: TomSecretsPairingHandover(
       dataDirectory: tomSecretsDataDirectory(environment: env),
-      address: address.$1,
-      port: address.$2,
+      address: address?.$1,
+      port: address?.$2,
       code: code.trim(),
       device: device,
       deviceKey: a.option('device-key'),
       approvalLink: link,
+      relay: relay,
+      relayToken: token,
+      relayApi: relayApi,
     ),
   );
   final String written;
   try {
-    c.io.err.writeln(
-      'tsm: pairing with ${address.$1}:${address.$2} as $device',
-    );
+    c.io.err.writeln(switch ((address, relay)) {
+      ((final at?, final via?)) =>
+        'tsm: pairing with ${at.$1}:${at.$2}, else through $via, as $device',
+      ((final at?, null)) => 'tsm: pairing with ${at.$1}:${at.$2} as $device',
+      _ => 'tsm: pairing through $relay as $device',
+    });
     final report = await pairing.received();
     c.io.outln('paired with ${report.giver}; it gave:');
     for (final v in report.vaults) {

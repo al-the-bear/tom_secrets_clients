@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.7';
+const String tsmVersion = '0.2.8';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -207,8 +207,9 @@ final ToolDefinition tsmTool = ToolDefinition(
     _command(
       'pair',
       "Set this machine up by pairing: pair <host:port> <code>, as the other "
-          "machine's Pairing screen shows them; then the master password, "
-          'and the service is started and unlocked.',
+          "machine's Pairing screen shows them (or pair <code> --relay … "
+          'through a GitHub repository); then the master password, and the '
+          'service is started and unlocked.',
       options: const [
         OptionDefinition.option(
           name: 'device',
@@ -231,6 +232,29 @@ final ToolDefinition tsmTool = ToolDefinition(
           valueName: 'address:port',
         ),
         OptionDefinition.option(
+          name: 'relay',
+          description:
+              'A GitHub repository the pairing goes through when the other '
+              'machine is neither on this network nor the VPN (its Pairing '
+              'screen names it): tried after the address, or alone.',
+          valueName: 'github:owner/repo',
+        ),
+        OptionDefinition.option(
+          name: 'token-env',
+          description:
+              "The environment variable holding this machine's own GitHub "
+              'token for the relay\'s repository (never the token itself on '
+              'the command line).',
+          valueName: 'VAR',
+        ),
+        OptionDefinition.option(
+          name: 'relay-api',
+          description:
+              "The GitHub API's URL for the relay (default "
+              'https://api.github.com; GitHub Enterprise Server).',
+          valueName: 'url',
+        ),
+        OptionDefinition.option(
           name: 'service',
           description:
               'The service executable (default: TSM_SERVICE, else '
@@ -241,6 +265,8 @@ final ToolDefinition tsmTool = ToolDefinition(
       examples: const [
         'tsm pair 192.168.1.20:47900 7-guitar-orbit',
         'tsm pair 10.8.0.7:47900 7-guitar-orbit --link 10.8.0.1:47731',
+        'TSM_PAIR_TOKEN=github_pat_… tsm pair 42-guitar-orbit '
+            '--relay github:example-org/vaults --token-env TSM_PAIR_TOKEN',
       ],
     ),
     _command(

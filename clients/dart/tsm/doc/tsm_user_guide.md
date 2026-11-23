@@ -78,6 +78,9 @@ Options:
 | `--link ADDRESS:PORT` | Where this machine's **approval link** listens: a VPN or LAN address of this machine and a port (`10.0.0.9:47731`), never every interface (`0.0.0.0`). It goes into the device settings (`approvalLink`), and the desktop is told it: its service opens the link, and its app answers this machine's prompts at once. Without it the machine has no link and its prompts wait for approval codes. |
 | `--device-key MODE` | Where the device settings container's key is kept: `auto` (the keychain where one is available, else the primary vault; the default), `keychain`, `vault` or `keyfile` (a key file beside the container). On a server without a keychain, `auto` keeps it in the primary vault. |
 | `--service EXE` | The service executable, when it is not beside `tsm` (or set `TSM_SERVICE`). |
+| `--relay github:OWNER/REPO` | A GitHub repository the pairing goes through, when this machine reaches neither the desktop's network nor the VPN (see below). |
+| `--token-env VAR` | With `--relay`: the environment variable holding this machine's own GitHub token for that repository. |
+| `--relay-api URL` | With `--relay`: the GitHub API's URL, for GitHub Enterprise Server (default `https://api.github.com`). |
 
 Notes:
 
@@ -89,6 +92,38 @@ Notes:
   directory) is refused with exit code 5.
 - With `--password-stdin`, the password is read once from standard input
   and there is no second try.
+
+### Through a GitHub repository
+
+When the new machine reaches neither the desktop's network nor the VPN but
+can reach one of your vault repositories on GitHub, the pairing goes
+through that repository. On the desktop, choose the repository under "Also
+through a relay" before opening the pairing; the Pairing screen then names
+the relay, `github:<owner>/<repo>`, beside the code. On the new machine,
+give `tsm pair` the code, the relay and a fine-grained token for that
+repository (contents read and write) in an environment variable:
+
+```sh
+read -rs TSM_PAIR_TOKEN && export TSM_PAIR_TOKEN
+tsm pair 42-guitar-orbit --relay github:example-org/fleet-vault \
+  --token-env TSM_PAIR_TOKEN --device server1
+```
+
+- The token is never an argument, so it shows in no process list or shell
+  history; `tsm` hands it to the service on its standard input.
+- With an address too (`tsm pair 10.0.0.5:47900 42-guitar-orbit --relay
+  …`), the address is tried first and the relay only when nothing answers
+  there.
+- The machine keeps the token for that repository, so it opens the primary
+  when the primary lives there, even if the desktop pasted none for it;
+  `tsm` lists it as `a GitHub token for <owner>/<repo>`.
+- The pairing's messages are files under `relay/pair/<number>/` in the
+  repository, polled every two seconds; they hold nothing secret and are
+  deleted when both sides are done. It takes some seconds longer than over
+  the network.
+- A relay that fails ends the pairing with exit code 5, the message naming
+  the relay, for example `tsm: pairing: the relay github:example-org/
+  fleet-vault failed: no pairing waits under 42 …`.
 
 ## Starting and unlocking the service
 

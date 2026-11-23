@@ -422,6 +422,55 @@ void main() {
         expect(r.code, 2, reason: 'a link that is no approval link: $r');
         expect(r.err, contains('approval link'));
       }
+      // Through a relay (part-relay): the token only from the environment.
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'github:demo-owner/demo-vaults',
+      ]);
+      expect(r.code, 2, reason: 'no --token-env: $r');
+      expect(r.err, contains('--token-env'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'github:demo-owner/demo-vaults',
+        '--token-env',
+        'TSM_TEST_NO_SUCH_VARIABLE',
+      ]);
+      expect(r.code, 2, reason: 'no token in the variable: $r');
+      expect(r.err, contains('TSM_TEST_NO_SUCH_VARIABLE holds no token'));
+      demo.environmentOverrides = {'TSM_PAIR_TOKEN': 'github_pat_demo'};
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'tsm:https://relay.example',
+        '--token-env',
+        'TSM_PAIR_TOKEN',
+      ]);
+      expect(r.code, 2, reason: 'not a GitHub relay: $r');
+      expect(r.err, contains('github:<owner>/<repo>'));
+      r = await demo.tsm([
+        'pair',
+        '10.8.0.7:47900',
+        '42-guitar-orbit',
+        '--token-env',
+        'TSM_PAIR_TOKEN',
+      ]);
+      expect(r.code, 2, reason: '--token-env without --relay: $r');
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'github:demo-owner/demo-vaults',
+        '--token-env',
+        'TSM_PAIR_TOKEN',
+      ]);
+      expect(r.code, 6, reason: 'the relay alone, no service here: $r');
+      expect(r.err, contains('no service executable'));
+      demo.environmentOverrides = const {};
       expect(tsmPairingAddress('[fd00::7]:47900'), ('fd00::7', 47900));
       expect(tsmPairingAddress('mbp.local:1'), ('mbp.local', 1));
       for (final bad in [':1', 'a:0', 'a:65536', 'a b:1', '10.8.0.7']) {

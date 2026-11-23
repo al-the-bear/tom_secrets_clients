@@ -19,8 +19,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
+import 'package:tom_github_api/testing.dart' show FakeGitHubServer;
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 import 'package:tom_secrets_core/tom_secrets_core.dart'
@@ -29,7 +31,9 @@ import 'package:tom_secrets_core/tom_secrets_core.dart'
         TomSecretsPairingCode,
         TomSecretsPairingPeerKeys,
         TomSecretsPairingVault,
+        TomSecretsGitHubRelay,
         TomSecretsPairingWindow,
+        TomSecretsRelayId,
         TomSecretsTrust;
 import 'package:tom_secrets_service/tom_secrets_service.dart'
     show tomSecretsIdentityOf, tomSecretsProcessInfo;
@@ -316,6 +320,101 @@ void main() {
     expect(again.err, contains('set up already'));
   }, testOn: '!windows');
 
+  test('tsm pair through a GitHub relay (part-relay): the real service\'s '
+      'pairing mode reaches the repository with this machine\'s own token '
+      'from --token-env; the machine set up, started and unlocked', () async {
+    final self = tomSecretsIdentityOf(tomSecretsProcessInfo(pid)!);
+    final beside = Link('${File(serviceExe).parent.path}/tsm');
+    if (!beside.existsSync()) beside.createSync(self.exe);
+    final demo = await Demo.create();
+    File(demo.bootstrapPath).deleteSync();
+    final keychain = TomInMemorySecretStore();
+    Future<TsmRun> tsm(List<String> args) =>
+        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+    addTearDown(() async {
+      await tsm(['stop']);
+      await _gone(demo);
+    });
+
+    // The repository: the fake GitHub, reached by this process directly
+    // and by the service executable over HTTP on the loopback.
+    const slug = 'demo-owner/demo-vaults';
+    final github = FakeGitHubServer()..commitFiles(slug, {'README.md': 'x'});
+    final bridge = await _serveOverHttp(github);
+    addTearDown(() => bridge.close(force: true));
+    final id = TomSecretsRelayId.parse('github:$slug');
+    final channel = await TomSecretsGitHubRelay.withToken(
+      id,
+      'demo-giver-token',
+      device: 'mbp',
+      httpClient: github.client,
+      baseUrl: FakeGitHubServer.baseUrl,
+      pollInterval: const Duration(milliseconds: 50),
+    ).host();
+    final code = TomSecretsPairingCode(int.parse(channel.nameplate), [
+      'guitar',
+      'orbit',
+    ]);
+    final giver = TomSecretsTrust.create('mbp');
+    final window = await TomSecretsPairingWindow.open(
+      addresses: const [],
+      relayChannel: channel,
+      code: code,
+      device: 'mbp',
+      bundleFor: (_) async => TomSecretsPairingBundle(
+        vaults: [
+          TomSecretsPairingVault(
+            name: 'primary',
+            locator: 'file:${demo.primaryPath}',
+            primary: true,
+          ),
+        ],
+        giverKeys: TomSecretsPairingPeerKeys(
+          linkKey: (await giver.linkKey()).publicKey,
+          approverKey: (await giver.approverKey()).publicKey,
+        ),
+      ),
+    );
+
+    demo.environmentOverrides = {'TSM_PAIR_TOKEN': 'github_pat_demo_own'};
+    final r = await tsm([
+      'pair',
+      code.text,
+      '--relay',
+      'github:$slug',
+      '--token-env',
+      'TSM_PAIR_TOKEN',
+      '--relay-api',
+      'http://127.0.0.1:${bridge.port}',
+      '--service',
+      serviceExe,
+      '--device',
+      'bigbeast',
+      '--device-key',
+      'keyfile',
+    ]);
+    expect(r.code, 0, reason: '$r');
+    expect(r.err, contains('pairing through github:$slug as bigbeast'));
+    expect(
+      r.text,
+      'paired with mbp; it gave:\n'
+      '  primary (primary)  file:${demo.primaryPath}\n'
+      '  a GitHub token for $slug\n'
+      'set up (${demo.bootstrapPath})\n'
+      'started\n'
+      'unlocked\n',
+    );
+    expect((await window.result).receiver, 'bigbeast');
+    // The token never went on a command line: only in the handover line.
+    expect(r.err, isNot(contains('github_pat_demo_own')));
+    expect(r.text, isNot(contains('github_pat_demo_own')));
+    // The service read and wrote the repository through the bridge.
+    expect(
+      github.requestLog.where((p) => p.contains('/repos/$slug/')),
+      isNotEmpty,
+    );
+  }, testOn: '!windows');
+
   test(
     'git runs tsm as git-credential-tsm against the real service: the '
     'user picks the login once, git gets it, and then without asking',
@@ -446,4 +545,32 @@ Future<void> _gone(Demo demo) async {
   for (var i = 0; i < 100 && info.existsSync(); i++) {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
+}
+
+/// [github] served over HTTP on the loopback, so another process reaches it
+/// as its GitHub API (`--relay-api`).
+Future<HttpServer> _serveOverHttp(FakeGitHubServer github) async {
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  server.listen((request) async {
+    final body = await request.fold<List<int>>([], (a, b) => a..addAll(b));
+    final forwarded = http.Request(
+      request.method,
+      Uri.parse('${FakeGitHubServer.baseUrl}${request.uri}'),
+    )..bodyBytes = body;
+    request.headers.forEach((name, values) {
+      if (name != 'host' && name != 'content-length') {
+        forwarded.headers[name] = values.join(', ');
+      }
+    });
+    final answer = github.handle(forwarded);
+    request.response.statusCode = answer.statusCode;
+    answer.headers.forEach((name, value) {
+      if (name != 'content-length' && name != 'transfer-encoding') {
+        request.response.headers.set(name, value);
+      }
+    });
+    request.response.add(answer.bodyBytes);
+    await request.response.close();
+  });
+  return server;
 }
