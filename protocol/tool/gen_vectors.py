@@ -312,6 +312,12 @@ FRAMES = [
                                    'relays': ['tsm:https://relay.example']}),
     ('relayTokens', 'admin', {'op': 'relayTokens', 'id': 173,
                               'relays': {'tsm:https://relay.example': True}}),
+    ('relay.put', 'admin', {'op': 'relay.put', 'id': 174,
+                            'relay': 'tsm:https://relay.example',
+                            'members': ['oyq3vxk2c7mz4tbd5hw6ja2nlfrsieug7ph3qwkxdmb4yc5zatno'],
+                            'bytes': b64(derive('demo share package', 96))}),
+    ('relayPut', 'admin', {'op': 'relayPut', 'id': 174,
+                           'name': '2026-11-23-3f9a0c4b7d2e1f68.age'}),
     ('inbox.list', 'admin', {'op': 'inbox.list', 'id': 66, 'store': 'team'}),
     ('inbox', 'admin', {'op': 'inbox', 'id': 66, 'store': 'team', 'files': [
         {'member': 'oyq3vxk2c7mz4tbd5hw6ja2nlfrsieug7ph3qwkxdmb4yc5zatno',

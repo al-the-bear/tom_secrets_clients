@@ -505,6 +505,13 @@ message('relay.token.set', 'admin', 'a2s', 'C',
 message('relay.token.list', 'admin', 'a2s', 'C',
         'Which relay servers have an instance token kept (the manager app only).',
         ['id', 'relays'], id=ref('id'), relays={'type': 'array', 'items': STR})
+message('relay.put', 'admin', 'a2s', 'C',
+        'Put a share into the mailbox of each member on a relay server, with the instance '
+        'token kept for it (the manager app only; a shared vault\'s mailbox relay).',
+        ['id', 'relay', 'members', 'bytes'], id=ref('id'), relay=LINK_RELAY,
+        members={'type': 'array', 'minItems': 1, 'items': INBOX_MEMBER}, bytes=ref('base64'))
+message('relayPut', 'admin', 's2a', 'C', 'The answer to relay.put.', ['id', 'name'],
+        id=ref('id'), name=INBOX_NAME)
 message('relayTokens', 'admin', 's2a', 'C', 'The answer to relay.token.list; never a token.',
         ['id', 'relays'], id=ref('id'),
         relays={'description': 'Each relay asked: whether a token is kept.',

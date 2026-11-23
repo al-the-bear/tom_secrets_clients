@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/relay.put.json",
+  "title": "relay.put",
+  "description": "Put a share into the mailbox of each member on a relay server, with the instance token kept for it (the manager app only; a shared vault's mailbox relay). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "relay",
+    "members",
+    "bytes"
+  ],
+  "properties": {
+    "op": {
+      "const": "relay.put"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "relay": {
+      "description": "[C] A relay server the approval link may go through: tsm:<url>.",
+      "type": "string",
+      "pattern": "^tsm:https?://.+$"
+    },
+    "members": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "description": "A member id: the fingerprint of the member key (base32).",
+        "type": "string",
+        "pattern": "^[a-z2-7]{16,}$"
+      }
+    },
+    "bytes": {
+      "$ref": "common.json#/$defs/base64"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}
