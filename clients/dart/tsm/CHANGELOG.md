@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.12
+
+- `tsm pair --relay wormhole:ws(s)://…`: a pairing through a magic-wormhole
+  mailbox server (the public one or a self-hosted one), which takes no token
+  (`--token-env` and `--relay-api` are refused with it).
+
 ## 0.2.11
 
 - `tsm pair --relay tsm:<url> --token-env <VAR>`: the relay server's

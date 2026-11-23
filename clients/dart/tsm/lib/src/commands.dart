@@ -491,9 +491,11 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
 /// GitHub repository (`github:<owner>/<repo>`) with this machine's own token
 /// for it, read from the environment variable `--token-env` names (never a
 /// command-line argument; `--relay-api` is the GitHub API's URL, GitHub
-/// Enterprise Server), or a relay server (`tsm:<url>`), which needs no token
-/// to pair; `--token-env` then names the relay's instance token, which the
-/// service keeps for the approval link through the relay.
+/// Enterprise Server), a relay server (`tsm:<url>`), which needs no token
+/// to pair (`--token-env` then names the relay's instance token, which the
+/// service keeps for the approval link through the relay), or a
+/// magic-wormhole mailbox server (`wormhole:ws(s)://…`), which takes no
+/// token.
 Future<int> tsmPair(TsmContext c, TsmArgs a) async {
   final relay = a.option('relay')?.trim();
   final tokenEnv = a.option('token-env')?.trim();
@@ -522,11 +524,27 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
         );
       }
     }
+  } else if (relay != null && relay.startsWith('wormhole:')) {
+    final url = Uri.tryParse(relay.substring('wormhole:'.length));
+    if (url == null ||
+        (url.scheme != 'wss' && url.scheme != 'ws') ||
+        url.host.isEmpty) {
+      throw TsmFailure.usage(
+        'a magic-wormhole server is wormhole:wss://<host>[:<port>]/<path>: '
+        '$relay',
+      );
+    }
+    if (tokenEnv != null || relayApi != null) {
+      throw TsmFailure.usage(
+        'a magic-wormhole server takes no --token-env or --relay-api',
+      );
+    }
   } else if (relay != null) {
     if (!RegExp(r'^github:[A-Za-z0-9-]+/[A-Za-z0-9._-]+$').hasMatch(relay)) {
       throw TsmFailure.usage(
-        'a relay is a GitHub repository, github:<owner>/<repo>, or a relay '
-        'server, tsm:<url>: $relay',
+        'a relay is a GitHub repository, github:<owner>/<repo>, a relay '
+        'server, tsm:<url>, or a magic-wormhole server, wormhole:<url>: '
+        '$relay',
       );
     }
     if (tokenEnv == null || tokenEnv.isEmpty) {

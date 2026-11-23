@@ -80,6 +80,7 @@ Options:
 | `--service EXE` | The service executable, when it is not beside `tsm` (or set `TSM_SERVICE`). |
 | `--relay tsm:URL` | A relay server the pairing goes through, when this machine reaches neither the desktop's network nor the VPN (see below). |
 | `--relay github:OWNER/REPO` | A GitHub repository the pairing goes through instead (see below). |
+| `--relay wormhole:URL` | A magic-wormhole mailbox server the pairing goes through instead (see below); no token. |
 | `--token-env VAR` | The environment variable holding the relay's token: with a GitHub relay this machine's own GitHub token for that repository (needed); with a relay server the relay's instance token, kept for the approval link through the relay (optional). |
 | `--relay-api URL` | With a GitHub relay: the GitHub API's URL, for GitHub Enterprise Server (default `https://api.github.com`). |
 
@@ -120,6 +121,27 @@ tsm pair 42-guitar-orbit --relay tsm:https://relay.example --device server1
   nothing answers there.
 - A relay that fails ends the pairing with exit code 5, the message naming
   the relay and what it said, for example `no pairing is open under 42`.
+
+### Through a magic-wormhole server
+
+A magic-wormhole mailbox server carries a pairing as well: the
+magic-wormhole project's public one (`ws://relay.magic-wormhole.io:4000/v1`)
+or one run by your team (`magic-wormhole-mailbox-server`). On the desktop,
+add it under Sharing › Relays (`wormhole:ws://relay.magic-wormhole.io:4000/v1`)
+and choose it under "Also through a relay"; the Pairing screen names it
+beside the code. On the new machine:
+
+```sh
+tsm pair 42-guitar-orbit --relay wormhole:ws://relay.magic-wormhole.io:4000/v1
+```
+
+- It needs no token (`--token-env` is refused with it).
+- The server carries only the pairing's encrypted messages; the app uses
+  its own application id, so the `wormhole` command cannot see or join the
+  pairing. A public `ws://` server shows a network observer that a pairing
+  happened, never its content.
+- The code lives 10 minutes on the desktop's side. A wormhole server offers
+  pairing only: no approval link and no mailbox.
 
 ### Through a GitHub repository
 

@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.11';
+const String tsmVersion = '0.2.12';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -236,8 +236,9 @@ final ToolDefinition tsmTool = ToolDefinition(
           description:
               'The relay the pairing goes through when the other machine is '
               'neither on this network nor the VPN (its Pairing screen names '
-              'it): a relay server, tsm:<url>, or a GitHub repository, '
-              'github:<owner>/<repo>; tried after the address, or alone.',
+              'it): a relay server, tsm:<url>, a GitHub repository, '
+              'github:<owner>/<repo>, or a magic-wormhole server, '
+              'wormhole:<url>; tried after the address, or alone.',
           valueName: 'relay',
         ),
         OptionDefinition.option(

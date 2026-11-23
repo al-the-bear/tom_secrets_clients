@@ -452,13 +452,41 @@ void main() {
       ]);
       expect(r.code, 6, reason: 'a relay server with its instance token: $r');
       expect(r.err, contains('no service executable'));
+      // A magic-wormhole server: no token, so it gets as far as the
+      // service (none here); a token or another scheme is refused.
       r = await demo.tsm([
         'pair',
         '42-guitar-orbit',
         '--relay',
-        'wormhole:wss://relay.example',
+        'wormhole:wss://relay.example/v1',
       ]);
-      expect(r.code, 2, reason: 'not a relay this tsm carries: $r');
+      expect(r.code, 6, reason: 'a magic-wormhole server, no service: $r');
+      expect(r.err, contains('no service executable'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'wormhole:wss://relay.example/v1',
+        '--token-env',
+        'TSM_PAIR_TOKEN',
+      ]);
+      expect(r.code, 2, reason: 'a magic-wormhole server takes no token: $r');
+      expect(r.err, contains('no --token-env'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'wormhole:https://relay.example',
+      ]);
+      expect(r.code, 2, reason: 'a magic-wormhole server is ws(s): $r');
+      expect(r.err, contains('wormhole:wss://'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'ftp://relay.example',
+      ]);
+      expect(r.code, 2, reason: 'not a relay: $r');
       expect(r.err, contains('tsm:<url>'));
       r = await demo.tsm([
         'pair',

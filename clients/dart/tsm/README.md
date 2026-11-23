@@ -130,7 +130,7 @@ About `run`:
 
 | Command | What it does |
 | --- | --- |
-| `pair [<host:port>] <code> [--relay github:OWNER/REPO --token-env VAR [--relay-api URL]] [--device NAME] [--device-key MODE] [--link ADDRESS:PORT] [--service EXE]` | Sets this machine up by pairing with a machine whose Pairing screen shows the address and the code; then asks for the master password, starts the service and unlocks it. With `--relay` the pairing goes through that GitHub repository (after the address, or alone), with this machine's own token read from the variable `--token-env` names. |
+| `pair [<host:port>] <code> [--relay RELAY [--token-env VAR] [--relay-api URL]] [--device NAME] [--device-key MODE] [--link ADDRESS:PORT] [--service EXE]` | Sets this machine up by pairing with a machine whose Pairing screen shows the address and the code; then asks for the master password, starts the service and unlocks it. With `--relay` the pairing goes through that relay (after the address, or alone): a GitHub repository (`github:OWNER/REPO`, with this machine's own token read from the variable `--token-env` names), a relay server (`tsm:URL`, its instance token optional) or a magic-wormhole server (`wormhole:URL`, no token). |
 | `start [--unlock] [--bootstrap FILE] [--service EXE] [--key-file F]` | Starts the service (prints `started`, or `already running`); with `--unlock` it unlocks it too. |
 | `unlock [--key-file F]` | Unlocks with the master password; `--key-file` gives the primary vault's key file when this machine's keychain does not hold it. |
 | `lock` | Locks: drops every secret from memory. |
