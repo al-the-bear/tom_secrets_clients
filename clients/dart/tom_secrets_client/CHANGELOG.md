@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15
+
+- `TomSecretsPairingHandover`'s `relay` may be a magic-wormhole mailbox
+  server (`wormhole:ws(s)://…`), which takes no token.
+
 ## 0.2.14
 
 - `tomSecretsClientVersion` (sent in `hello`) is the package's version

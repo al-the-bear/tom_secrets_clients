@@ -81,8 +81,9 @@ final class TomSecretsPairingHandover {
   /// `auto`); [approvalLink] is the address this machine's approval link
   /// listens on (none: no link). With [relay] the pairing goes through that
   /// relay after the address, or alone when no address is given: a GitHub
-  /// repository with this machine's [relayToken] for it, or a relay server
-  /// (`tsm:<url>`, no token needed to pair).
+  /// repository with this machine's [relayToken] for it, a relay server
+  /// (`tsm:<url>`, no token needed to pair) or a magic-wormhole mailbox
+  /// server (`wormhole:ws(s)://…`, no token).
   const TomSecretsPairingHandover({
     required this.dataDirectory,
     this.address,
@@ -120,11 +121,16 @@ final class TomSecretsPairingHandover {
     }
     if (relay != null || relayToken != null) {
       if (relay is! String ||
-          !(relay.startsWith('github:') || relay.startsWith('tsm:'))) {
+          !(relay.startsWith('github:') ||
+              relay.startsWith('tsm:') ||
+              relay.startsWith('wormhole:'))) {
         throw const FormatException(
-          'the pairing handover\'s relay is github:<owner>/<repo> or '
-          'tsm:<url>',
+          'the pairing handover\'s relay is github:<owner>/<repo>, '
+          'tsm:<url> or wormhole:<url>',
         );
+      }
+      if (relay.startsWith('wormhole:') && relayToken != null) {
+        throw const FormatException('a magic-wormhole server takes no token');
       }
       if (relay.startsWith('github:') &&
           (relayToken is! String || relayToken.isEmpty)) {
@@ -191,7 +197,8 @@ final class TomSecretsPairingHandover {
   final String? approvalLink;
 
   /// **[C]** The relay the pairing also goes through: a GitHub repository
-  /// (`github:<owner>/<repo>`) or a relay server (`tsm:<url>`), or null.
+  /// (`github:<owner>/<repo>`), a relay server (`tsm:<url>`) or a
+  /// magic-wormhole mailbox server (`wormhole:ws(s)://…`), or null.
   final String? relay;
 
   /// **[C]** This machine's own token for [relay]: a GitHub repository's

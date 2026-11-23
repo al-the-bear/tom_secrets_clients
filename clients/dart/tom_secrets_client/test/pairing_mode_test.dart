@@ -81,10 +81,22 @@ void main() {
       TomSecretsPairingHandover.fromJson(jsonDecode(both.toLine()))!.address,
       '10.8.0.7',
     );
+    // A magic-wormhole server: no token.
+    const wormhole = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      code: '42-guitar-orbit',
+      device: 'bigbeast',
+      relay: 'wormhole:wss://relay.example/v1',
+    );
+    expect(
+      TomSecretsPairingHandover.fromJson(jsonDecode(wormhole.toLine()))!.relay,
+      'wormhole:wss://relay.example/v1',
+    );
     final base = jsonDecode(alone.toLine()) as Map<String, Object?>;
     for (final bad in <Map<String, Object?>>[
       {...base}..remove('relayToken'),
-      {...base, 'relay': 'wormhole:wss://relay.example'},
+      {...base, 'relay': 'ftp://relay.example'},
+      {...base, 'relay': 'wormhole:wss://relay.example/v1'},
       {...base}..remove('relay'),
       {...base, 'address': '10.8.0.7'},
       {...base, 'relayApi': 7},
