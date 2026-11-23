@@ -476,8 +476,8 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
   return (host, port);
 }
 
-/// `tsm pair [<host:port>] <code> [--relay github:OWNER/REPO --token-env
-/// VAR [--relay-api URL]] [--device NAME] [--device-key MODE] [--link
+/// `tsm pair [<host:port>] <code> [--relay tsm:URL | --relay
+/// github:OWNER/REPO --token-env VAR [--relay-api URL]] [--device NAME] [--device-key MODE] [--link
 /// ADDRESS:PORT] [--service EXE]`: sets this machine up by pairing
 /// (part-sharing, BP-13). The service executable receives the pairing in
 /// its pairing mode (tsm links no core); tsm shows what the other machine
@@ -485,21 +485,39 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
 /// it. `--link` is where this machine's approval link listens (the device
 /// setting `approvalLink`): the other machine is told it, so its service
 /// opens the link and its app answers this machine's prompts. `--relay`
-/// (part-relay) pairs through that GitHub repository when the other
-/// machine's pairing waits there too — after the address when one is given,
-/// else alone — with this machine's own token for it, read from the
-/// environment variable `--token-env` names (never a command-line
-/// argument); `--relay-api` is the GitHub API's URL (GitHub Enterprise
-/// Server).
+/// (part-relay) pairs through that relay when the other machine's pairing
+/// waits there too — after the address when one is given, else alone: a
+/// GitHub repository (`github:<owner>/<repo>`) with this machine's own token
+/// for it, read from the environment variable `--token-env` names (never a
+/// command-line argument; `--relay-api` is the GitHub API's URL, GitHub
+/// Enterprise Server), or a relay server (`tsm:<url>`), which needs no token
+/// to pair.
 Future<int> tsmPair(TsmContext c, TsmArgs a) async {
   final relay = a.option('relay')?.trim();
   final tokenEnv = a.option('token-env')?.trim();
   final relayApi = a.option('relay-api')?.trim();
   String? token;
-  if (relay != null) {
+  final server = relay != null && relay.startsWith('tsm:');
+  if (server) {
+    final url = Uri.tryParse(relay.substring(4));
+    if (url == null ||
+        (url.scheme != 'https' && url.scheme != 'http') ||
+        url.host.isEmpty) {
+      throw TsmFailure.usage(
+        'a relay server is tsm:https://<host>[/<path>]: $relay',
+      );
+    }
+    if (tokenEnv != null || relayApi != null) {
+      throw TsmFailure.usage(
+        '--token-env and --relay-api go with a GitHub relay; a relay server '
+        'needs no token to pair',
+      );
+    }
+  } else if (relay != null) {
     if (!RegExp(r'^github:[A-Za-z0-9-]+/[A-Za-z0-9._-]+$').hasMatch(relay)) {
       throw TsmFailure.usage(
-        'a relay is a GitHub repository, github:<owner>/<repo>: $relay',
+        'a relay is a GitHub repository, github:<owner>/<repo>, or a relay '
+        'server, tsm:<url>: $relay',
       );
     }
     if (tokenEnv == null || tokenEnv.isEmpty) {

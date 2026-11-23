@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.13
+
+- The pairing handover's relay may be a relay server (`tsm:<url>`) too,
+  which needs no token to pair; a GitHub relay still needs this machine's
+  token for its repository.
+
 ## 0.2.12
 
 - The pairing mode's handover through a relay (part-relay): `address` and

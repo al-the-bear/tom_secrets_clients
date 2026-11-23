@@ -84,7 +84,7 @@ void main() {
     final base = jsonDecode(alone.toLine()) as Map<String, Object?>;
     for (final bad in <Map<String, Object?>>[
       {...base}..remove('relayToken'),
-      {...base, 'relay': 'tsm:https://relay.example'},
+      {...base, 'relay': 'wormhole:wss://relay.example'},
       {...base}..remove('relay'),
       {...base, 'address': '10.8.0.7'},
       {...base, 'relayApi': 7},
@@ -95,6 +95,33 @@ void main() {
         reason: '$bad',
       );
     }
+  });
+
+  test('the handover through a relay server (tsm:) needs no token', () {
+    const server = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      code: '42-guitar-orbit',
+      device: 'bigbeast',
+      relay: 'tsm:https://relay.example',
+    );
+    final back = TomSecretsPairingHandover.fromJson(
+      jsonDecode(server.toLine()),
+    )!;
+    expect(back.relay, 'tsm:https://relay.example');
+    expect(back.relayToken, isNull);
+    const withToken = TomSecretsPairingHandover(
+      dataDirectory: '/demo/data',
+      code: '42-guitar-orbit',
+      device: 'bigbeast',
+      relay: 'tsm:https://relay.example',
+      relayToken: 'instance-token-demo',
+    );
+    expect(
+      TomSecretsPairingHandover.fromJson(
+        jsonDecode(withToken.toLine()),
+      )!.relayToken,
+      'instance-token-demo',
+    );
   });
 
   test('the handover carries the approval link, checked', () {

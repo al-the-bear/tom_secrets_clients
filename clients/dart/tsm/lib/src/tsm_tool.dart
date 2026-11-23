@@ -208,8 +208,8 @@ final ToolDefinition tsmTool = ToolDefinition(
       'pair',
       "Set this machine up by pairing: pair <host:port> <code>, as the other "
           "machine's Pairing screen shows them (or pair <code> --relay … "
-          'through a GitHub repository); then the master password, and the '
-          'service is started and unlocked.',
+          'through a relay server or a GitHub repository); then the master '
+          'password, and the service is started and unlocked.',
       options: const [
         OptionDefinition.option(
           name: 'device',
@@ -234,17 +234,18 @@ final ToolDefinition tsmTool = ToolDefinition(
         OptionDefinition.option(
           name: 'relay',
           description:
-              'A GitHub repository the pairing goes through when the other '
-              'machine is neither on this network nor the VPN (its Pairing '
-              'screen names it): tried after the address, or alone.',
-          valueName: 'github:owner/repo',
+              'The relay the pairing goes through when the other machine is '
+              'neither on this network nor the VPN (its Pairing screen names '
+              'it): a relay server, tsm:<url>, or a GitHub repository, '
+              'github:<owner>/<repo>; tried after the address, or alone.',
+          valueName: 'relay',
         ),
         OptionDefinition.option(
           name: 'token-env',
           description:
-              "The environment variable holding this machine's own GitHub "
-              'token for the relay\'s repository (never the token itself on '
-              'the command line).',
+              "With a GitHub relay: the environment variable holding this "
+              "machine's own GitHub token for the repository (never the "
+              'token itself on the command line).',
           valueName: 'VAR',
         ),
         OptionDefinition.option(
@@ -265,6 +266,7 @@ final ToolDefinition tsmTool = ToolDefinition(
       examples: const [
         'tsm pair 192.168.1.20:47900 7-guitar-orbit',
         'tsm pair 10.8.0.7:47900 7-guitar-orbit --link 10.8.0.1:47731',
+        'tsm pair 42-guitar-orbit --relay tsm:https://relay.example',
         'TSM_PAIR_TOKEN=github_pat_… tsm pair 42-guitar-orbit '
             '--relay github:example-org/vaults --token-env TSM_PAIR_TOKEN',
       ],

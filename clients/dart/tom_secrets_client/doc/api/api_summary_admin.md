@@ -394,8 +394,9 @@ const TomSecretsStartFailed(String code, String message)
 
 The pairing mode's handover line: set the machine up in a data directory by
 receiving the pairing at an address and port with the code the giving
-machine shows, or **[C]** through a GitHub repository as the relay (after
-the address, or alone) with this machine's own token for it.
+machine shows, or **[C]** through a relay (after the address, or alone): a
+relay server (`tsm:<url>`), or a GitHub repository with this machine's own
+token for it.
 
 #### Constructors
 
@@ -418,7 +419,7 @@ const TomSecretsPairingHandover({
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member, names neither an address and port nor a relay, a relay that is no `github:` relay or without its token, or an `approvalLink` that is no approval link |
+| `fromJson(Object? json)` | `TomSecretsPairingHandover?` | The handover in the JSON, or null when it is not a pairing handover; throws `FormatException` for one that misses a member, names neither an address and port nor a relay, a relay that is neither `tsm:` nor `github:`, a GitHub relay without its token, or an `approvalLink` that is no approval link |
 
 #### Properties
 
@@ -431,8 +432,8 @@ const TomSecretsPairingHandover({
 | `device` | `String` | This machine's name |
 | `deviceKey` | `String?` | Where the device settings container's key is kept, or null (`auto`) |
 | `approvalLink` | `String?` | The address this machine's approval link listens on (`address:port`), or null: it goes into the device settings, and the giving machine records it so its service opens the link at once |
-| `relay` | `String?` | **[C]** The GitHub repository the pairing also goes through (`github:<owner>/<repo>`), tried after the address, or null |
-| `relayToken` | `String?` | **[C]** This machine's own token for the relay's repository; it also opens the primary when that is there. Never a command-line argument |
+| `relay` | `String?` | **[C]** The relay the pairing also goes through, tried after the address: a relay server (`tsm:<url>`) or a GitHub repository (`github:<owner>/<repo>`), or null |
+| `relayToken` | `String?` | **[C]** This machine's own token for the relay: a GitHub repository's (it also opens the primary when that is there), or a relay server's instance token (optional). Never a command-line argument |
 | `relayApi` | `String?` | **[C]** The GitHub API's URL for the relay, or null (`https://api.github.com`) |
 
 #### Methods

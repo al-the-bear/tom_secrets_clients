@@ -79,9 +79,10 @@ final class TomSecretsPairingHandover {
   /// pairing at [address]:[port] with [code], as [device]; [deviceKey]
   /// names where the device settings container's key is kept (default
   /// `auto`); [approvalLink] is the address this machine's approval link
-  /// listens on (none: no link). With [relay] (and [relayToken]) the
-  /// pairing goes through that GitHub repository after the address, or
-  /// alone when no address is given.
+  /// listens on (none: no link). With [relay] the pairing goes through that
+  /// relay after the address, or alone when no address is given: a GitHub
+  /// repository with this machine's [relayToken] for it, or a relay server
+  /// (`tsm:<url>`, no token needed to pair).
   const TomSecretsPairingHandover({
     required this.dataDirectory,
     this.address,
@@ -118,15 +119,22 @@ final class TomSecretsPairingHandover {
       }
     }
     if (relay != null || relayToken != null) {
-      if (relay is! String || !relay.startsWith('github:')) {
+      if (relay is! String ||
+          !(relay.startsWith('github:') || relay.startsWith('tsm:'))) {
         throw const FormatException(
-          'the pairing handover\'s relay is github:<owner>/<repo>',
+          'the pairing handover\'s relay is github:<owner>/<repo> or '
+          'tsm:<url>',
         );
       }
-      if (relayToken is! String || relayToken.isEmpty) {
+      if (relay.startsWith('github:') &&
+          (relayToken is! String || relayToken.isEmpty)) {
         throw const FormatException(
-          'a pairing through a relay needs this machine\'s token for it',
+          'a pairing through a GitHub repository needs this machine\'s token '
+          'for it',
         );
+      }
+      if (relayToken != null && relayToken is! String) {
+        throw const FormatException('relayToken is a token');
       }
     }
     if (relayApi != null && relayApi is! String) {
@@ -182,13 +190,14 @@ final class TomSecretsPairingHandover {
   /// records it so its service opens the link at once.
   final String? approvalLink;
 
-  /// **[C]** The GitHub repository the pairing also goes through
-  /// (`github:<owner>/<repo>`), or null.
+  /// **[C]** The relay the pairing also goes through: a GitHub repository
+  /// (`github:<owner>/<repo>`) or a relay server (`tsm:<url>`), or null.
   final String? relay;
 
-  /// **[C]** This machine's own token for [relay]'s repository (a pairing
-  /// through GitHub needs the repository reachable first); it also opens
-  /// the primary when that is there. Never a command-line argument.
+  /// **[C]** This machine's own token for [relay]: a GitHub repository's
+  /// (a pairing through GitHub needs the repository reachable first; it
+  /// also opens the primary when that is there), or a relay server's
+  /// instance token (optional). Never a command-line argument.
   final String? relayToken;
 
   /// **[C]** The GitHub API's URL for [relay], or null

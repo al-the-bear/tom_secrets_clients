@@ -78,9 +78,10 @@ Options:
 | `--link ADDRESS:PORT` | Where this machine's **approval link** listens: a VPN or LAN address of this machine and a port (`10.0.0.9:47731`), never every interface (`0.0.0.0`). It goes into the device settings (`approvalLink`), and the desktop is told it: its service opens the link, and its app answers this machine's prompts at once. Without it the machine has no link and its prompts wait for approval codes. |
 | `--device-key MODE` | Where the device settings container's key is kept: `auto` (the keychain where one is available, else the primary vault; the default), `keychain`, `vault` or `keyfile` (a key file beside the container). On a server without a keychain, `auto` keeps it in the primary vault. |
 | `--service EXE` | The service executable, when it is not beside `tsm` (or set `TSM_SERVICE`). |
-| `--relay github:OWNER/REPO` | A GitHub repository the pairing goes through, when this machine reaches neither the desktop's network nor the VPN (see below). |
-| `--token-env VAR` | With `--relay`: the environment variable holding this machine's own GitHub token for that repository. |
-| `--relay-api URL` | With `--relay`: the GitHub API's URL, for GitHub Enterprise Server (default `https://api.github.com`). |
+| `--relay tsm:URL` | A relay server the pairing goes through, when this machine reaches neither the desktop's network nor the VPN (see below). |
+| `--relay github:OWNER/REPO` | A GitHub repository the pairing goes through instead (see below). |
+| `--token-env VAR` | With a GitHub relay: the environment variable holding this machine's own GitHub token for that repository. |
+| `--relay-api URL` | With a GitHub relay: the GitHub API's URL, for GitHub Enterprise Server (default `https://api.github.com`). |
 
 Notes:
 
@@ -92,6 +93,26 @@ Notes:
   directory) is refused with exit code 5.
 - With `--password-stdin`, the password is read once from standard input
   and there is no second try.
+
+### Through a relay server
+
+When the new machine reaches neither the desktop's network nor the VPN, the
+pairing can go through a relay server (`tom_secrets_relay`). On the
+desktop, add the relay (`tsm:https://relay.example`) under Sharing ›
+Relays and choose it under "Also through a relay" before opening the
+pairing; the Pairing screen then names it beside the code. On the new
+machine:
+
+```sh
+tsm pair 42-guitar-orbit --relay tsm:https://relay.example --device server1
+```
+
+- Pairing through a relay server needs no token; the relay carries only
+  the pairing's encrypted messages and never learns the code.
+- With an address too, the address is tried first and the relay only when
+  nothing answers there.
+- A relay that fails ends the pairing with exit code 5, the message naming
+  the relay and what it said, for example `no pairing is open under 42`.
 
 ### Through a GitHub repository
 

@@ -450,8 +450,33 @@ void main() {
         '--token-env',
         'TSM_PAIR_TOKEN',
       ]);
-      expect(r.code, 2, reason: 'not a GitHub relay: $r');
-      expect(r.err, contains('github:<owner>/<repo>'));
+      expect(r.code, 2, reason: 'a relay server takes no token: $r');
+      expect(r.err, contains('needs no token to pair'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'wormhole:wss://relay.example',
+      ]);
+      expect(r.code, 2, reason: 'not a relay this tsm carries: $r');
+      expect(r.err, contains('tsm:<url>'));
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'tsm:ftp://relay.example',
+      ]);
+      expect(r.code, 2, reason: 'a relay server is https: $r');
+      // A relay server alone: no token needed, so it gets as far as the
+      // service (none here).
+      r = await demo.tsm([
+        'pair',
+        '42-guitar-orbit',
+        '--relay',
+        'tsm:https://relay.example',
+      ]);
+      expect(r.code, 6, reason: 'the relay server alone, no service: $r');
+      expect(r.err, contains('no service executable'));
       r = await demo.tsm([
         'pair',
         '10.8.0.7:47900',

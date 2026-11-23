@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9
+
+- `tsm pair --relay tsm:<url>` pairs through a relay server
+  (`tom_secrets_relay`), with no token.
+
 ## 0.2.8
 
 - `tsm pair` through a GitHub relay (part-relay): `--relay
