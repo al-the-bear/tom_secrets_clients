@@ -142,6 +142,8 @@ tsm pair 42-guitar-orbit --relay wormhole:ws://relay.magic-wormhole.io:4000/v1
   happened, never its content.
 - The code lives 10 minutes on the desktop's side. A wormhole server offers
   pairing only: no approval link and no mailbox.
+- The public server is run by volunteers and is not always up; when it does
+  not answer, pair through a relay server or a GitHub repository instead.
 
 ### Through a GitHub repository
 
