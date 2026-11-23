@@ -2,6 +2,9 @@
 
 ## 0.1.0
 
+- `SecretsException`'s details are not serialized (a deserialized
+  exception answers no details): JDK 21's `serial` lint, an error under
+  `-Werror`, refuses a non-serializable field there.
 - The client endpoint of the Tom Secrets Manager protocol, version 1, for
   Java 16 and later: finding the service (runtime directory, Unix socket
   through `UnixDomainSocketAddress`, or on Windows the localhost port and the

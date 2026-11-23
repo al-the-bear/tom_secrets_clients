@@ -78,7 +78,9 @@ public final class SecretsException extends Exception {
     }
 
     private final Kind kind;
-    private final Map<String, Object> details;
+    // Not serialized: a deserialized exception answers no details (the
+    // values in them need not be serializable).
+    private final transient Map<String, Object> details;
 
     /** An error of {@code kind} with {@code message} and {@code details}. */
     public SecretsException(Kind kind, String message, Map<String, Object> details) {
@@ -94,12 +96,12 @@ public final class SecretsException extends Exception {
 
     /** The error's details; numbers are {@link Long} or {@link Double}. */
     public Map<String, Object> details() {
-        return details;
+        return details == null ? Map.of() : details;
     }
 
     /** {@code details.reason}, or null when there is none. */
     public String reason() {
-        Object r = details.get("reason");
+        Object r = details().get("reason");
         return r instanceof String ? (String) r : null;
     }
 
