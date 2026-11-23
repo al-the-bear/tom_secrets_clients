@@ -147,20 +147,23 @@ void main() {
 
     var r = await integrations([]);
     expect(r.code, 0, reason: '$r');
-    expect(r.text, contains('ssh  not installed'));
-    expect(r.text, contains('git  not installed'));
+    expect(r.text, contains('ssh    not installed'));
+    expect(r.text, contains('git    not installed'));
     r = await integrations(['install', 'ssh']);
-    expect(r.text, contains('ssh  installed'));
+    expect(r.text, contains('ssh    installed'));
     final config = File('${home.path}/.ssh/config').readAsStringSync();
     expect(config, contains('IdentityAgent ${demo.runtime.agentSocket}'));
     r = await integrations(['install', 'git']);
-    expect(r.text, contains('git  installed'), reason: '$r');
+    expect(r.text, contains('git    installed'), reason: '$r');
     expect(
       Link('${bin.path}/git-credential-tsm').targetSync(),
       '${bin.path}/tsm',
     );
     final json = jsonDecode((await integrations(['--json'])).text) as List;
-    expect([for (final s in json) (s as Map)['current']], [true, true]);
+    expect(
+      [for (final s in json) (s as Map)['current']],
+      [true, true, false, false],
+    );
     await integrations(['uninstall', 'ssh']);
     await integrations(['uninstall', 'git']);
     expect(File('${home.path}/.ssh/config').readAsStringSync(), isEmpty);

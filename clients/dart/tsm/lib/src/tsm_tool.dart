@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.12';
+const String tsmVersion = '0.2.13';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -83,14 +83,38 @@ final ToolDefinition tsmTool = ToolDefinition(
     _command(
       'integrations',
       'Show, install or remove the developer-tool integrations: ssh (the '
-          "service's agent as IdentityAgent in ~/.ssh/config) and git "
+          "service's agent as IdentityAgent in ~/.ssh/config), git "
           '(credential.helper tsm in ~/.gitconfig, git-credential-tsm beside '
-          'tsm). Each is a marked block; nothing outside it changes.',
+          'tsm), aws (credential_process per profile in ~/.aws/config) and '
+          'docker (credHelpers or credsStore in ~/.docker/config.json, '
+          'docker-credential-tsm beside tsm). Each is a marked block, or for '
+          "Docker the product's own keys; nothing outside them changes.",
       options: const [
         OptionDefinition.option(
           name: 'hosts',
           description: 'The ssh Host patterns the agent is used for.',
           valueName: 'patterns',
+        ),
+        OptionDefinition.option(
+          name: 'profile',
+          description: 'The AWS profile (default for the default one).',
+          valueName: 'name',
+        ),
+        OptionDefinition.option(
+          name: 'ref',
+          description: "The reference of the AWS profile's key entry.",
+          valueName: 'reference',
+        ),
+        OptionDefinition.multi(
+          name: 'registry',
+          description: 'A Docker registry the helper answers for (repeated).',
+          valueName: 'host',
+        ),
+        OptionDefinition.flag(
+          name: 'every-registry',
+          description:
+              "Make the helper Docker's store for every registry "
+              '(credsStore).',
         ),
         _json,
       ],
@@ -99,8 +123,25 @@ final ToolDefinition tsmTool = ToolDefinition(
         'tsm integrations install ssh',
         "tsm integrations install ssh --hosts '*.example.com'",
         'tsm integrations install git',
+        'tsm integrations install aws --profile ci --ref team/Cloud/AWS-ci',
+        'tsm integrations uninstall aws --profile ci',
+        'tsm integrations install docker --registry ghcr.io',
         'tsm integrations uninstall git',
       ],
+    ),
+    _command(
+      'aws-credentials',
+      "AWS's credential_process: print the AWS key of an entry (UserName "
+          'the access key id, Password the secret, SessionToken when it has '
+          'one, its Expires the expiration) as AWS reads it.',
+      examples: const ['tsm aws-credentials team/Cloud/AWS-ci'],
+    ),
+    _command(
+      'kube-credential',
+      "kubectl's exec plugin: print an ExecCredential with the entry's "
+          'token (Password), or a certificate entry\'s certificate and '
+          'private key, and its Expires.',
+      examples: const ['tsm kube-credential team/Kube/prod-admin'],
     ),
     _command(
       'get',
@@ -404,6 +445,8 @@ const Map<String, _Command> _commands = {
   'login': tsmLogin,
   'logout': tsmLogout,
   'integrations': tsmIntegrations,
+  'aws-credentials': tsmAwsCredentials,
+  'kube-credential': tsmKubeCredential,
 };
 
 /// Runs tsm with [arguments] over [io]; answers the exit code.

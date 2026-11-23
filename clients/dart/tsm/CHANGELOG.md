@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.13
+
+- The phase-C developer-tool helpers (part-os-integration):
+  `tsm aws-credentials <ref>` as AWS's `credential_process` (an API token
+  entry's UserName, Password, SessionToken and Expires as
+  `{"Version":1,"AccessKeyId",…}`, one approval); `tsm kube-credential
+  <ref>` as kubectl's exec plugin (the Password as the token, or a
+  certificate entry's certificate and key, the `apiVersion` kubectl names,
+  Expires as `expirationTimestamp`); `docker-credential-tsm`, a third name
+  of tsm (`get` the registry's login picked once in the app, `list`
+  without secrets, `store` proposing an unknown credential, `erase`
+  ignored, Docker's "credentials not found" when none).
+- `tsm integrations install aws --profile NAME --ref REF` and
+  `install docker --registry HOST… | --every-registry` (with `uninstall`
+  of one profile or registry), on `tom_secrets_client` 0.2.16.
+
 ## 0.2.12
 
 - `tsm pair --relay wormhole:ws(s)://…`: a pairing through a magic-wormhole

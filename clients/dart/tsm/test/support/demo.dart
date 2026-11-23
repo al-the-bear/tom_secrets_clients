@@ -26,6 +26,9 @@ const primaryPassword = 'primary-demo-pw';
 /// The team vault's demo password.
 const teamPassword = 'team-demo-pw';
 
+/// When the demo AWS session keys expire.
+final demoAwsExpiry = DateTime.utc(2031, 6, 1, 12, 30);
+
 /// A light Argon2id, so a test opens a vault in milliseconds.
 const testArgon2 = KdbxArgon2(
   type: KdbxArgon2Type.argon2id,
@@ -114,6 +117,31 @@ final class Demo {
       'UserName': 'demo-git-user',
       'Password': 'demo-git-token',
     });
+    // A registry login docker-credential-tsm finds by its host.
+    _add(team, 'Code', 'Registry', {
+      'URL': 'https://ghcr.io',
+      'UserName': 'demo-docker-user',
+      'Password': 'demo-docker-token',
+    });
+    // AWS keys (an api-token): temporary ones with a session token and an
+    // expiry, and long-lived ones.
+    _add(team, 'Cloud', 'AWS session', {
+      'tsm.type': 'api-token',
+      'UserName': 'AKIADEMOSESSION',
+      'Password': 'demo-aws-secret',
+      'SessionToken': 'demo-aws-session-token',
+    });
+    final session = team.body.rootGroup.groups
+        .firstWhere((g) => g.name.get() == 'Cloud')
+        .entries
+        .single;
+    session.times.expires.set(true);
+    session.times.expiryTime.set(demoAwsExpiry);
+    _add(team, 'Cloud', 'AWS static', {
+      'tsm.type': 'api-token',
+      'UserName': 'AKIADEMOSTATIC',
+      'Password': 'demo-aws-static-secret',
+    });
     final logo = KdbxEntry.create(team, team.body.rootGroup)
       ..setString(KdbxKeyCommon.TITLE, PlainValue('Logo'))
       ..setString(const KdbxKey('tsm.key'), PlainValue('demo.logo'));
@@ -156,7 +184,9 @@ final class Demo {
   ) async {
     final path = store == 'team' ? teamPath : primaryPath;
     final credentials = Credentials(
-      ProtectedValue.fromString(store == 'team' ? teamPassword : primaryPassword),
+      ProtectedValue.fromString(
+        store == 'team' ? teamPassword : primaryPassword,
+      ),
     );
     final file = await KdbxFormat().read(
       File(path).readAsBytesSync(),
@@ -287,6 +317,31 @@ final class Demo {
     final err = StringBuffer();
     final lines = [...input];
     final code = await tsmGitCredential(
+      args,
+      TsmIo(
+        writeOut: out.add,
+        err: err,
+        readSecret: (_) async => null,
+        readLine: () async => lines.isEmpty ? null : lines.removeAt(0),
+        environment: environment,
+        keychain: () async => null,
+        executableDirectory: '/nonexistent',
+        runCommand: (command, env) async => 0,
+      ),
+    );
+    return TsmRun(code, out.takeBytes(), err.toString());
+  }
+
+  /// **[C]** Runs tsm as `docker-credential-tsm` with [args], Docker's
+  /// [input] on standard input.
+  Future<TsmRun> dockerCredential(
+    List<String> args, [
+    List<String> input = const [],
+  ]) async {
+    final out = BytesBuilder();
+    final err = StringBuffer();
+    final lines = [...input];
+    final code = await tsmDockerCredential(
       args,
       TsmIo(
         writeOut: out.add,

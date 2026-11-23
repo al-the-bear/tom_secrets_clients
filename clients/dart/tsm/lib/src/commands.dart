@@ -1028,3 +1028,174 @@ Future<int> tsmLogout(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
   c.io.outln('signed out');
   return TsmExit.ok;
 });
+
+/// [time] in RFC 3339 to the second, in UTC (`2026-11-24T10:00:00Z`), as
+/// AWS and kubectl read an expiry.
+String tsmRfc3339(DateTime time) {
+  final t = time.toUtc();
+  return DateTime.utc(
+    t.year,
+    t.month,
+    t.day,
+    t.hour,
+    t.minute,
+    t.second,
+  ).toIso8601String().replaceFirst('.000Z', 'Z');
+}
+
+/// The reference of an AWS or kubectl helper: an entry, never a field (the
+/// helper reads the fields it needs).
+TomSecretReference _entryReference(String ref) {
+  final parsed = TomSecretReference.parse(ref);
+  if (parsed.fieldGiven) {
+    throw TsmFailure.usage(
+      'name the entry without #${parsed.field}: the helper reads its fields',
+    );
+  }
+  return parsed;
+}
+
+/// The value of [result], or null when the entry lacks the field; any
+/// other error is thrown.
+TomSecretValue? _optional(TomSecretResult result) {
+  final error = result.error;
+  if (error == null) return result.value;
+  if (error.kind == TomSecretsErrorKind.notFound) return null;
+  throw error;
+}
+
+/// **[C]** `tsm aws-credentials <ref>`: AWS's `credential_process`
+/// (part-os-integration). The entry (an `api-token`) holds the access key
+/// id in `UserName`, the secret access key in `Password` and, for
+/// temporary credentials, the session token in the field `SessionToken`;
+/// its Expires is the credentials' `Expiration`. One `getMany`, one
+/// approval; printed as AWS reads it:
+/// `{"Version":1,"AccessKeyId":…,"SecretAccessKey":…,"SessionToken"?:…,"Expiration"?:…}`.
+/// A failure goes to standard error, which the AWS CLI shows.
+Future<int> tsmAwsCredentials(TsmContext c, TsmArgs a) async {
+  final ref = a.positionalAt(0, 'the reference of the AWS key entry');
+  _entryReference(ref);
+  final client = await _client(c);
+  final values = <TomSecretValue>[];
+  try {
+    final results = await client.getMany([
+      TomSecretRequest(ref, field: 'UserName'),
+      TomSecretRequest(ref, field: 'Password'),
+      TomSecretRequest(ref, field: 'SessionToken'),
+    ], onProgress: (p) => _progress(c, p));
+    final keyId = _optional(results[0]);
+    final secret = _optional(results[1]);
+    final session = _optional(results[2]);
+    values.addAll([?keyId, ?secret, ?session]);
+    if (keyId == null || keyId.text.isEmpty || secret == null) {
+      c.io.err.writeln(
+        'tsm: $ref holds no AWS key: the access key id goes in UserName, '
+        'the secret access key in Password',
+      );
+      return TsmExit.of('not_found');
+    }
+    final expires = secret.expires;
+    c.io.outln(
+      jsonEncode({
+        'Version': 1,
+        'AccessKeyId': keyId.text,
+        'SecretAccessKey': secret.text,
+        if (session != null && session.text.isNotEmpty)
+          'SessionToken': session.text,
+        if (expires != null) 'Expiration': tsmRfc3339(expires),
+      }),
+    );
+    return TsmExit.ok;
+  } on TomSecretsClientException catch (e) {
+    return c.clientError(e);
+  } finally {
+    for (final v in values) {
+      v.dispose();
+    }
+    await client.close();
+  }
+}
+
+/// The `ExecCredential` versions kubectl may ask for.
+const List<String> tsmKubeApiVersions = [
+  'client.authentication.k8s.io/v1',
+  'client.authentication.k8s.io/v1beta1',
+];
+
+/// **[C]** `tsm kube-credential <ref>`: kubectl's exec plugin
+/// (part-os-integration). A typed `certificate` entry (part-sharing) gives
+/// its certificate and private key (`clientCertificateData`,
+/// `clientKeyData`); any other entry its `Password` as the bearer `token`.
+/// The entry's Expires is `expirationTimestamp`. One `getMany`, one
+/// approval. The `ExecCredential` answers the `apiVersion` kubectl names in
+/// `KUBERNETES_EXEC_INFO` (v1 or v1beta1; v1 without it).
+Future<int> tsmKubeCredential(TsmContext c, TsmArgs a) async {
+  final ref = a.positionalAt(0, 'the reference of the credential entry');
+  _entryReference(ref);
+  var apiVersion = tsmKubeApiVersions.first;
+  final info = c.io.environment['KUBERNETES_EXEC_INFO'];
+  if (info != null && info.isNotEmpty) {
+    try {
+      final asked = (jsonDecode(info) as Map)['apiVersion'];
+      if (tsmKubeApiVersions.contains(asked)) apiVersion = asked as String;
+    } on Object {
+      // Not kubectl's JSON: v1.
+    }
+  }
+  final client = await _client(c);
+  final values = <TomSecretValue>[];
+  try {
+    final results = await client.getMany([
+      TomSecretRequest(ref, field: 'Password'),
+      TomSecretRequest(ref, field: 'attachment:certificate.pem'),
+      TomSecretRequest(ref, field: 'attachment:private-key.pem'),
+    ], onProgress: (p) => _progress(c, p));
+    final password = _optional(results[0]);
+    final certificate = _optional(results[1]);
+    final key = _optional(results[2]);
+    values.addAll([?password, ?certificate, ?key]);
+    final Map<String, Object?> status;
+    DateTime? expires;
+    if (certificate != null && key != null) {
+      final keyPem = utf8.decode(key.bytes, allowMalformed: true);
+      if (keyPem.contains('ENCRYPTED')) {
+        c.io.err.writeln(
+          'tsm: the private key of $ref is encrypted: kubectl takes an '
+          'unencrypted one',
+        );
+        return TsmExit.of('unsupported');
+      }
+      status = {
+        'clientCertificateData': utf8.decode(certificate.bytes),
+        'clientKeyData': keyPem,
+      };
+      expires = certificate.expires;
+    } else if (password != null && password.bytes.isNotEmpty) {
+      status = {'token': password.text};
+      expires = password.expires;
+    } else {
+      c.io.err.writeln(
+        'tsm: $ref holds no token (Password) and no certificate',
+      );
+      return TsmExit.of('not_found');
+    }
+    c.io.outln(
+      jsonEncode({
+        'apiVersion': apiVersion,
+        'kind': 'ExecCredential',
+        'status': {
+          ...status,
+          if (expires != null) 'expirationTimestamp': tsmRfc3339(expires),
+        },
+      }),
+    );
+    return TsmExit.ok;
+  } on TomSecretsClientException catch (e) {
+    return c.clientError(e);
+  } finally {
+    for (final v in values) {
+      v.dispose();
+    }
+    await client.close();
+  }
+}

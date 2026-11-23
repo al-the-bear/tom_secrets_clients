@@ -201,8 +201,11 @@ switched command-line approvals on.
 
 | Command | What it does |
 | --- | --- |
-| `integrations [status \| install <ssh\|git> \| uninstall <ssh\|git>] [--hosts PATTERNS] [--json]` | Shows, writes or removes the ssh block (`IdentityAgent` of the service's agent in `~/.ssh/config`, for `Host *` or the `--hosts` patterns) and the git block (`credential.helper tsm` in `~/.gitconfig`, with `git-credential-tsm` beside tsm); each is a marked block, nothing outside it changes. |
+| `integrations [status \| install <kind> \| uninstall <kind>] [--hosts PATTERNS] [--profile NAME --ref REF] [--registry HOST]… [--every-registry] [--json]` | Shows, writes or removes the ssh block (`IdentityAgent` of the service's agent in `~/.ssh/config`, for `Host *` or the `--hosts` patterns), the git block (`credential.helper tsm` in `~/.gitconfig`, with `git-credential-tsm` beside tsm), the aws block (`credential_process = tsm aws-credentials <ref>` per `--profile` in `~/.aws/config`) and Docker's `credHelpers` per `--registry` or `credsStore` (`--every-registry`) in `~/.docker/config.json`, with `docker-credential-tsm` beside tsm; each is a marked block (for Docker the product's own keys), nothing outside it changes. `uninstall aws --profile` and `uninstall docker --registry` remove one. |
 | `git-credential-tsm get\|store\|erase` | tsm under its second name, run by git: `get` answers the login of git's host (picked once in the manager app), `store` proposes a new credential to the app, `erase` is ignored; nothing is answered when nothing matches or no service runs. |
+| `docker-credential-tsm get\|list\|store\|erase\|version` | tsm under its third name, run by Docker: `get` answers the login of the registry (picked once in the manager app) as `{"ServerURL","Username","Secret"}`, else Docker's "credentials not found" (exit 1); `list` names the registries of `credHelpers` with their user names, never a secret; `store` proposes a new credential; `erase` is ignored. |
+| `aws-credentials <ref>` | AWS's `credential_process`: prints an API token entry's access key id (UserName), secret (Password), SessionToken and Expires as `{"Version":1,"AccessKeyId",…}`, one approval. |
+| `kube-credential <ref>` | kubectl's exec plugin: prints an `ExecCredential` (the `apiVersion` kubectl names in `KUBERNETES_EXEC_INFO`) with the entry's Password as the token, or a certificate entry's certificate and key, and its Expires. |
 
 ### Global options
 

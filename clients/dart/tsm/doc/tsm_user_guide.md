@@ -15,6 +15,7 @@ the tasks it is used for, on a desktop and on a headless machine. The
 - [Status and key reminders](#status-and-key-reminders)
 - [Signing in with GitHub](#signing-in-with-github)
 - [ssh and git](#ssh-and-git)
+- [AWS, Docker and kubectl](#aws-docker-and-kubectl)
 - [Compacting a vault repository](#compacting-a-vault-repository)
 - [Troubleshooting](#troubleshooting)
 
@@ -494,9 +495,12 @@ tsm integrations uninstall git
 ```
 
 ```text
-ssh  installed  /home/demo/.ssh/config  (Host *)
-git  installed, needs repair  /home/demo/.gitconfig
+ssh    installed  /home/demo/.ssh/config  (Host *)
+git    installed, needs repair  /home/demo/.gitconfig
      /opt/tsm/bin is not on PATH: git will not find it
+aws    installed  /home/demo/.aws/config
+       profile ci: team/Cloud/AWS ci
+docker not installed  /home/demo/.docker/config.json
 ```
 
 - **ssh**: the block goes to the top of `~/.ssh/config` (ssh takes the
@@ -518,6 +522,60 @@ it waits, or the service is locked, git shows
 login, or a refusal it answers nothing and git asks its next helper or you.
 A password git saw work that the vaults do not hold (`store`) is offered to
 the app as a proposal; `erase` is ignored.
+
+## AWS, Docker and kubectl
+
+**AWS.** An AWS key lives in an API token entry: the access key id in
+**User name**, the secret access key in **Password**, and for temporary
+credentials the session token in a field **SessionToken**; the entry's
+**Expires** is when they expire. `tsm aws-credentials <reference>` prints
+them as AWS's `credential_process` reads them, and
+`tsm integrations install aws` writes that setting per profile into
+`~/.aws/config` (in the marked block, at the end; `--profile default` is the
+default profile):
+
+```sh
+tsm integrations install aws --profile ci --ref 'team/Cloud/AWS ci'
+tsm integrations uninstall aws --profile ci
+aws s3 ls --profile ci        # the AWS CLI runs tsm aws-credentials
+```
+
+The first read asks for an approval in the manager app, as any read does.
+The reference names the entry, never a field (`#…`); a profile already
+defined outside the block is refused, since an AWS config defines a
+profile once.
+
+**Docker.** `docker-credential-tsm` is a third name of `tsm`, made beside it.
+`tsm integrations install docker --registry ghcr.io` names it for that
+registry in `~/.docker/config.json` (`credHelpers`, repeated `--registry`
+for more); `--every-registry` makes it Docker's store for every registry
+(`credsStore`). JSON has no comments, so these keys are the product's
+block: no other key of the file changes, and uninstall removes only them
+(`--registry` one). Docker then gets the login of the registry from the
+vaults: a login entry whose URL has the registry's host; the first time,
+the app asks you to pick it, as for git. With no service, no matching login
+or a refusal, Docker hears that no credentials are kept and goes on
+without them. `docker login` offers the credential to the app as a
+proposal when the vaults do not hold it; `docker logout` removes nothing.
+
+**kubectl.** `tsm kube-credential <reference>` is kubectl's exec plugin: a
+token entry gives its **Password** as the bearer token, a certificate entry
+its certificate and private key (unencrypted), and **Expires** is the
+credential's expiry. The kubeconfig is not written by `tsm`; give a user
+the plugin there:
+
+```yaml
+users:
+- name: prod-admin
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1
+      command: tsm
+      args: [kube-credential, team/Kube/prod-admin]
+      interactiveMode: Never
+```
+
+kubectl runs an exec plugin only for an `https` server.
 
 ## Compacting a vault repository
 

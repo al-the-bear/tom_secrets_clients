@@ -27,6 +27,7 @@ import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 import 'package:tom_secrets_core/tom_secrets_core.dart'
     show
+        tomSecretsGenerateCertificate,
         TomSecretsPairingBundle,
         TomSecretsPairingCode,
         TomSecretsPairingPeerKeys,
@@ -425,32 +426,7 @@ void main() {
       }
       // tsm built and put beside the service, where the service knows its
       // helpers; git-credential-tsm a link to it.
-      final tsmOut = Directory('${build.path}/tsm_out');
-      final built = await Process.run(Platform.resolvedExecutable, [
-        'build',
-        'cli',
-        '--target',
-        'bin/tsm.dart',
-        '-o',
-        tsmOut.path,
-      ]);
-      expect(built.exitCode, 0, reason: '${built.stdout}\n${built.stderr}');
-      final bin = File(serviceExe).parent.path;
-      // Replaced, not written over: a file being run cannot be opened for
-      // writing (Linux: text file busy).
-      final placed = File('$bin/tsm');
-      if (placed.existsSync()) placed.deleteSync();
-      File('${tsmOut.path}/bundle/bin/tsm').copySync(placed.path);
-      Process.runSync('chmod', ['755', '$bin/tsm']);
-      final lib = Directory('${tsmOut.path}/bundle/lib');
-      if (lib.existsSync()) {
-        for (final f in lib.listSync().whereType<File>()) {
-          f.copySync(
-            '${File(serviceExe).parent.parent.path}/lib/'
-            '${f.uri.pathSegments.last}',
-          );
-        }
-      }
+      final bin = await _placeTsm(build, serviceExe);
       final link = '$bin/git-credential-tsm';
       if (FileSystemEntity.typeSync(link, followLinks: false) !=
           FileSystemEntityType.notFound) {
@@ -537,6 +513,151 @@ void main() {
       expect(prompted, isFalse);
     },
   );
+
+  test('kubectl runs tsm kube-credential as its exec plugin against the real '
+      'service: the user approves once, kubectl sends the token', () async {
+    final kubectl = Platform.isWindows
+        ? null
+        : (Process.runSync('sh', ['-c', 'command -v kubectl']).stdout as String)
+              .trim();
+    if (kubectl == null || kubectl.isEmpty) {
+      markTestSkipped('kubectl is not installed here');
+      return;
+    }
+    final bin = await _placeTsm(build, serviceExe);
+    final self = tomSecretsIdentityOf(tomSecretsProcessInfo(pid)!);
+    final demo = await Demo.create(adminExecutables: [self.exe]);
+    final keychain = TomInMemorySecretStore();
+    Future<TsmRun> tsm(List<String> args) =>
+        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+    addTearDown(() async {
+      await tsm(['stop']);
+      await _gone(demo);
+    });
+    final r = await tsm(['start', '--unlock', '--service', serviceExe]);
+    expect(r.code, 0, reason: '$r');
+    final start = (await demo.runtime.readInfo())!['start']! as int;
+    final app = await TomSecretsAdminClient.connect(
+      demo.runtime,
+      base64.decode((await keychain.read(tomSecretsAdminKeyHandle(start)))!),
+    );
+    addTearDown(app.close);
+    await app.request('subscribe');
+
+    // A Kubernetes API server that answers /version for its token only,
+    // over TLS: kubectl runs an exec plugin only for an https server.
+    final seen = <String?>[];
+    final serverCert = tomSecretsGenerateCertificate(commonName: '127.0.0.1');
+    final api = await HttpServer.bindSecure(
+      InternetAddress.loopbackIPv4,
+      0,
+      SecurityContext()
+        ..useCertificateChainBytes(utf8.encode(serverCert.certificatePem))
+        ..usePrivateKeyBytes(utf8.encode(serverCert.privateKeyPem)),
+    );
+    addTearDown(() => api.close(force: true));
+    api.listen((request) async {
+      final auth = request.headers.value('authorization');
+      seen.add(auth);
+      request.response.headers.contentType = ContentType.json;
+      if (auth == 'Bearer demo-api-token') {
+        request.response.write(
+          jsonEncode({'major': '1', 'minor': '31', 'gitVersion': 'v1.31.0'}),
+        );
+      } else {
+        request.response.statusCode = 401;
+        request.response.write(jsonEncode({'kind': 'Status', 'code': 401}));
+      }
+      await request.response.close();
+    });
+    final kubeconfig = File('${demo.dir}/kubeconfig')
+      ..writeAsStringSync("""
+apiVersion: v1
+kind: Config
+clusters:
+- name: demo
+  cluster:
+    server: https://127.0.0.1:${api.port}
+    insecure-skip-tls-verify: true
+users:
+- name: demo
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1
+      command: $bin/tsm
+      args: [kube-credential, team/Api/Token]
+      interactiveMode: Never
+contexts:
+- name: demo
+  context: {cluster: demo, user: demo}
+current-context: demo
+""");
+    Future<ProcessResult> version() => Process.run(kubectl, [
+      '--kubeconfig',
+      kubeconfig.path,
+      'get',
+      '--raw',
+      '/version',
+    ], environment: demo.environment);
+
+    final needed = app.events.firstWhere((e) => e['op'] == 'approval_needed');
+    final first = version();
+    final event = await Future.any([
+      needed,
+      first.then<Map<String, Object?>>(
+        (out) => fail(
+          'kubectl ended before any approval: ${out.exitCode}\n'
+          '${out.stdout}\n${out.stderr}',
+        ),
+      ),
+    ]);
+    final identity = (event['identity']! as Map).cast<String, Object?>();
+    expect(identity['exe'], File('$bin/tsm').resolveSymbolicLinksSync());
+    expect((identity['parent']! as Map)['exe'], contains('kubectl'));
+    await app.request('approve', {
+      'approvalId': event['approvalId'],
+      'decision': 'always',
+      'secret': 'ref',
+    });
+    final out = await first;
+    expect(out.exitCode, 0, reason: '${out.stdout}\n${out.stderr}');
+    expect(out.stdout, contains('v1.31.0'));
+    expect(seen, contains('Bearer demo-api-token'));
+  });
+}
+
+/// tsm built (`dart build cli`) and put beside the service [serviceExe],
+/// where the service knows its helpers; answers that folder.
+Future<String> _placeTsm(Directory build, String serviceExe) async {
+  final tsmOut = Directory('${build.path}/tsm_out');
+  if (!File('${tsmOut.path}/bundle/bin/tsm').existsSync()) {
+    final built = await Process.run(Platform.resolvedExecutable, [
+      'build',
+      'cli',
+      '--target',
+      'bin/tsm.dart',
+      '-o',
+      tsmOut.path,
+    ]);
+    expect(built.exitCode, 0, reason: '${built.stdout}\n${built.stderr}');
+  }
+  final bin = File(serviceExe).parent.path;
+  // Replaced, not written over: a file being run cannot be opened for
+  // writing (Linux: text file busy).
+  final placed = File('$bin/tsm');
+  if (placed.existsSync()) placed.deleteSync();
+  File('${tsmOut.path}/bundle/bin/tsm').copySync(placed.path);
+  Process.runSync('chmod', ['755', '$bin/tsm']);
+  final lib = Directory('${tsmOut.path}/bundle/lib');
+  if (lib.existsSync()) {
+    for (final f in lib.listSync().whereType<File>()) {
+      f.copySync(
+        '${File(serviceExe).parent.parent.path}/lib/'
+        '${f.uri.pathSegments.last}',
+      );
+    }
+  }
+  return bin;
 }
 
 /// Waits until the service's runtime files are gone.
