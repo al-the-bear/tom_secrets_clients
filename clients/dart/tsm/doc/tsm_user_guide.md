@@ -80,7 +80,7 @@ Options:
 | `--service EXE` | The service executable, when it is not beside `tsm` (or set `TSM_SERVICE`). |
 | `--relay tsm:URL` | A relay server the pairing goes through, when this machine reaches neither the desktop's network nor the VPN (see below). |
 | `--relay github:OWNER/REPO` | A GitHub repository the pairing goes through instead (see below). |
-| `--token-env VAR` | With a GitHub relay: the environment variable holding this machine's own GitHub token for that repository. |
+| `--token-env VAR` | The environment variable holding the relay's token: with a GitHub relay this machine's own GitHub token for that repository (needed); with a relay server the relay's instance token, kept for the approval link through the relay (optional). |
 | `--relay-api URL` | With a GitHub relay: the GitHub API's URL, for GitHub Enterprise Server (default `https://api.github.com`). |
 
 Notes:
@@ -109,6 +109,13 @@ tsm pair 42-guitar-orbit --relay tsm:https://relay.example --device server1
 
 - Pairing through a relay server needs no token; the relay carries only
   the pairing's encrypted messages and never learns the code.
+- The relay server is also offered for the **approval link**: when this
+  machine and the desktop do not reach each other on the network or the
+  VPN later, their approval prompts and answers go through it. A relay in
+  token mode needs its instance token for that; give it with `--token-env`
+  (`read -rs TSM_RELAY_TOKEN && export TSM_RELAY_TOKEN`, then
+  `--token-env TSM_RELAY_TOKEN`), and the service keeps it in the
+  keychain.
 - With an address too, the address is tried first and the relay only when
   nothing answers there.
 - A relay that fails ends the pairing with exit code 5, the message naming

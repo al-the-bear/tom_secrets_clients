@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.10';
+const String tsmVersion = '0.2.11';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -243,9 +243,11 @@ final ToolDefinition tsmTool = ToolDefinition(
         OptionDefinition.option(
           name: 'token-env',
           description:
-              "With a GitHub relay: the environment variable holding this "
-              "machine's own GitHub token for the repository (never the "
-              'token itself on the command line).',
+              "The environment variable holding the relay's token (never "
+              'the token itself on the command line): with a GitHub relay '
+              "this machine's own GitHub token for the repository (needed), "
+              "with a relay server the relay's instance token for the "
+              'approval link through it (optional).',
           valueName: 'VAR',
         ),
         OptionDefinition.option(

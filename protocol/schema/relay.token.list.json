@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/relay.token.list.json",
+  "title": "relay.token.list",
+  "description": "Which relay servers have an instance token kept (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "relays"
+  ],
+  "properties": {
+    "op": {
+      "const": "relay.token.list"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "relays": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

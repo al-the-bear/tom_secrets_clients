@@ -3,7 +3,7 @@ description: >-
   tsm, the Tom Secrets Manager on the command line: reads secrets from the
   local secrets service (get, run) and starts, unlocks and administers it.
   License: BSD-3-Clause.
-version: 0.2.10
+version: 0.2.11
 homepage: https://enterprise-flutter.dev
 repository: https://github.com/al-the-bear/tom_secrets_clients
 

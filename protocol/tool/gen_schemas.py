@@ -293,6 +293,14 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
         expiring={'type': 'array', 'items': EXPIRING_KEY},
+        links={'description': '[C] The approval links while unlocked (section 9.7): the hosts '
+               'this device approves for and the approvers of this host, with their state.',
+               'type': 'array', 'items': {
+                   'type': 'object', 'required': ['device', 'role', 'state'],
+                   'properties': {
+                       'device': STR, 'role': {'enum': ['host', 'approver']},
+                       'state': {'enum': ['connected', 'waiting', 'connecting', 'unreachable']},
+                       'via': {'enum': ['address', 'relay']}, 'reason': STR}}},
         agent=AGENT_ENDPOINT,
         github={'description': '[B] The GitHub App sign-in (section 6.3 github.app).',
                 'type': 'object', 'required': ['state'],
@@ -461,12 +469,19 @@ APPROVER_KEY = {'type': 'object', 'required': ['ed25519', 'mlDsa65'],
                 'properties': {'ed25519': ref('base64'), 'mlDsa65': ref('base64')}}
 LINK_KEY = {'type': 'object', 'required': ['x25519', 'mlKem768'],
             'properties': {'x25519': ref('base64'), 'mlKem768': ref('base64')}}
+LINK_RELAY = {'description': '[C] A relay server the approval link may go through: tsm:<url>.',
+              'type': 'string', 'pattern': '^tsm:https?://.+$'}
+LINK_ID = {'description': '[C] A link id: 8-128 of A-Z a-z 0-9 _ - (128 random bits in '
+           'base64url when made).', 'type': 'string', 'pattern': '^[A-Za-z0-9_-]{8,128}$'}
 message('pair.identity', 'admin', 'a2s', 'A',
         'This device\'s public keys for a pairing (the manager app only).',
-        ['id'], id=ref('id'))
+        ['id'], id=ref('id'),
+        relay=dict(LINK_RELAY, description='[C] A relay server the approval link may also go '
+                   'through: the identity then names it with a fresh link id.'))
 message('pairIdentity', 'admin', 's2a', 'A', 'The answer to pair.identity.',
         ['id', 'device', 'approverKey', 'linkKey'], id=ref('id'), device=STR,
-        approverKey=APPROVER_KEY, linkKey=LINK_KEY, linkAddress=STR)
+        approverKey=APPROVER_KEY, linkKey=LINK_KEY, linkAddress=STR,
+        linkRelay=LINK_RELAY, linkId=LINK_ID)
 message('pair.record', 'admin', 'a2s', 'A',
         'Keep what a pairing gave (the manager app only).',
         ['id', 'device', 'tokenKey'], id=ref('id'), device=STR, tokenKey=ref('base64'),
@@ -476,7 +491,24 @@ message('pair.record', 'admin', 'a2s', 'A',
               'properties': {'linkKey': LINK_KEY, 'address': STR}},
         record={'type': 'object',
                 'properties': {'platform': STR,
-                               'keyIds': {'type': 'array', 'items': STR}}})
+                               'keyIds': {'type': 'array', 'items': STR}}},
+        link={'description': '[C] The relay link both sides of the pairing agreed on '
+              '(section 9.8): kept with the host and the approver, a channel per direction.',
+              'type': 'object', 'required': ['relay', 'linkId'], 'additionalProperties': False,
+              'properties': {'relay': LINK_RELAY, 'linkId': LINK_ID}})
+message('relay.token.set', 'admin', 'a2s', 'C',
+        'Keep a relay server\'s instance token in the keychain, for the approval link through '
+        'it; no token removes it (the manager app only).',
+        ['id', 'relay'], id=ref('id'), relay=LINK_RELAY,
+        token={'description': 'The instance token; absent or empty: removed.',
+               'type': 'string'})
+message('relay.token.list', 'admin', 'a2s', 'C',
+        'Which relay servers have an instance token kept (the manager app only).',
+        ['id', 'relays'], id=ref('id'), relays={'type': 'array', 'items': STR})
+message('relayTokens', 'admin', 's2a', 'C', 'The answer to relay.token.list; never a token.',
+        ['id', 'relays'], id=ref('id'),
+        relays={'description': 'Each relay asked: whether a token is kept.',
+                'type': 'object', 'additionalProperties': BOOL})
 message('pair.revoke', 'admin', 'a2s', 'A', 'Revoke a paired device (the manager app only).',
         ['id', 'device'], id=ref('id'), device=STR)
 message('pair.list', 'admin', 'a2s', 'A', 'The device records (the manager app only).',

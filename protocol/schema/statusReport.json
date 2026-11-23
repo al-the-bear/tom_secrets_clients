@@ -145,6 +145,46 @@
         }
       }
     },
+    "links": {
+      "description": "[C] The approval links while unlocked (section 9.7): the hosts this device approves for and the approvers of this host, with their state.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "device",
+          "role",
+          "state"
+        ],
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "host",
+              "approver"
+            ]
+          },
+          "state": {
+            "enum": [
+              "connected",
+              "waiting",
+              "connecting",
+              "unreachable"
+            ]
+          },
+          "via": {
+            "enum": [
+              "address",
+              "relay"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "agent": {
       "description": "[B] The ssh-agent endpoint while it runs (section 7.6).",
       "type": "object",

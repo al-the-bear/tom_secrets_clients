@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/relay.token.set.json",
+  "title": "relay.token.set",
+  "description": "Keep a relay server's instance token in the keychain, for the approval link through it; no token removes it (the manager app only). Endpoint: admin; direction: a2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "relay"
+  ],
+  "properties": {
+    "op": {
+      "const": "relay.token.set"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "relay": {
+      "description": "[C] A relay server the approval link may go through: tsm:<url>.",
+      "type": "string",
+      "pattern": "^tsm:https?://.+$"
+    },
+    "token": {
+      "description": "The instance token; absent or empty: removed.",
+      "type": "string"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "C"
+  }
+}

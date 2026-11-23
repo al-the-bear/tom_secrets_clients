@@ -450,8 +450,8 @@ void main() {
         '--token-env',
         'TSM_PAIR_TOKEN',
       ]);
-      expect(r.code, 2, reason: 'a relay server takes no token: $r');
-      expect(r.err, contains('needs no token to pair'));
+      expect(r.code, 6, reason: 'a relay server with its instance token: $r');
+      expect(r.err, contains('no service executable'));
       r = await demo.tsm([
         'pair',
         '42-guitar-orbit',

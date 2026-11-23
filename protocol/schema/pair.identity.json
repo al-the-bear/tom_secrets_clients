@@ -14,6 +14,11 @@
     },
     "id": {
       "$ref": "common.json#/$defs/id"
+    },
+    "relay": {
+      "description": "[C] A relay server the approval link may also go through: the identity then names it with a fresh link id.",
+      "type": "string",
+      "pattern": "^tsm:https?://.+$"
     }
   },
   "x-tsm": {

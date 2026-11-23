@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.11
+
+- `tsm pair --relay tsm:<url> --token-env <VAR>`: the relay server's
+  instance token, handed to the service, which keeps it in the keychain for
+  the approval link through the relay (part-relay); still optional.
+
 ## 0.2.10
 
 - `tsm --version` names the package's version again; 0.2.9 named 0.2.8.

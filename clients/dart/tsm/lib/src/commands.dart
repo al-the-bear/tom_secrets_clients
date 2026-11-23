@@ -476,8 +476,9 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
   return (host, port);
 }
 
-/// `tsm pair [<host:port>] <code> [--relay tsm:URL | --relay
-/// github:OWNER/REPO --token-env VAR [--relay-api URL]] [--device NAME] [--device-key MODE] [--link
+/// `tsm pair [<host:port>] <code> [--relay tsm:URL [--token-env VAR] |
+/// --relay github:OWNER/REPO --token-env VAR [--relay-api URL]] [--device
+/// NAME] [--device-key MODE] [--link
 /// ADDRESS:PORT] [--service EXE]`: sets this machine up by pairing
 /// (part-sharing, BP-13). The service executable receives the pairing in
 /// its pairing mode (tsm links no core); tsm shows what the other machine
@@ -491,7 +492,8 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
 /// for it, read from the environment variable `--token-env` names (never a
 /// command-line argument; `--relay-api` is the GitHub API's URL, GitHub
 /// Enterprise Server), or a relay server (`tsm:<url>`), which needs no token
-/// to pair.
+/// to pair; `--token-env` then names the relay's instance token, which the
+/// service keeps for the approval link through the relay.
 Future<int> tsmPair(TsmContext c, TsmArgs a) async {
   final relay = a.option('relay')?.trim();
   final tokenEnv = a.option('token-env')?.trim();
@@ -507,11 +509,18 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
         'a relay server is tsm:https://<host>[/<path>]: $relay',
       );
     }
-    if (tokenEnv != null || relayApi != null) {
-      throw TsmFailure.usage(
-        '--token-env and --relay-api go with a GitHub relay; a relay server '
-        'needs no token to pair',
-      );
+    if (relayApi != null) {
+      throw TsmFailure.usage('--relay-api goes with a GitHub relay');
+    }
+    // Optional: the relay's instance token, which the approval link through
+    // it needs in token mode (part-relay); the service keeps it.
+    if (tokenEnv != null) {
+      token = c.io.environment[tokenEnv]?.trim();
+      if (token == null || token.isEmpty) {
+        throw TsmFailure.usage(
+          'the environment variable $tokenEnv holds no token',
+        );
+      }
     }
   } else if (relay != null) {
     if (!RegExp(r'^github:[A-Za-z0-9-]+/[A-Za-z0-9._-]+$').hasMatch(relay)) {

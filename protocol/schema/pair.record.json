@@ -100,6 +100,27 @@
           }
         }
       }
+    },
+    "link": {
+      "description": "[C] The relay link both sides of the pairing agreed on (section 9.8): kept with the host and the approver, a channel per direction.",
+      "type": "object",
+      "required": [
+        "relay",
+        "linkId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "relay": {
+          "description": "[C] A relay server the approval link may go through: tsm:<url>.",
+          "type": "string",
+          "pattern": "^tsm:https?://.+$"
+        },
+        "linkId": {
+          "description": "[C] A link id: 8-128 of A-Z a-z 0-9 _ - (128 random bits in base64url when made).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,128}$"
+        }
+      }
     }
   },
   "x-tsm": {
