@@ -71,7 +71,7 @@ void main() {
         // Windows: the text of client.token, re-read at this connect.
         if (Platform.isWindows)
           'token': 'dG9rZW4tb2YtdGhpcy1zZXJ2aWNlLXN0YXJ0LTAwMDA=',
-        'features': ['binary', 'getFile', 'match', 'propose'],
+        'features': tomSecretsClientFeatures,
       });
       expect(client.welcome!.host, 'bomber');
       expect(client.welcome!.platform, 'linux');
@@ -616,6 +616,97 @@ void main() {
       );
       expect(service.received.where((m) => m['op'] == 'getFile'), isEmpty);
     });
+  });
+
+  group('passkeys [C]', () {
+    test('passkeys lists by name and credential id; passkeyGet sends the '
+        'hash base64url and reads the signature; passkeyCreate the user '
+        'handle and algorithms', () async {
+      await startWith((c, r) {
+        final id = r['id']! as int;
+        switch (r['op']) {
+          case 'passkeys':
+            c.send({
+              'op': 'passkeyCandidates',
+              'id': id,
+              'candidates': [
+                {
+                  'entryId': 'personal/~0f3c2a1b4d5e6f708192a3b4c5d6e7f8',
+                  'title': 'Demo Mail',
+                  'userName': 'demo.user',
+                  'credentialId': 'ZGVtby1jcmVk',
+                },
+              ],
+            });
+          case 'passkeyGet':
+            c.send({
+              'op': 'passkeyAssertion',
+              'id': id,
+              'credentialId': 'ZGVtby1jcmVk',
+              'authenticatorData': 'ZGF0YQ',
+              'signature': 'c2ln',
+              'userHandle': 'dXNlcg',
+            });
+          default:
+            c.send({
+              'op': 'passkeyCreated',
+              'id': id,
+              'credentialId': 'bmV3',
+              'authenticatorData': 'ZGF0YQ',
+              'attestationObject': 'YXR0',
+              'publicKey': 'cGs',
+              'publicKeyAlgorithm': -7,
+            });
+        }
+      });
+      service.welcome = fakeWelcome(features: ['passkey']);
+      final found = await client.passkeys(
+        'https://mail.example.com/login',
+        'mail.example.com',
+        allowCredentials: ['ZGVtby1jcmVk'],
+      );
+      expect(found.single.title, 'Demo Mail');
+      expect(found.single.credentialId, 'ZGVtby1jcmVk');
+      expect(service.received.last['allowCredentials'], ['ZGVtby1jcmVk']);
+
+      final signed = await client.passkeyGet(
+        url: 'https://mail.example.com/login',
+        rpId: 'mail.example.com',
+        entryId: found.single.entryId,
+        clientDataHash: List.filled(32, 0xff),
+      );
+      expect(signed.signature, 'c2ln');
+      expect(signed.userHandle, 'dXNlcg');
+      expect(service.received.last['clientDataHash'], '_' * 42 + '8');
+
+      final made = await client.passkeyCreate(
+        url: 'https://mail.example.com/signup',
+        rpId: 'mail.example.com',
+        userId: [1, 2, 3],
+        userName: 'demo.user',
+        algorithms: [-7, -257],
+      );
+      expect(made.publicKeyAlgorithm, -7);
+      expect(made.attestationObject, 'YXR0');
+      expect(service.received.last['userId'], 'AQID');
+      expect(service.received.last['algorithms'], [-7, -257]);
+      expect(service.received.first['features'], contains('passkey'));
+    });
+
+    test(
+      'a service that does not offer passkey: unsupported, nothing sent',
+      () async {
+        await startWith((c, r) => fail('nothing is sent'));
+        await expectLater(
+          client.passkeys('https://example.com', 'example.com'),
+          _fails(TomSecretsErrorKind.unsupported),
+        );
+        expect(
+          service.received.where((m) => '${m['op']}'.startsWith('passkey')),
+          isEmpty,
+        );
+      },
+    );
   });
 
   group('match and propose [B]', () {

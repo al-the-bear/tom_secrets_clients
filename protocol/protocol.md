@@ -320,7 +320,7 @@ The service answers `welcome`:
 | --- | --- |
 | `protocol` | the version it will speak on this connection, `1` |
 | `service` | `{version}` |
-| `features` | the optional features it offers (section 8): a phase-B service offers `binary`, `getFile`, `match` and `propose`; a phase-A service none |
+| `features` | the optional features it offers (section 8): a phase-B service offers `binary`, `getFile`, `match` and `propose`, a phase-C service `passkey` too; a phase-A service none |
 | `host` | its host name (the current value of the `host` dimension) |
 | `platform` | `macos`, `linux`, `windows`, `ios` or `android` |
 
@@ -518,6 +518,77 @@ are its `URL` field and every field whose name begins with `KP2A_URL`.
   port exactly, whatever the rule.
 - **Order:** the exact host before the domain, then the last used first (the
   entry's last access time, else its last modification), then by title.
+
+### 5.8 Passkeys [C]
+
+The browser host takes over a page's WebAuthn calls (part-browser,
+part-password-manager, DP-120). The passkeys stay in the vaults: the
+service lists them by their names and signs with them. No answer carries a
+private key, and `get` keeps refusing the `KPEX_PASSKEY_*` fields
+(`reserved_field`, 5.6). The messages are the feature `passkey` (section
+8), for the browser host only; any other client is answered `denied`
+(reason `not_allowed_op`). Byte values are base64url without padding.
+
+| Request | Answer | What |
+| --- | --- | --- |
+| **[C]** `passkeys {id, url, rpId, allowCredentials?, wait?, timeoutMs?}` | `passkeyCandidates {id, candidates[{entryId, title, userName, credentialId}]}` | the page's passkeys a grant covers, never a key |
+| **[C]** `passkeyGet {id, url, rpId, entryId, clientDataHash}` | `passkeyAssertion {id, credentialId, authenticatorData, signature, userHandle?}` | a sign-in signed with the passkey picked |
+| **[C]** `passkeyCreate {id, url, rpId, userId, userName, displayName?, algorithms, excludeCredentials?, wait?, timeoutMs?}` | `passkeyCreated {id, credentialId, authenticatorData, attestationObject, publicKey, publicKeyAlgorithm}` | a new passkey, once the user confirms, kept in a vault |
+
+**The relying party.** `url` is the page (at most 4 KiB, else `malformed`,
+reason `url`). `rpId` must be the page's host or a domain above it that is
+not a public suffix (5.7's list); the page must be `https`, or `http` on
+`localhost`. Anything else is `denied` (reason `rp_id`). The browser host
+tells the page by the address the browser reports, never by what the page
+says.
+
+**`passkeys`** answers the passkeys (entries holding `KPEX_PASSKEY_*`
+fields) of the personal and shared vaults whose relying party is `rpId`;
+with `allowCredentials` (credential ids) only those. A candidate is covered
+as a `match` candidate is: an `allow` grant of the browser host names the
+entry, its store or `all`, or a `once` of the browser prompt holds it. When
+none is covered but the vaults hold passkeys of `rpId`, the approvers are
+asked once (the browser prompt of 5.5, with `passkey` `true`), with the same
+answers and the same `exe-from` grants. A system vault's passkey is never
+answered. Every `passkeys` is audited (`refs` `passkeys <rpId>`).
+
+**`passkeyGet`** signs for the entry `entryId`, which must be a candidate
+`passkeys` answers for the same `url` and `rpId` (else `denied`, reason
+`not_matched`). `clientDataHash` is the SHA-256 of the client data the
+browser host made (32 bytes, else `malformed`, reason `client_data`). The
+authenticator data holds the relying party's hash, the flags user present,
+user verified, backup eligible and backed up, and the counter 0, as a
+synced passkey's do. `signature` is ES256 (DER) or Ed25519 by the key's
+kind. `userHandle` is answered when the passkey has one. It needs no
+prompt: the user picked the passkey in the extension's own list, which the
+page cannot reach. Audited (`passkey <rpId>`).
+
+**`passkeyCreate`** asks the approvers whether to save a passkey for
+`userName` at `rpId` (`approval_needed` with `passkeyCreate`
+`{rpId, userName, url}` and `confirmOnly` `true`: answered `once` or
+`never`, no grant written; `progress` `pending` `approval`). With no
+approver connected it is `denied` (reason `no_approver`); refused or
+unanswered, `denied` (reason `refused`, `timeout`).
+
+1. A passkey of the vaults whose credential id is in `excludeCredentials`
+   (the site holds it already) is `denied` (reason `excluded`), before any
+   prompt.
+2. `algorithms` lists COSE algorithms in the site's order; the first of
+   ES256 (`-7`) and Ed25519 (`-8`) is made. Neither: `unsupported`
+   (reason `algorithm`).
+3. `userId` is the user handle, 1 to 64 bytes.
+4. Once confirmed, the service makes the key pair and keeps the passkey in
+   a personal or shared vault this machine serves and may write. It goes
+   into the vault holding a passkey of that site and user, else one with a
+   login of the site, else the first. In the vault it goes into the login
+   entry of the site and user name, else a new login entry.
+5. It writes the vault as an edit of the app is written. When no vault
+   may take it, `unavailable` (reason `no_vault`); when the vault cannot
+   be written now, `unavailable` (reason `offline`). Either way the site
+   gets no credential the vaults do not hold.
+6. The answer carries the `none` attestation object, the authenticator
+   data, the public key as DER SubjectPublicKeyInfo and its COSE algorithm.
+   Audited (`passkey-create <rpId>`).
 
 ### 5.6 What the service checks, in order
 
@@ -901,7 +972,7 @@ After `subscribe` the service pushes events on that connection (no `id`):
 | Event | Members | When |
 | --- | --- | --- |
 | `unlock_needed` | `identity?` | a client waits for an unlock |
-| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?, pick?, url?, browser?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6); `pick` and `url` for a helper's pick prompt (5.5); `browser` and `url` for a browser prompt (5.5) |
+| `approval_needed` | `approvalId, host, identity, refs[], resolved[{store, path, kind}], hostHint?, approvalCode?, wantClientToken?, ssh?, confirmOnly?, pick?, url?, browser?, passkey?, passkeyCreate?` | a request needs an approval (7.2); `wantClientToken` when the client asked for a client token (7.4); **[B]** `ssh` and `confirmOnly` for an ssh-agent signature (7.6); `pick` and `url` for a helper's pick prompt (5.5); `browser` and `url` for a browser prompt (5.5); **[C]** `passkey` for a browser prompt of passkeys, `passkeyCreate` `{rpId, userName, url}` (with `confirmOnly`, no entries) for a new passkey (5.8) |
 | `approval_closed` | `approvalId, outcome` (`approved`, `denied`, `timeout`, `abandoned`, `no_approver`) | a prompt was answered or ended elsewhere |
 | `locked`, `unlocked` | — | the service locked or unlocked |
 | `store_changed` | `store, revision?` | a store was reopened with new content |
@@ -1107,12 +1178,13 @@ it). Private keys never leave the service.
   | `getFile` | **[B]** `getFile`, `file`, `end` |
   | `match` | **[B]** `match`, `matches` |
   | `propose` | **[B]** `propose`, `accepted`, and the admin event `proposal` |
+  | `passkey` | **[C]** `passkeys`, `passkeyCandidates`, `passkeyGet`, `passkeyAssertion`, `passkeyCreate`, `passkeyCreated` |
 
   A client sends a feature's messages only when `welcome.features` names it,
   and names in `hello.features` the features it takes; the service sends
   binary frames only to a client whose `hello.features` names `binary`. A
   phase-A service ignores `hello.features` and offers none; a phase-B
-  service offers all four. This is the version handshake: the integer
+  service offers the first four, a phase-C service `passkey` too. This is the version handshake: the integer
   `protocol` stays `1` for every additive change, and a client finds out
   what a service speaks from `welcome.features`. A client asking a
   phase-A service for a phase-B message gets `unsupported` (an unknown
@@ -1500,7 +1572,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 113 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 119 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1785,3 +1857,12 @@ part-service) leaves these open; this document fixes them:
     side; the address stays first and the relay is only the way when it
     does not answer; the instance token is the app's to keep, in the
     keychain through the service, never in a file or the primary.
+48. The browser's passkeys are signed by the service, never handed over
+    (part-browser, DP-120): the browser host gets names and credential ids
+    to list and a signature for the one the user picked, so a page, an
+    extension or a host process never holds a passkey's key. The
+    extension's own list, which the page cannot reach, is the user's
+    gesture for a sign-in; a new passkey is confirmed in the app, as it is
+    written into a vault. Creating one is answered only once the vault is
+    written, so a site never holds a credential the vaults lost. The
+    Windows passkey plugin is meant to use the same three messages.

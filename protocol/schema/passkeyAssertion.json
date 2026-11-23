@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/passkeyAssertion.json",
+  "title": "passkeyAssertion",
+  "description": "The answer to passkeyGet: a signature. Endpoint: client; direction: s2c; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "credentialId",
+    "authenticatorData",
+    "signature"
+  ],
+  "properties": {
+    "op": {
+      "const": "passkeyAssertion"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "credentialId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    },
+    "authenticatorData": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    },
+    "userHandle": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "s2c",
+    "phase": "C"
+  }
+}

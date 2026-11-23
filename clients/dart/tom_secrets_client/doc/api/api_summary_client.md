@@ -19,6 +19,10 @@
   - [TomSecretEntry](#tomsecretentry)
   - [TomSecretVersion](#tomsecretversion)
   - [TomSecretFile](#tomsecretfile)
+  - [TomSecretsLoginCandidate](#tomsecretslogincandidate)
+  - [TomSecretsPasskeyCandidate](#tomsecretspasskeycandidate)
+  - [TomSecretsPasskeyAssertion](#tomsecretspasskeyassertion)
+  - [TomSecretsPasskeyCreated](#tomsecretspasskeycreated)
   - [TomSecretRequest](#tomsecretrequest)
   - [TomSecretResult](#tomsecretresult)
   - [TomSecretsProgress](#tomsecretsprogress)
@@ -66,6 +70,10 @@ Object
 ├── TomSecretEntry
 ├── TomSecretVersion
 ├── TomSecretFile
+├── TomSecretsLoginCandidate
+├── TomSecretsPasskeyCandidate
+├── TomSecretsPasskeyAssertion
+├── TomSecretsPasskeyCreated
 ├── TomSecretRequest
 ├── TomSecretResult
 ├── TomSecretsProgress
@@ -141,6 +149,9 @@ TomSecretsClient({
 | `getFile(String reference, {String? field, Map<String, String>? dimensions, bool wait = true, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<TomSecretFile>` | Reads an attachment or a typed key as bytes over binary frames, checked against its SHA-256; `unsupported` when the service lacks the features `binary` and `getFile` |
 | `match(String url, {String? frameUrl, bool wait = true, Duration? timeout})` | `Future<List<TomSecretsLoginCandidate>>` | The login entries of a web page this client's grants cover, never a value (protocol.md 5.5); only for the browser host and the helpers (`denied`, `not_allowed_op` otherwise); `unsupported` when the service lacks the feature `match` |
 | `propose({required String url, required String userName, required String password, String? title})` | `Future<void>` | A login for the user to save in the manager app (protocol.md 5.5); only for the browser host with a grant; `unavailable` (`no_app`) with no app attached; `unsupported` when the service lacks the feature `propose` |
+| `passkeys(String url, String rpId, {List<String>? allowCredentials, bool wait = true, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<List<TomSecretsPasskeyCandidate>>` | **[C]** The passkeys of `rpId` for the page `url` this client may use, by name and credential id, never a key (protocol.md 5.8); the browser host only (`denied`, `not_allowed_op` otherwise), a relying party the page may not use `denied` (`rp_id`); `unsupported` when the service lacks the feature `passkey` |
+| `passkeyGet({required String url, required String rpId, required String entryId, required List<int> clientDataHash})` | `Future<TomSecretsPasskeyAssertion>` | **[C]** A sign-in signed by the service with the passkey `entryId` the user picked; `denied` (`not_matched`) for one that is no passkey of the page |
+| `passkeyCreate({required String url, required String rpId, required List<int> userId, required String userName, String? displayName, required List<int> algorithms, List<String>? excludeCredentials, Duration? timeout, TomSecretsProgressCallback? onProgress})` | `Future<TomSecretsPasskeyCreated>` | **[C]** A new passkey once the user confirms it in the app, ES256 or Ed25519 by the site's order, kept in a vault before it answers; `denied` (`excluded`, `refused`, `timeout`, `no_approver`), `unsupported` (`algorithm`), `unavailable` (no vault written) |
 
 ---
 
@@ -444,6 +455,73 @@ factory TomSecretsLoginCandidate.fromJson(Map<String, Object?> json)
 | `userName` | `String` | Its user name |
 | `matchedUrl` | `String` | The entry URL that matched, as written |
 | `hasTotp` | `bool` | Whether it carries a TOTP secret |
+
+---
+
+### TomSecretsPasskeyCandidate
+
+**[C]** A passkey of a page (`passkeyCandidates`): its entry, names and credential id; never its key.
+
+#### Constructors
+
+```dart
+const TomSecretsPasskeyCandidate({required String entryId, required String title, required String userName, required String credentialId})
+factory TomSecretsPasskeyCandidate.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `entryId` | `String` | The entry as a uuid reference (`store/~<32 hex>`): what `passkeyGet` names |
+| `title` | `String` | The entry's title |
+| `userName` | `String` | The passkey's user name |
+| `credentialId` | `String` | The credential id (base64url, no padding) |
+
+---
+
+### TomSecretsPasskeyAssertion
+
+**[C]** A sign-in signed with a passkey (`passkeyAssertion`); every byte value base64url without padding.
+
+#### Constructors
+
+```dart
+const TomSecretsPasskeyAssertion({required String credentialId, required String authenticatorData, required String signature, String? userHandle})
+factory TomSecretsPasskeyAssertion.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `credentialId` | `String` | The credential id |
+| `authenticatorData` | `String` | The authenticator data |
+| `signature` | `String` | The signature over the authenticator data and the client data hash |
+| `userHandle` | `String?` | The user handle, when the passkey has one |
+
+---
+
+### TomSecretsPasskeyCreated
+
+**[C]** A passkey just made and kept (`passkeyCreated`); every byte value base64url without padding.
+
+#### Constructors
+
+```dart
+const TomSecretsPasskeyCreated({required String credentialId, required String authenticatorData, required String attestationObject, required String publicKey, required int publicKeyAlgorithm})
+factory TomSecretsPasskeyCreated.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `credentialId` | `String` | The credential id |
+| `authenticatorData` | `String` | The authenticator data with the attested credential |
+| `attestationObject` | `String` | The `none` attestation object |
+| `publicKey` | `String` | The public key as DER SubjectPublicKeyInfo |
+| `publicKeyAlgorithm` | `int` | Its COSE algorithm (`-7` ES256, `-8` Ed25519) |
 
 ---
 
@@ -818,7 +896,7 @@ Why a request waits.
 | --- | --- | --- |
 | `tomSecretsClientVersion` | `String` | The library's version, sent in `hello` |
 | `tomSecretsProtocol` | `int` | The protocol version this library speaks (1) |
-| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile`, `match`, `propose` |
+| `tomSecretsClientFeatures` | `List<String>` | The features this library takes: `binary`, `getFile`, `match`, `propose`, `passkey` |
 | `tomSecretsMaxGetMany` | `int` | The most references one `getMany` carries (256) |
 | `tomSecretsDefaultField` | `String` | The field a reference without `#field` names (`Password`) |
 | `tomSecretsMaxReferenceBytes` | `int` | The longest reference, in bytes of UTF-8 (1024) |

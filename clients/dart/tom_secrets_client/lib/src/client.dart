@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -51,13 +52,14 @@ final class TomSecretsWelcome {
 /// The protocol version this library speaks.
 const int tomSecretsProtocol = 1;
 
-/// The features this library takes [B] (protocol.md 8): binary frames,
-/// `getFile`, `match` and `propose`.
+/// The features this library takes (protocol.md 8): binary frames,
+/// `getFile`, `match` and `propose` [B], and `passkey` [C].
 const List<String> tomSecretsClientFeatures = [
   'binary',
   'getFile',
   'match',
   'propose',
+  'passkey',
 ];
 
 /// The most references one `getMany` carries.
@@ -347,6 +349,111 @@ final class TomSecretsClient {
     }
     return answer['known'] == true;
   }
+
+  /// **[C]** The passkeys of the relying party [rpId] for the page [url]
+  /// that this client may use (protocol.md 5.8 `passkeys`): their names and
+  /// credential ids, never a key; with [allowCredentials] (base64url) only
+  /// those. For the browser host only; any other client gets `denied`
+  /// (reason `not_allowed_op`), a relying party the page may not use
+  /// `denied` (reason `rp_id`). When no grant covers them the user is asked
+  /// in the app ([onProgress] hears `pending` `approval`). Fails as
+  /// `unsupported` when the service does not offer `passkey`.
+  Future<List<TomSecretsPasskeyCandidate>> passkeys(
+    String url,
+    String rpId, {
+    List<String>? allowCredentials,
+    bool wait = true,
+    Duration? timeout,
+    TomSecretsProgressCallback? onProgress,
+  }) async {
+    _requireFeatures(await _ensureConnection(), 'passkeys', const ['passkey']);
+    final answer = await _request({
+      'op': 'passkeys',
+      'url': url,
+      'rpId': rpId,
+      'allowCredentials': ?allowCredentials,
+      if (!wait) 'wait': false,
+      if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
+    }, onProgress: onProgress);
+    if (answer['op'] != 'passkeyCandidates') {
+      throw _protocolError('passkeys was answered ${answer['op']}');
+    }
+    return [
+      for (final c in (answer['candidates'] as List? ?? const []))
+        if (c is Map) TomSecretsPasskeyCandidate.fromJson(c.cast()),
+    ];
+  }
+
+  /// **[C]** A sign-in at [rpId] for the page [url] signed with the passkey
+  /// [entryId] the user picked (protocol.md 5.8 `passkeyGet`):
+  /// [clientDataHash] is the SHA-256 of the client data (32 bytes). The
+  /// service signs; the key never leaves it. Only a passkey `passkeys`
+  /// answers for the page (else `denied`, reason `not_matched`). Fails as
+  /// `unsupported` when the service does not offer `passkey`.
+  Future<TomSecretsPasskeyAssertion> passkeyGet({
+    required String url,
+    required String rpId,
+    required String entryId,
+    required List<int> clientDataHash,
+  }) async {
+    _requireFeatures(await _ensureConnection(), 'passkeyGet', const [
+      'passkey',
+    ]);
+    final answer = await _request({
+      'op': 'passkeyGet',
+      'url': url,
+      'rpId': rpId,
+      'entryId': entryId,
+      'clientDataHash': _base64Url(clientDataHash),
+    });
+    if (answer['op'] != 'passkeyAssertion') {
+      throw _protocolError('passkeyGet was answered ${answer['op']}');
+    }
+    return TomSecretsPasskeyAssertion.fromJson(answer);
+  }
+
+  /// **[C]** A new passkey at [rpId] for the page [url] and the user
+  /// [userId] (the user handle) / [userName] (protocol.md 5.8
+  /// `passkeyCreate`), once the user confirms it in the app: made with the
+  /// first of [algorithms] (COSE, the site's order) the service makes,
+  /// ES256 or Ed25519, and kept in a vault before it answers. Refused:
+  /// [excludeCredentials] held (`denied`, `excluded`), no algorithm made
+  /// (`unsupported`, `algorithm`), not confirmed (`denied`: `refused`,
+  /// `timeout`, `no_approver`), no vault written (`unavailable`). Fails as
+  /// `unsupported` when the service does not offer `passkey`.
+  Future<TomSecretsPasskeyCreated> passkeyCreate({
+    required String url,
+    required String rpId,
+    required List<int> userId,
+    required String userName,
+    String? displayName,
+    required List<int> algorithms,
+    List<String>? excludeCredentials,
+    Duration? timeout,
+    TomSecretsProgressCallback? onProgress,
+  }) async {
+    _requireFeatures(await _ensureConnection(), 'passkeyCreate', const [
+      'passkey',
+    ]);
+    final answer = await _request({
+      'op': 'passkeyCreate',
+      'url': url,
+      'rpId': rpId,
+      'userId': _base64Url(userId),
+      'userName': userName,
+      'displayName': ?displayName,
+      'algorithms': algorithms,
+      'excludeCredentials': ?excludeCredentials,
+      if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
+    }, onProgress: onProgress);
+    if (answer['op'] != 'passkeyCreated') {
+      throw _protocolError('passkeyCreate was answered ${answer['op']}');
+    }
+    return TomSecretsPasskeyCreated.fromJson(answer);
+  }
+
+  static String _base64Url(List<int> bytes) =>
+      base64Url.encode(bytes).replaceAll('=', '');
 
   Map<String, Object?> _item(
     String reference,
@@ -639,7 +746,14 @@ final class _Connection {
           '_file': pending.file,
           '_bytes': pending.chunks!.takeBytes(),
         });
-      case 'value' || 'values' || 'matches' || 'accepted' || 'error':
+      case 'value' ||
+          'values' ||
+          'matches' ||
+          'accepted' ||
+          'passkeyCandidates' ||
+          'passkeyAssertion' ||
+          'passkeyCreated' ||
+          'error':
         _complete(id! as int, message);
       default:
         // An answer this library does not know; section 8 says ignore it.

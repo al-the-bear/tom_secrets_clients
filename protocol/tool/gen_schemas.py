@@ -223,6 +223,34 @@ message('propose', 'client', 'c2s', 'B', 'A login for the app to save (browser h
 message('accepted', 'client', 's2c', 'B', 'The answer to propose.', ['id'], id=ref('id'),
         known={'description': 'A helper\'s credential the vaults hold already: not passed '
                'on (DP-52).', **BOOL})
+B64URL = {'type': 'string', 'pattern': r'^[A-Za-z0-9_-]*$'}
+message('passkeys', 'client', 'c2s', 'C', 'The passkeys of a page (browser host).',
+        ['id', 'url', 'rpId'], id=ref('id'), url=STR, rpId=STR,
+        allowCredentials={'description': 'Only these credential ids (base64url).',
+                          'type': 'array', 'items': B64URL},
+        wait=BOOL, timeoutMs=INT0)
+message('passkeyCandidates', 'client', 's2c', 'C', 'The answer to passkeys: never a key.',
+        ['id', 'candidates'], id=ref('id'),
+        candidates={'type': 'array', 'items': {
+            'type': 'object', 'required': ['entryId', 'title', 'userName', 'credentialId'],
+            'properties': {'entryId': STR, 'title': STR, 'userName': STR,
+                           'credentialId': B64URL}}})
+message('passkeyGet', 'client', 'c2s', 'C', 'A sign-in signed with the passkey picked.',
+        ['id', 'url', 'rpId', 'entryId', 'clientDataHash'], id=ref('id'), url=STR, rpId=STR,
+        entryId=STR, clientDataHash=B64URL)
+message('passkeyAssertion', 'client', 's2c', 'C', 'The answer to passkeyGet: a signature.',
+        ['id', 'credentialId', 'authenticatorData', 'signature'], id=ref('id'),
+        credentialId=B64URL, authenticatorData=B64URL, signature=B64URL, userHandle=B64URL)
+message('passkeyCreate', 'client', 'c2s', 'C', 'A new passkey, once the user confirms.',
+        ['id', 'url', 'rpId', 'userId', 'userName', 'algorithms'], id=ref('id'), url=STR,
+        rpId=STR, userId=B64URL, userName=STR, displayName=STR,
+        algorithms={'description': 'COSE algorithms in the site\'s order.',
+                    'type': 'array', 'items': {'type': 'integer'}},
+        excludeCredentials={'type': 'array', 'items': B64URL}, wait=BOOL, timeoutMs=INT0)
+message('passkeyCreated', 'client', 's2c', 'C', 'The answer to passkeyCreate.',
+        ['id', 'credentialId', 'authenticatorData', 'attestationObject', 'publicKey',
+         'publicKeyAlgorithm'], id=ref('id'), credentialId=B64URL, authenticatorData=B64URL,
+        attestationObject=B64URL, publicKey=B64URL, publicKeyAlgorithm={'type': 'integer'})
 
 # ---- admin endpoint (section 6) -----------------------------------------
 message('challenge', 'admin', 's2a', 'A', 'The first frame of an admin connection.',
@@ -675,7 +703,11 @@ message('approval_needed', 'admin', 's2a', 'A', 'A request needs an approval.',
              'match.', **STR},
         browser={'description': '[B] A browser prompt: the browser host asks for the logins of '
                  'the page `url`; a lasting answer names the browser (`exe-from`, '
-                 'section 5.5).', **BOOL})
+                 'section 5.5).', **BOOL},
+        passkey={'description': '[C] A browser prompt of passkeys (section 5.8).', **BOOL},
+        passkeyCreate={'description': '[C] A new passkey to confirm (section 5.8).',
+                       'type': 'object', 'required': ['rpId', 'userName', 'url'],
+                       'properties': {'rpId': STR, 'userName': STR, 'url': STR}})
 message('approval_closed', 'admin', 's2a', 'A', 'A prompt was answered or ended elsewhere.',
         ['approvalId', 'outcome'], also=['link'], approvalId=STR,
         outcome={'enum': ['approved', 'denied', 'timeout', 'abandoned', 'no_approver']})

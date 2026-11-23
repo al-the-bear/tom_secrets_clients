@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.17
+
+- Passkeys for the browser host (protocol.md 5.8, feature `passkey`):
+  `TomSecretsClient.passkeys` (a page's passkeys by name and credential id,
+  `TomSecretsPasskeyCandidate`), `passkeyGet` (a sign-in the service signs,
+  `TomSecretsPasskeyAssertion`) and `passkeyCreate` (a new passkey the user
+  confirms in the app, `TomSecretsPasskeyCreated`); `hello` names
+  `passkey`.
+
 ## 0.2.16
 
 - `TomSecretsIntegrations` configures AWS and Docker too

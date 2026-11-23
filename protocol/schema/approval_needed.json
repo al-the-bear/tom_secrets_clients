@@ -144,6 +144,30 @@
     "browser": {
       "description": "[B] A browser prompt: the browser host asks for the logins of the page `url`; a lasting answer names the browser (`exe-from`, section 5.5).",
       "type": "boolean"
+    },
+    "passkey": {
+      "description": "[C] A browser prompt of passkeys (section 5.8).",
+      "type": "boolean"
+    },
+    "passkeyCreate": {
+      "description": "[C] A new passkey to confirm (section 5.8).",
+      "type": "object",
+      "required": [
+        "rpId",
+        "userName",
+        "url"
+      ],
+      "properties": {
+        "rpId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
     }
   },
   "x-tsm": {

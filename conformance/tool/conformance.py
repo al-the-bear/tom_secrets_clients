@@ -55,6 +55,12 @@ NOT_A_LIBRARY_CALL = {
     'matches': 'the answer to match',
     'propose': 'phase B; only the browser host sends it (5.5)',
     'accepted': 'the answer to propose',
+    'passkeys': 'phase C; only the browser host asks it (5.8)',
+    'passkeyCandidates': 'the answer to passkeys',
+    'passkeyGet': 'phase C; only the browser host asks it (5.8)',
+    'passkeyAssertion': 'the answer to passkeyGet',
+    'passkeyCreate': 'phase C; only the browser host asks it (5.8)',
+    'passkeyCreated': 'the answer to passkeyCreate',
 }
 
 

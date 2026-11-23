@@ -335,3 +335,113 @@ final class TomSecretsLoginCandidate {
   /// Whether it carries a TOTP secret.
   final bool hasTotp;
 }
+
+/// **[C]** A passkey of a page (protocol.md 5.8 `passkeyCandidates`): its
+/// entry, names and credential id; never its key.
+final class TomSecretsPasskeyCandidate {
+  /// A candidate.
+  const TomSecretsPasskeyCandidate({
+    required this.entryId,
+    required this.title,
+    required this.userName,
+    required this.credentialId,
+  });
+
+  /// From a `passkeyCandidates` candidate.
+  factory TomSecretsPasskeyCandidate.fromJson(Map<String, Object?> json) =>
+      TomSecretsPasskeyCandidate(
+        entryId: json['entryId'] is String ? json['entryId']! as String : '',
+        title: json['title'] is String ? json['title']! as String : '',
+        userName: json['userName'] is String ? json['userName']! as String : '',
+        credentialId: json['credentialId'] is String
+            ? json['credentialId']! as String
+            : '',
+      );
+
+  /// The entry as a uuid reference (`store/~<32 hex>`): what `passkeyGet`
+  /// names.
+  final String entryId;
+
+  /// The entry's title.
+  final String title;
+
+  /// The passkey's user name.
+  final String userName;
+
+  /// The credential id (base64url, no padding).
+  final String credentialId;
+}
+
+/// **[C]** A sign-in signed with a passkey (protocol.md 5.8
+/// `passkeyAssertion`); every byte value base64url without padding, as
+/// WebAuthn's JSON carries it.
+final class TomSecretsPasskeyAssertion {
+  /// An assertion.
+  const TomSecretsPasskeyAssertion({
+    required this.credentialId,
+    required this.authenticatorData,
+    required this.signature,
+    this.userHandle,
+  });
+
+  /// From a `passkeyAssertion` answer.
+  factory TomSecretsPasskeyAssertion.fromJson(Map<String, Object?> json) =>
+      TomSecretsPasskeyAssertion(
+        credentialId: '${json['credentialId'] ?? ''}',
+        authenticatorData: '${json['authenticatorData'] ?? ''}',
+        signature: '${json['signature'] ?? ''}',
+        userHandle: json['userHandle'] as String?,
+      );
+
+  /// The credential id.
+  final String credentialId;
+
+  /// The authenticator data.
+  final String authenticatorData;
+
+  /// The signature over the authenticator data and the client data hash.
+  final String signature;
+
+  /// The user handle, when the passkey has one.
+  final String? userHandle;
+}
+
+/// **[C]** A passkey just made and kept (protocol.md 5.8 `passkeyCreated`);
+/// every byte value base64url without padding.
+final class TomSecretsPasskeyCreated {
+  /// A registration.
+  const TomSecretsPasskeyCreated({
+    required this.credentialId,
+    required this.authenticatorData,
+    required this.attestationObject,
+    required this.publicKey,
+    required this.publicKeyAlgorithm,
+  });
+
+  /// From a `passkeyCreated` answer.
+  factory TomSecretsPasskeyCreated.fromJson(Map<String, Object?> json) =>
+      TomSecretsPasskeyCreated(
+        credentialId: '${json['credentialId'] ?? ''}',
+        authenticatorData: '${json['authenticatorData'] ?? ''}',
+        attestationObject: '${json['attestationObject'] ?? ''}',
+        publicKey: '${json['publicKey'] ?? ''}',
+        publicKeyAlgorithm: json['publicKeyAlgorithm'] is int
+            ? json['publicKeyAlgorithm']! as int
+            : 0,
+      );
+
+  /// The credential id.
+  final String credentialId;
+
+  /// The authenticator data with the attested credential.
+  final String authenticatorData;
+
+  /// The `none` attestation object.
+  final String attestationObject;
+
+  /// The public key as DER SubjectPublicKeyInfo.
+  final String publicKey;
+
+  /// Its COSE algorithm (`-7` ES256, `-8` Ed25519).
+  final int publicKeyAlgorithm;
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/passkeyCreate.json",
+  "title": "passkeyCreate",
+  "description": "A new passkey, once the user confirms. Endpoint: client; direction: c2s; phase C. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "url",
+    "rpId",
+    "userId",
+    "userName",
+    "algorithms"
+  ],
+  "properties": {
+    "op": {
+      "const": "passkeyCreate"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "url": {
+      "type": "string"
+    },
+    "rpId": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]*$"
+    },
+    "userName": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "algorithms": {
+      "description": "COSE algorithms in the site's order.",
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "excludeCredentials": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]*$"
+      }
+    },
+    "wait": {
+      "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "x-tsm": {
+    "endpoint": "client",
+    "direction": "c2s",
+    "phase": "C"
+  }
+}

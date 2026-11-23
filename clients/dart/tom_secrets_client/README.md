@@ -1,7 +1,7 @@
 # tom_secrets_client
 
 The Dart client of the Tom Secrets Manager: finds the local secrets service,
-speaks its client protocol (frames, hello, get, getMany, getFile, match, propose) and parses
+speaks its client protocol (frames, hello, get, getMany, getFile, match, propose, the passkey messages) and parses
 and formats secret references.
 
 ## Overview
@@ -52,6 +52,7 @@ succeed; without one every call fails as `notRunning`.
 | `getMany` | Reads 1 to 256 secrets under one approval prompt; results in request order |
 | `getFile` | Reads an attachment or a typed key as bytes over binary frames, checked against its SHA-256 (needs a service offering `binary` and `getFile`) |
 | `match`, `propose` | For the browser host and the developer-tool helpers: the login entries of a web page (never a value), and a login proposed for the manager app (needs a service offering `match` and `propose`) |
+| `passkeys`, `passkeyGet`, `passkeyCreate` | For the browser host: a page's passkeys by name, a sign-in the service signs, a new passkey the user confirms in the app; never a key (needs a service offering `passkey`) |
 | Waiting | The service waits for an unlock or an approval up to a timeout; progress notices say why, with the approval code when no approver is connected |
 | Rate limits | `rateLimited` is waited out and the request sent again on request |
 | Client tokens | A granted client token is handed to the caller, never stored |
@@ -138,7 +139,7 @@ identity; the service identifies a client by its executable.
 ```dart
 final client = await TomSecretsClient.connect(clientName: 'billing_job');
 print(client.welcome?.serviceVersion);
-print(client.welcome?.features); // e.g. {binary, getFile, match, propose}
+print(client.welcome?.features); // e.g. {binary, getFile, match, propose, passkey}
 await client.close();
 ```
 
@@ -256,6 +257,23 @@ and the helpers (`tsm` and its names), and `propose` only for the browser
 host holding a grant; any other client gets `denied` (`not_allowed_op`).
 `match` lists the entries the client's grants cover and never a value; a
 fill reads the chosen entry with `get` on its `entryId`.
+
+The browser host takes over a page's passkeys the same way. The service
+lists them by name, signs a sign-in, and keeps a new passkey once the user
+confirms it in the app; the key never leaves the service:
+
+```dart
+final keys = await client.passkeys(
+  'https://mail.example.com/login',
+  'mail.example.com',
+);
+final signed = await client.passkeyGet(
+  url: 'https://mail.example.com/login',
+  rpId: 'mail.example.com',
+  entryId: keys.first.entryId,
+  clientDataHash: clientDataHash, // SHA-256 of the client data
+);
+```
 
 ### Errors
 
