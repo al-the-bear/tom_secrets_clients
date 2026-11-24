@@ -29,6 +29,7 @@
   - [TomSecretsRegistry](#tomsecretsregistry)
   - [TomSecretsIntegrationState](#tomsecretsintegrationstate)
   - [TomSecretsIntegrations](#tomsecretsintegrations)
+  - [TomSecretsChunkAssembler](#tomsecretschunkassembler)
 - [Enums](#enums)
   - [TomSecretsTransport](#tomsecretstransport)
   - [TomSecretsBrowser](#tomsecretsbrowser)
@@ -66,6 +67,7 @@ Object
 ├── TomSecretsPairingReport
 ├── TomSecretsServicePairing
 ├── TomSecretsUnlockBundle
+├── TomSecretsChunkAssembler
 └── (implements Exception)
     ├── TomSecretsAdminException
     ├── TomSecretsRuntimeException
@@ -96,12 +98,13 @@ An authenticated admin connection: requests by id and the pushed events.
 | `serviceStart` | `int` | The service's start time (0 on a connection that claimed the service) |
 | `events` | `Stream<Map<String, Object?>>` | The pushed events, after a `subscribe` request |
 | `isClosed` | `bool` | Whether the connection has ended |
+| `sendsChunked` | `bool` | Whether the service offered chunked members (protocol.md 2.7): a request over the request limit is then sent chunked |
 
 #### Methods
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `request(String op, [Map<String, Object?> fields = const {}])` | `Future<Map<String, Object?>>` | Sends an admin request with an id; answers the answer, or throws `TomSecretsAdminException` for an `error` |
+| `request(String op, [Map<String, Object?> fields = const {}])` | `Future<Map<String, Object?>>` | Sends an admin request with an id (its large members as chunks when it exceeds the request limit and the service offers them); answers the answer, or throws `TomSecretsAdminException` for an `error`, and `closed` at once on a connection that has ended |
 | `unlock(String password, {List<int>? keyFile})` | `Future<void>` | Unlocks with the master password (and key file) |
 | `unlockWithBundle(String vault, TomSecretsUnlockBundle bundle)` | `Future<void>` | Unlocks a store (the primary: the service) with the OS unlock's key bundle, sealed under this connection's bundle key (protocol.md 6.4); `unsupported` on a connection that claimed the service |
 | `close()` | `Future<void>` | Ends the connection |
@@ -655,6 +658,24 @@ TomSecretsIntegrations({
 | `uninstall(integration, {awsProfile, dockerRegistry})` | `Future<TomSecretsIntegrationState>` | Removes its block (and for git and Docker the helper link); **[C]** with `awsProfile` or `dockerRegistry` only that one (the link stays while something is left) |
 | `repair()` | `Future<List<TomSecretsIntegration>>` | Installs again every installed integration that no longer names this machine's agent, helper or tsm, with the hosts, profiles and registries it has; answers those it repaired |
 
+### TomSecretsChunkAssembler
+
+Puts chunked messages (protocol.md 2.7) back together on the receiving side.
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `isChunked(Map<String, Object?> message)` | `bool` | Whether the message names chunked members |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `begin(Map<String, Object?> message)` | `Map<String, Object?>?` | Starts a message whose members follow as binary frames; answers it whole at once when no bytes follow, else null. Throws `TomSecretsFrameException` for a malformed `chunked` list, a second message of the same id, or more than `tomSecretsMaxChunkedBytes` |
+| `add(Uint8List payload)` | `Map<String, Object?>?` | A binary frame's payload (the id, then a chunk); answers the whole message once its last chunk is in. Throws `TomSecretsFrameException` for a chunk of no pending message, more bytes than announced, or a member whose SHA-256 differs |
+| `clear()` | `void` | Forgets everything pending (the connection ended) |
+
 ---
 
 ## Enums
@@ -709,6 +730,8 @@ A developer tool the product configures: `ssh` (the service's agent as
 | `tomSecretsAppExecutable` | `String` | The manager app's executable name without `.exe`, `tom_secrets_app` |
 | `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` |
 | `tomSecretsBrowserHostId` | `String` | The native-messaging host's name, `net.tom.secrets` |
+| `tomSecretsChunkedFeature` | `String` | The admin feature of chunked members, `chunked` (protocol.md 2.7) |
+| `tomSecretsMaxChunkedBytes` | `int` | The most a chunked message may carry in all (512 MiB) |
 | `tomSecretsFirefoxExtensionId` | `String` | The Firefox extension's id, `tom-secrets@enterprise-flutter.dev` |
 | `tomSecretsChromiumDevelopmentKey` | `String` | The Chromium development build's public key (the manifest's `key`) |
 | `tomSecretsChromiumDevelopmentId` | `String` | The development build's extension id, fixed by that key |
@@ -730,6 +753,7 @@ A developer tool the product configures: `ssh` (the service's agent as
 | `tomSecretsChallengeInput` | `Uint8List tomSecretsChallengeInput(String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | The MAC input: the label's ASCII, both 32-byte nonces, the service start as 8 bytes big-endian |
 | `tomSecretsChallengeMac` | `Uint8List tomSecretsChallengeMac(List<int> adminKey, String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | HMAC-SHA256 of the challenge input under the admin key |
 | `tomSecretsConstantTimeEquals` | `bool tomSecretsConstantTimeEquals(List<int> a, List<int> b)` | Equality in time independent of where the lists differ |
+| `tomSecretsChunkedFrames` | `List<Uint8List> tomSecretsChunkedFrames(Map<String, Object?> message, {required int limit})` | A message with its `id` as the frames to send within the payload limit: one JSON frame when it fits, else the JSON naming its large string members, then their UTF-8 as binary frames (protocol.md 2.7) |
 | `tomSecretsRandomBytes` | `Uint8List tomSecretsRandomBytes([int count = tomSecretsKeyBytes])` | Bytes from the OS's secure generator |
 | `tomSecretsAuthDelay` | `Duration tomSecretsAuthDelay(int failures)` | The delay before the next authentication: 0, then 1 s, 2 s, 4 s, ... up to 60 s |
 | `tomSecretsAdminKeyHandle` | `String tomSecretsAdminKeyHandle(int serviceStart)` | The keychain handle of the admin key of a service start, `tsm.admin.<start>` |

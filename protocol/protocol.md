@@ -81,7 +81,9 @@ A connection carries frames in both directions. A frame is:
 
 A receiver checks the length field before reading the payload: a frame over
 its limit closes the connection without the payload being read. Content
-larger than an answer frame is sent as binary chunks **[B]**.
+larger than an answer frame is sent as binary chunks **[B]**: a `getFile`
+answer on the client endpoint (2.5), and on the admin endpoint any request
+or answer over its limit, by chunked members (2.7).
 
 ### 2.4 Invalid frames
 
@@ -119,6 +121,42 @@ where both sides announced the feature `binary` (section 8).
   the connection closing.
 - A connection stays open for as long as the client likes. A library keeps
   one per process and reconnects after a dropped connection or `not_running`.
+
+### 2.7 Chunked members (admin endpoint)
+
+A file crosses the admin endpoint inside a message: `save` and `vault.create`
+carry a vault file, `vaultFileData` answers one (6.4). A message whose
+payload would exceed its frame's limit (a request's 64 KiB, an answer's
+1 MiB) carries its large string members as binary frames instead:
+
+1. The JSON message goes first, without those members. Its `chunked` names
+   them in order: `[{name, size, sha256}]`, each member's `size` and
+   lowercase hex `sha256` taken over its UTF-8 bytes.
+2. The members' UTF-8 bytes follow, joined in that order, as binary frames
+   (type `1`) of the message's `id`: the id as 8 bytes, unsigned, big-endian,
+   then a chunk of at most the frame's limit minus 8 bytes.
+3. The receiver reads the message once all `size` bytes are in. It puts each
+   member back as a string, and checks it against its `sha256`.
+
+A sender moves the string members of at least 1,024 bytes; whatever is left
+must fit one frame. All members of one message are at most 512 MiB. Chunked
+members are used only on a connection where both sides announced the
+feature `chunked`:
+
+- the service in its `challenge` (`features`);
+- the admin in `auth` or `claim` (`features`).
+
+The service reads chunked requests only after the admin has authenticated,
+so a peer that has not proved itself is never read past 64 KiB. A peer
+without the feature is sent whole messages, and a `vaultFile` of a file over
+the answer limit is refused to it (6.4).
+
+Refused, and the connection closed:
+
+- a chunk of an id with no message pending;
+- more bytes than announced;
+- a member whose SHA-256 differs;
+- a chunked message on a connection without the feature.
 
 ## 3. Finding the service
 
@@ -641,9 +679,11 @@ The admin endpoint answers nothing before both sides have proven they hold
 the **admin key** (32 random bytes the service got from its starter):
 
 1. The service sends `challenge {serviceNonce, serviceStart, protocol,
-   service}`: 32 random bytes, its start time in milliseconds since the
-   epoch, its protocol version and `{version}`.
-2. The admin answers `auth {adminNonce, mac, client}`:
+   service, features}`: 32 random bytes, its start time in milliseconds
+   since the epoch, its protocol version, `{version}` and the admin features
+   it offers (`chunked`, 2.7).
+2. The admin answers `auth {adminNonce, mac, client, features}` (the
+   features it takes of those offered):
    `mac = HMAC-SHA256(adminKey, "tsm-admin-v1" || serviceNonce || adminNonce || serviceStart)`.
 3. The service answers `authed {mac2}`: the same HMAC under the label
    `tsm-service-v1`.
@@ -661,8 +701,8 @@ key (`denied`, reason `wrong_executable`), before the key is checked.
 
 ### 6.2 Claim
 
-An admin without the admin key sends `claim {password, keyFile?, client}`
-instead of `auth`. The service checks the master password (and key file)
+An admin without the admin key sends `claim {password, keyFile?, client,
+features}` instead of `auth`. The service checks the master password (and key file)
 against the primary file it has open, answers `claimed {adminKey}` with a new
 admin key and revokes the old one. A wrong password is `denied` (reason
 `bad_password`), logged, and counts as a failed authentication. The service
@@ -739,9 +779,10 @@ hands each saved file back with `save` (`bytes` the whole file,
 `baseRevision` the `revision` it edited). Because the app edits the
 service's own copy, it needs no access to the store itself (no GitHub token,
 no clone) and edits the same copy the service serves, from its offline copy
-too. A `vaultFileData` frame is an answer frame and holds at most 1 MiB
-(2.3): a larger file is refused `unsupported` (reason `too_large`, `details.size`
-its byte count) until phase B's binary chunks (2.5) carry it. A store's `keys` object carries what
+too. A file whose `vaultFileData` exceeds the answer limit (2.3) travels as
+chunked members (2.7); an admin without the feature is refused it
+(`unsupported`, reason `too_large`, `details.size` its byte count). A `save`
+over the request limit is sent the same way. A store's `keys` object carries what
 opens it, each member when the store has one: `password` (its master
 password), `keyFile` (the key file's bytes, base64) and `outerKey` (the
 repository's outer key of a `.tsmx` file, base64). They travel only in
@@ -1892,3 +1933,10 @@ part-service) leaves these open; this document fixes them:
     Windows passkey plugin uses the same three messages: Windows'
     dialog is the gesture there, its grants are the plugin's
     (`exe-from` its activating process), and it holds no key either.
+49. Files cross the admin endpoint as chunked members, not in larger
+    frames: a vault of any size is saved and opened, while the frame limits
+    stay the same for every peer and for the client endpoint. The chunks
+    are generic (any large string member of any request or answer), so the
+    handlers and the app's code are unchanged. They are read only after the
+    admin has authenticated, so an unauthenticated peer can never make the
+    service hold more than one 64 KiB frame.

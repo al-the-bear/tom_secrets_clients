@@ -21,6 +21,13 @@
     },
     "client": {
       "$ref": "common.json#/$defs/clientInfo"
+    },
+    "features": {
+      "description": "The admin features offered (challenge) or taken (auth, claim): `chunked`, chunked members (section 2.7).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "x-tsm": {

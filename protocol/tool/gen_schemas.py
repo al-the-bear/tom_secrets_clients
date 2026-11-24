@@ -253,18 +253,25 @@ message('passkeyCreated', 'client', 's2c', 'C', 'The answer to passkeyCreate.',
         attestationObject=B64URL, publicKey=B64URL, publicKeyAlgorithm={'type': 'integer'})
 
 # ---- admin endpoint (section 6) -----------------------------------------
+# The admin features offered in `challenge` and taken in `auth` / `claim`.
+ADMIN_FEATURES = {
+    'description': 'The admin features offered (challenge) or taken (auth, claim): '
+                   '`chunked`, chunked members (section 2.7).',
+    'type': 'array', 'items': STR}
 message('challenge', 'admin', 's2a', 'A', 'The first frame of an admin connection.',
         ['serviceNonce', 'serviceStart', 'protocol', 'service'],
         serviceNonce=ref('base64_32'), serviceStart=ref('epochMs'),
         protocol={'type': 'integer', 'minimum': 1},
-        service={'type': 'object', 'required': ['version'], 'properties': {'version': STR}})
+        service={'type': 'object', 'required': ['version'], 'properties': {'version': STR}},
+        features=ADMIN_FEATURES)
 message('auth', 'admin', 'a2s', 'A', 'The admin proves it holds the admin key.',
         ['adminNonce', 'mac', 'client'], adminNonce=ref('base64_32'), mac=ref('base64_32'),
-        client=ref('clientInfo'))
+        client=ref('clientInfo'), features=ADMIN_FEATURES)
 message('authed', 'admin', 's2a', 'A', 'The service proves it holds the admin key.',
         ['mac2'], mac2=ref('base64_32'))
 message('claim', 'admin', 'a2s', 'A', 'Sent instead of auth by an admin without the key.',
-        ['password', 'client'], password=STR, keyFile=ref('base64'), client=ref('clientInfo'))
+        ['password', 'client'], password=STR, keyFile=ref('base64'), client=ref('clientInfo'),
+        features=ADMIN_FEATURES)
 message('claimed', 'admin', 's2a', 'A', 'The new admin key after a successful claim.',
         ['adminKey'], adminKey=ref('base64_32'))
 message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing to return.',
@@ -368,12 +375,15 @@ message('vaultKeySet', 'admin', 's2a', 'A', 'The answer to vaultKeys.', ['id', '
                                                    'compositeKey': ref('base64_32')}}}}})
 message('vaultFile', 'admin', 'a2s', 'A', 'Get the copy of a store the service holds, for editing: an open store, or a vault the primary lists that this machine does not serve.',
         ['id', 'store'], id=ref('id'), store=ref('storeName'))
-message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile.',
+message('vaultFileData', 'admin', 's2a', 'A', 'The answer to vaultFile; a `bytes` over the '
+        'answer limit travels as a chunked member (section 2.7), this is the message as read.',
         ['id', 'store', 'location', 'revision', 'bytes'], id=ref('id'), store=ref('storeName'),
         location=STR, revision=STR, bytes=ref('base64'),
         served={'description': 'false for a vault this machine does not serve (section 6.4).',
                 'type': 'boolean'})
-message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write.',
+message('save', 'admin', 'a2s', 'A', 'Hand an edited store file to the service to write; a '
+        '`bytes` over the request limit travels as a chunked member (section 2.7), this is '
+        'the message as read.',
         ['id', 'store', 'bytes'], id=ref('id'), store=ref('storeName'), bytes=ref('base64'),
         baseRevision=STR,
         keys={'description': 'The primary\'s new keys when its file is re-keyed (section 6.4).',

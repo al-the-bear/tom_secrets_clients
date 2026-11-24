@@ -3,4 +3,4 @@
 
 /// The library's version, sent in `hello` (kept equal to the pubspec's by a
 /// test).
-const String tomSecretsClientVersion = '0.2.18';
+const String tomSecretsClientVersion = '0.2.19';

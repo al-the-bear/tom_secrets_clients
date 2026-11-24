@@ -88,7 +88,7 @@ succeed; without one every call fails as `notRunning`.
 
 | Feature | What it does |
 | --- | --- |
-| Admin client | The admin endpoint's mutual HMAC-SHA256 challenge, `claim` with the master password, requests by id, `unlock`, the event stream |
+| Admin client | The admin endpoint's mutual HMAC-SHA256 challenge, `claim` with the master password, requests by id, `unlock`, the event stream; requests and answers over the frame limits (a large vault's `save` and `vaultFileData`) as chunked members (protocol.md 2.7) |
 | Runtime directory | Creates and checks the user-only directory, the single-instance lock, `service.json`, the endpoint files |
 | Starting the service | Starts the service detached and hands it the admin key on its standard input |
 | Pairing mode | Drives the service's pairing mode, as `tsm pair` does on a headless machine |

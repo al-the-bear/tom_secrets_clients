@@ -4,7 +4,9 @@
 /// The admin side of the admin endpoint (protocol.md 6), for the manager app
 /// and `tsm`: the mutual challenge (the service's `mac2` is checked before
 /// anything secret is sent), or `claim` with the master password; then
-/// requests by id and the event stream.
+/// requests by id and the event stream. A request or an answer over its
+/// frame limit (a vault file in `save`, `vaultFileData`) travels with its
+/// large members as chunks (protocol.md 2.7) when the service offers it.
 library;
 
 import 'dart:async';
@@ -16,6 +18,7 @@ import 'dart:typed_data';
 import '../../tom_secrets_client.dart';
 
 import 'admin_auth.dart';
+import 'chunked.dart';
 import 'runtime.dart';
 import 'unlock_bundle.dart';
 
@@ -52,6 +55,7 @@ final class TomSecretsAdminClient {
   }) async {
     final admin = await _open(runtime);
     final challenge = await admin._next();
+    admin._takeFeatures(challenge);
     final serviceNonce = base64.decode(challenge['serviceNonce']! as String);
     final start = challenge['serviceStart']! as int;
     final adminNonce = tomSecretsRandomBytes();
@@ -68,6 +72,7 @@ final class TomSecretsAdminClient {
         ),
       ),
       'client': client,
+      'features': _features,
     });
     final answer = await admin._next();
     admin._throwIfError(answer);
@@ -104,12 +109,14 @@ final class TomSecretsAdminClient {
     Map<String, Object?> client = const {'name': 'tsm'},
   }) async {
     final admin = await _open(runtime);
-    await admin._next(); // the challenge, unanswerable without the key
+    // The challenge, unanswerable without the key; its features count.
+    admin._takeFeatures(await admin._next());
     admin._send({
       'op': 'claim',
       'password': password,
       'keyFile': ?(keyFile == null ? null : base64.encode(keyFile)),
       'client': client,
+      'features': _features,
     });
     final answer = await admin._next();
     admin._throwIfError(answer);
@@ -149,6 +156,22 @@ final class TomSecretsAdminClient {
 
   final Socket _socket;
 
+  /// The features this client offers the service.
+  static const List<String> _features = [tomSecretsChunkedFeature];
+
+  /// Whether the service offered chunked members (protocol.md 2.7): then
+  /// a request over the request limit is sent chunked.
+  bool get sendsChunked => _sendsChunked;
+  bool _sendsChunked = false;
+
+  void _takeFeatures(Map<String, Object?> challenge) {
+    final features = challenge['features'];
+    _sendsChunked =
+        features is List && features.contains(tomSecretsChunkedFeature);
+  }
+
+  final TomSecretsChunkAssembler _chunks = TomSecretsChunkAssembler();
+
   /// The service's start time (from the challenge; 0 on a connection that
   /// claimed the service).
   int get serviceStart => _serviceStart;
@@ -159,9 +182,10 @@ final class TomSecretsAdminClient {
   Uint8List? _bundleKey;
 
   late final StreamSubscription<List<int>> _subscription;
+  // Binary frames are chunks of an answer (protocol.md 2.7).
   final TomSecretsFrameReader _reader = TomSecretsFrameReader(
     maxPayload: tomSecretsMaxAnswerPayload,
-  );
+  )..binaryAllowed = true;
   final Queue<Map<String, Object?>> _queue = Queue();
   final List<Completer<Map<String, Object?>>> _waiting = [];
   final Map<int, Completer<Map<String, Object?>>> _pending = {};
@@ -178,8 +202,30 @@ final class TomSecretsAdminClient {
   bool get isClosed => _closed;
 
   void _data(List<int> bytes) {
-    for (final frame in _reader.add(bytes)) {
-      final message = tomSecretsDecodePayload(frame.payload);
+    final List<TomSecretsFrame> frames;
+    try {
+      frames = _reader.add(bytes);
+    } on TomSecretsFrameException {
+      unawaited(close());
+      return;
+    }
+    for (final frame in frames) {
+      Map<String, Object?>? message;
+      try {
+        if (frame.type == tomSecretsFrameBinary) {
+          message = _chunks.add(frame.payload);
+        } else {
+          message = tomSecretsDecodePayload(frame.payload);
+          if (TomSecretsChunkAssembler.isChunked(message)) {
+            message = _chunks.begin(message);
+          }
+        }
+      } on TomSecretsFrameException {
+        // A chunk that does not belong, or a member that does not match.
+        unawaited(close());
+        return;
+      }
+      if (message == null) continue; // more chunks to come
       if (_routing) {
         _route(message);
       } else if (_waiting.isNotEmpty) {
@@ -192,6 +238,7 @@ final class TomSecretsAdminClient {
 
   void _done() {
     _closed = true;
+    _chunks.clear();
     final error = TomSecretsAdminException('closed', 'the connection ended');
     for (final w in _waiting) {
       w.completeError(error);
@@ -244,8 +291,18 @@ final class TomSecretsAdminClient {
     }
   }
 
-  void _send(Map<String, Object?> message) =>
+  void _send(Map<String, Object?> message) {
+    if (!_sendsChunked) {
       _socket.add(tomSecretsJsonFrame(message));
+      return;
+    }
+    for (final frame in tomSecretsChunkedFrames(
+      message,
+      limit: tomSecretsMaxRequestPayload,
+    )) {
+      _socket.add(frame);
+    }
+  }
 
   /// Sends the admin request [op] with [fields]; answers the answer, or
   /// throws [TomSecretsAdminException] for an `error`.
@@ -253,10 +310,23 @@ final class TomSecretsAdminClient {
     String op, [
     Map<String, Object?> fields = const {},
   ]) async {
+    // A connection that ended answers nothing more: waiting would never end.
+    if (_closed) {
+      throw TomSecretsAdminException('closed', 'the connection ended');
+    }
     final id = _nextId++;
     final c = Completer<Map<String, Object?>>();
     _pending[id] = c;
-    _send({...fields, 'op': op, 'id': id});
+    try {
+      _send({...fields, 'op': op, 'id': id});
+    } on TomSecretsFrameException catch (e) {
+      _pending.remove(id);
+      throw TomSecretsAdminException(
+        'malformed',
+        'the request does not fit: ${e.message}',
+        details: const {'reason': 'frame'},
+      );
+    }
     final answer = await c.future;
     _throwIfError(answer);
     return answer;

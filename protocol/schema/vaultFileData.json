@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/vaultFileData.json",
   "title": "vaultFileData",
-  "description": "The answer to vaultFile. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "description": "The answer to vaultFile; a `bytes` over the answer limit travels as a chunked member (section 2.7), this is the message as read. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",
   "required": [
     "op",

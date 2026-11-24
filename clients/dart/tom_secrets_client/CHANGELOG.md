@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.19
+
+- Chunked members on the admin endpoint (protocol.md 2.7, feature
+  `chunked`): `TomSecretsAdminClient` offers the feature in `auth` and
+  `claim`, sends a request over the 64 KiB request limit (a `save` of a
+  large vault) with its large members as binary frames when the service
+  offers it, and reads a chunked answer (a `vaultFileData` over 1 MiB) back
+  as one message. `tomSecretsChunkedFrames` and `TomSecretsChunkAssembler`
+  are the shared implementation the service uses too.
+- A request on an admin connection that has ended fails at once with
+  `closed`; it no longer waits for an answer that can never come.
+
 ## 0.2.18
 
 - The answer of `passkeyGet` is `TomSecretsPasskeySignature`: 0.2.17's
