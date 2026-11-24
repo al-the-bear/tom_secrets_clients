@@ -265,7 +265,9 @@ void main() {
       expect(await keychain.read(tomSecretsAdminKeyHandle(start)), isNotNull);
       r = await demo.tsm(['stop'], keychain: keychain);
       expect(r.text, 'stopped\n');
-      await service.done;
+      // stop returns once the service is gone: a status right after it
+      // (a script's next line) sees no service, nothing awaited between.
+      expect(await demo.runtime.readInfo(), isNull);
       expect(
         await keychain.read(tomSecretsAdminKeyHandle(start)),
         isNull,

@@ -98,4 +98,22 @@ void main() {
     expect(r.code, 5);
     expect(r.err, contains('not signed in: denied'));
   });
+
+  test('tsm login without a registered GitHub App: not_found (exit 6), '
+      'the refusal reported, no stray error', () async {
+    final demo = await Demo.create();
+    final keychain = TomInMemorySecretStore();
+    final adminKey = tomSecretsRandomBytes();
+    final service = await demo.startInProcess(adminKey: adminKey);
+    await keychain.write(
+      tomSecretsAdminKeyHandle(service.startedAt),
+      base64.encode(adminKey),
+    );
+    expect((await demo.tsm(['unlock'], keychain: keychain)).code, 0);
+
+    final r = await demo.tsm(['login'], keychain: keychain);
+    expect(r.code, 6, reason: '$r');
+    expect(r.text, isEmpty);
+    expect(r.err, contains('no_github_app'));
+  });
 }

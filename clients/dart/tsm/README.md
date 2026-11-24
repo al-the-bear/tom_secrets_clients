@@ -89,7 +89,7 @@ tsm status
 - If the request needs an approval and an approver is connected (the desktop
   app, or a trusted device over the approval link), the approver is asked.
   Otherwise `tsm` prints an approval code on standard error; see
-  [Approvals](doc/tsm_user_guide.md#approvals-on-a-headless-machine).
+  [Approvals](doc/tsm_user_guide.md#approvals-from-the-command-line).
 
 ## Commands
 

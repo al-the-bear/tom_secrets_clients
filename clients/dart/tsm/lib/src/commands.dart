@@ -676,12 +676,23 @@ Future<int> tsmLock(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
   return TsmExit.ok;
 });
 
-/// `tsm stop`: locks and stops the service, and removes its admin key from
-/// the keychain.
+/// How long `tsm stop` waits for the service to be gone.
+const Duration tsmStopWait = Duration(seconds: 10);
+
+/// `tsm stop`: locks and stops the service, waits until it is gone (its
+/// `service.json` removed, at most [tsmStopWait]), and removes its admin key
+/// from the keychain.
 Future<int> tsmStop(TsmContext c, TsmArgs a) async {
   final start = (await c.runtime.readInfo())?['start'];
   final code = await _withAdmin(c, (admin) async {
     await admin.request('shutdown');
+    // Why: the service answers before it stops; a command run right after
+    // (a script's `tsm status`) would still find it.
+    final until = DateTime.now().add(tsmStopWait);
+    while ((await c.runtime.readInfo()) != null &&
+        DateTime.now().isBefore(until)) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
     c.io.outln('stopped');
     return TsmExit.ok;
   });
@@ -1000,9 +1011,17 @@ Future<int> tsmCompact(TsmContext c, TsmArgs a) async {
 Future<int> tsmLogin(TsmContext c, TsmArgs a) => _withAdmin(c, (admin) async {
   await admin.request('subscribe');
   final done = admin.events.firstWhere((e) => e['op'] == 'github_sign_in');
-  final code = await admin.request('github.signIn', {
-    'clientId': ?a.option('client-id'),
-  });
+  final Map<String, Object?> code;
+  try {
+    code = await admin.request('github.signIn', {
+      'clientId': ?a.option('client-id'),
+    });
+  } on Object {
+    // Why: the refused request closes the connection, which ends the event
+    // stream before the outcome came; nobody awaits [done] then.
+    done.ignore();
+    rethrow;
+  }
   c.io.outln(
     'Open ${code['verificationUri']} and enter the code ${code['userCode']}',
   );
