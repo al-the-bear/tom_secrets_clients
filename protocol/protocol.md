@@ -541,6 +541,26 @@ then passes the login to every attached manager app as the event
 attached it answers `unavailable` (reason `no_app`). A locked service waits
 for an unlock as `get` does. Every `propose` is audited without the values.
 
+### 5.6 What the service checks, in order
+
+For a `get` (and each reference of a `getMany`):
+
+1. **Frame and reference**: a malformed frame or reference costs nothing more.
+2. **Rate limit** of the client's measured identity (section 11).
+3. **Locked**: with `wait` set and an admin subscribed to the events
+   (`subscribe`), the service sends the event `unlock_needed` and `progress`
+   (`unlock`), and waits up to the timeout before answering `locked`; with no
+   subscribed admin, `locked` at once.
+4. **Resolve**: a missing or ambiguous reference is answered `not_found` or
+   `ambiguous` without a prompt (names are not secret, values are); a passkey
+   field (`KPEX_PASSKEY_*`) is `denied` (reason `reserved_field`) whatever the
+   grants say; a store that could not be fetched and has no offline copy is
+   `unavailable`.
+5. **Allow list**: a matching grant answers at once, a `never` grant answers
+   `denied` (reason `never`); otherwise the request goes to approval (7.2)
+   and the client gets `progress` (`approval`).
+6. **Answer**, and an audit record of the outcome.
+
 ### 5.7 URL matching [B]
 
 How an entry's URLs match a page (`match`, the OS autofill). An entry's URLs
@@ -652,26 +672,6 @@ unanswered, `denied` (reason `refused`, `timeout`).
 6. The answer carries the `none` attestation object, the authenticator
    data, the public key as DER SubjectPublicKeyInfo and its COSE algorithm.
    Audited (`passkey-create <rpId>`).
-
-### 5.6 What the service checks, in order
-
-For a `get` (and each reference of a `getMany`):
-
-1. **Frame and reference**: a malformed frame or reference costs nothing more.
-2. **Rate limit** of the client's measured identity (section 11).
-3. **Locked**: with `wait` set and an admin subscribed to the events
-   (`subscribe`), the service sends the event `unlock_needed` and `progress`
-   (`unlock`), and waits up to the timeout before answering `locked`; with no
-   subscribed admin, `locked` at once.
-4. **Resolve**: a missing or ambiguous reference is answered `not_found` or
-   `ambiguous` without a prompt (names are not secret, values are); a passkey
-   field (`KPEX_PASSKEY_*`) is `denied` (reason `reserved_field`) whatever the
-   grants say; a store that could not be fetched and has no offline copy is
-   `unavailable`.
-5. **Allow list**: a matching grant answers at once, a `never` grant answers
-   `denied` (reason `never`); otherwise the request goes to approval (7.2)
-   and the client gets `progress` (`approval`).
-6. **Answer**, and an audit record of the outcome.
 
 ## 6. The admin endpoint
 
