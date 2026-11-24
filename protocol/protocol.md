@@ -480,8 +480,9 @@ and `frameUrl` are strings of at most 4 KiB (else
 frame is matched instead of the page, and only when it is the same site as
 the page (its host, or its registrable domain); a frame of another site
 matches nothing. A candidate carries `entryId`, the entry as a uuid
-reference (`<store>/~<32 hex>`, section 4) the browser host reads with `get`
-for a fill, the title, the user name, the entry's URL that matched as
+reference (`<store>/~<32 hex>`, section 4) the browser host reads for a
+fill (a `match` again, then `getMany` of `UserName`, `Password` and, when
+the form has a one-time-code field, `totp`), the title, the user name, the entry's URL that matched as
 written, and `hasTotp` (the entry carries a TOTP secret); never a password
 or another value. Every `match` is audited (`refs` `match <host>`, the
 outcome and the candidates' entries). A locked service waits for an unlock
@@ -632,12 +633,12 @@ Windows' dialog, which the page cannot reach. Audited
 approver connected it is `denied` (reason `no_approver`); refused or
 unanswered, `denied` (reason `refused`, `timeout`).
 
-1. A passkey of the vaults whose credential id is in `excludeCredentials`
-   (the site holds it already) is `denied` (reason `excluded`), before any
-   prompt.
-2. `algorithms` lists COSE algorithms in the site's order; the first of
+1. `algorithms` lists COSE algorithms in the site's order; the first of
    ES256 (`-7`) and Ed25519 (`-8`) is made. Neither: `unsupported`
    (reason `algorithm`).
+2. A passkey of the vaults whose credential id is in `excludeCredentials`
+   (the site holds it already) is `denied` (reason `excluded`), before any
+   prompt.
 3. `userId` is the user handle, 1 to 64 bytes.
 4. Once confirmed, the service makes the key pair and keeps the passkey in
    a personal or shared vault this machine serves and may write. It goes
@@ -658,9 +659,10 @@ For a `get` (and each reference of a `getMany`):
 
 1. **Frame and reference**: a malformed frame or reference costs nothing more.
 2. **Rate limit** of the client's measured identity (section 11).
-3. **Locked**: with `wait` set and an admin attached, the service sends the
-   event `unlock_needed` and `progress` (`unlock`), and waits up to the
-   timeout before answering `locked`; with no admin attached, `locked` at once.
+3. **Locked**: with `wait` set and an admin subscribed to the events
+   (`subscribe`), the service sends the event `unlock_needed` and `progress`
+   (`unlock`), and waits up to the timeout before answering `locked`; with no
+   subscribed admin, `locked` at once.
 4. **Resolve**: a missing or ambiguous reference is answered `not_found` or
    `ambiguous` without a prompt (names are not secret, values are); a passkey
    field (`KPEX_PASSKEY_*`) is `denied` (reason `reserved_field`) whatever the
