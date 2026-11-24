@@ -291,7 +291,9 @@ static int on_message(connection *c, tsm_json *m) {
         tsm_mutex_unlock(&c->mu);
         return 1;
     }
-    if (strcmp(op, "value") == 0 || strcmp(op, "values") == 0 || strcmp(op, "error") == 0) {
+    if (strcmp(op, "value") == 0 || strcmp(op, "values") == 0 || strcmp(op, "error") == 0 ||
+        strcmp(op, "passkeyCandidates") == 0 || strcmp(op, "passkeyAssertion") == 0 ||
+        strcmp(op, "passkeyCreated") == 0) {
         p->answer = m;
         p->done = 1;
         tsm_cond_broadcast(&c->cond);
@@ -618,7 +620,8 @@ static tsm_error_kind connect_once(tsm_client *client, connection **out) {
                  tsm_json_set(info, "version", tsm_json_str(TSM_CLIENT_VERSION)) &&
                  tsm_json_set(info, "language", tsm_json_str(client->language)) &&
                  tsm_json_push(features, tsm_json_str("binary")) &&
-                 tsm_json_push(features, tsm_json_str("getFile")) && tsm_json_set(hello, "client", info) &&
+                 tsm_json_push(features, tsm_json_str("getFile")) &&
+                 tsm_json_push(features, tsm_json_str("passkey")) && tsm_json_set(hello, "client", info) &&
                  tsm_json_set(hello, "features", features) &&
                  (!token || tsm_json_set(hello, "token", tsm_json_str(token))) &&
                  (!client->token || tsm_json_set(hello, "clientToken", tsm_json_str(client->token)))
@@ -1079,5 +1082,304 @@ tsm_error_kind tsm_get_file(tsm_client *client, const char *ref, const tsm_get_o
         }
     }
     pending_free(p);
+    return TSM_OK;
+}
+
+/* ---- passkeys [C] (protocol.md 5.8) ------------------------------------ */
+
+char *tsm_base64url_encode(const unsigned char *data, size_t len) {
+    static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    char *out = (char *)malloc(len / 3 * 4 + 5);
+    size_t i, o = 0;
+    if (!out) {
+        return NULL;
+    }
+    for (i = 0; i + 2 < len; i += 3) {
+        unsigned v = (unsigned)data[i] << 16 | (unsigned)data[i + 1] << 8 | data[i + 2];
+        out[o++] = alphabet[v >> 18 & 63];
+        out[o++] = alphabet[v >> 12 & 63];
+        out[o++] = alphabet[v >> 6 & 63];
+        out[o++] = alphabet[v & 63];
+    }
+    if (len - i == 1) {
+        unsigned v = (unsigned)data[i] << 16;
+        out[o++] = alphabet[v >> 18 & 63];
+        out[o++] = alphabet[v >> 12 & 63];
+    } else if (len - i == 2) {
+        unsigned v = (unsigned)data[i] << 16 | (unsigned)data[i + 1] << 8;
+        out[o++] = alphabet[v >> 18 & 63];
+        out[o++] = alphabet[v >> 12 & 63];
+        out[o++] = alphabet[v >> 6 & 63];
+    }
+    out[o] = 0;
+    return out;
+}
+
+int tsm_base64url_decode(const char *text, unsigned char **out, size_t *out_len) {
+    size_t n = strlen(text), i;
+    char *standard = (char *)malloc(n + 4);
+    int ok;
+    if (!standard) {
+        return 0;
+    }
+    for (i = 0; i < n; i++) {
+        standard[i] = text[i] == '-' ? '+' : text[i] == '_' ? '/' : text[i];
+    }
+    while (i % 4) {
+        standard[i++] = '=';
+    }
+    standard[i] = 0;
+    ok = tsm_base64_decode(standard, out, out_len);
+    free(standard);
+    return ok;
+}
+
+/* Whether the service offers [feature]; an error is set when it does not. */
+static tsm_error_kind require_feature(tsm_client *client, const char *op, const char *feature) {
+    connection *c;
+    int has;
+    tsm_error_kind rc = ensure(client, &c);
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    tsm_mutex_lock(&c->mu);
+    has = offers(c, feature);
+    tsm_mutex_unlock(&c->mu);
+    connection_release(c);
+    return has ? TSM_OK
+               : tsm_set_error(TSM_ERR_UNSUPPORTED, NULL, -1, "the service does not offer %s (feature %s)", op,
+                               feature);
+}
+
+/* A copy of the string member [key] of [m], "" when it is missing. */
+static char *member(const tsm_json *m, const char *key) {
+    const char *v = tsm_json_get_str(m, key);
+    return tsm_strdup(v ? v : "");
+}
+
+/* A JSON array of the strings [items]. */
+static tsm_json *string_array(const char *const *items, size_t count) {
+    tsm_json *a = tsm_json_array();
+    size_t i;
+    for (i = 0; a && i < count; i++) {
+        if (!tsm_json_push(a, tsm_json_str(items[i]))) {
+            tsm_json_free(a);
+            return NULL;
+        }
+    }
+    return a;
+}
+
+/* Runs [request] (freed here) and checks the answer is [answer]. */
+static tsm_error_kind passkey_request(tsm_client *client, tsm_json *request, const char *answer,
+                                      tsm_progress_fn fn, void *context, pending **out) {
+    tsm_error_kind rc = run_request(client, request, fn, context, 0, out);
+    tsm_json_free(request);
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    if (strcmp(tsm_json_get_str((*out)->answer, "op"), answer) != 0) {
+        char why[128];
+        snprintf(why, sizeof why, "the passkey request was answered %.64s", tsm_json_get_str((*out)->answer, "op"));
+        pending_free(*out);
+        *out = NULL;
+        return tsm_protocol_error(why);
+    }
+    return TSM_OK;
+}
+
+void tsm_passkeys_free(tsm_passkey *list, size_t count) {
+    size_t i;
+    if (!list) {
+        return;
+    }
+    for (i = 0; i < count; i++) {
+        free(list[i].entry_id);
+        free(list[i].title);
+        free(list[i].user_name);
+        free(list[i].credential_id);
+    }
+    free(list);
+}
+
+tsm_error_kind tsm_passkeys(tsm_client *client, const char *url, const char *rp_id, const char *const *allow_credentials,
+                            size_t allow_count, int no_wait, tsm_passkey **out, size_t *count) {
+    tsm_json *request;
+    const tsm_json *candidates;
+    tsm_passkey *list;
+    pending *p;
+    size_t i, n;
+    tsm_error_kind rc;
+    *out = NULL;
+    *count = 0;
+    rc = require_feature(client, "passkeys", "passkey");
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    request = tsm_json_object();
+    if (!request || !tsm_json_set(request, "op", tsm_json_str("passkeys")) ||
+        !tsm_json_set(request, "url", tsm_json_str(url)) || !tsm_json_set(request, "rpId", tsm_json_str(rp_id)) ||
+        (allow_count && !tsm_json_set(request, "allowCredentials", string_array(allow_credentials, allow_count))) ||
+        (no_wait && !tsm_json_set(request, "wait", tsm_json_bool(0)))) {
+        tsm_json_free(request);
+        return tsm_no_memory();
+    }
+    rc = passkey_request(client, request, "passkeyCandidates", NULL, NULL, &p);
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    candidates = tsm_json_get(p->answer, "candidates");
+    n = candidates && candidates->type == TSM_J_ARRAY ? candidates->count : 0;
+    list = (tsm_passkey *)calloc(n ? n : 1, sizeof *list);
+    if (!list) {
+        pending_free(p);
+        return tsm_no_memory();
+    }
+    for (i = 0; i < n; i++) {
+        const tsm_json *c = candidates->items[i];
+        list[i].entry_id = member(c, "entryId");
+        list[i].title = member(c, "title");
+        list[i].user_name = member(c, "userName");
+        list[i].credential_id = member(c, "credentialId");
+        if (!list[i].entry_id || !list[i].title || !list[i].user_name || !list[i].credential_id) {
+            tsm_passkeys_free(list, i + 1);
+            pending_free(p);
+            return tsm_no_memory();
+        }
+    }
+    pending_free(p);
+    *out = list;
+    *count = n;
+    return TSM_OK;
+}
+
+void tsm_passkey_signature_free(tsm_passkey_signature *s) {
+    if (s) {
+        free(s->credential_id);
+        free(s->authenticator_data);
+        free(s->signature);
+        free(s->user_handle);
+        free(s);
+    }
+}
+
+tsm_error_kind tsm_passkey_get(tsm_client *client, const char *url, const char *rp_id, const char *entry_id,
+                               const unsigned char client_data_hash[32], tsm_passkey_signature **out) {
+    tsm_json *request;
+    tsm_passkey_signature *s;
+    pending *p;
+    char *hash;
+    tsm_error_kind rc;
+    *out = NULL;
+    rc = require_feature(client, "passkeyGet", "passkey");
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    hash = tsm_base64url_encode(client_data_hash, 32);
+    request = tsm_json_object();
+    if (!hash || !request || !tsm_json_set(request, "op", tsm_json_str("passkeyGet")) ||
+        !tsm_json_set(request, "url", tsm_json_str(url)) || !tsm_json_set(request, "rpId", tsm_json_str(rp_id)) ||
+        !tsm_json_set(request, "entryId", tsm_json_str(entry_id)) ||
+        !tsm_json_set(request, "clientDataHash", tsm_json_str(hash))) {
+        free(hash);
+        tsm_json_free(request);
+        return tsm_no_memory();
+    }
+    free(hash);
+    rc = passkey_request(client, request, "passkeyAssertion", NULL, NULL, &p);
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    s = (tsm_passkey_signature *)calloc(1, sizeof *s);
+    if (s) {
+        const char *handle = tsm_json_get_str(p->answer, "userHandle");
+        s->credential_id = member(p->answer, "credentialId");
+        s->authenticator_data = member(p->answer, "authenticatorData");
+        s->signature = member(p->answer, "signature");
+        s->user_handle = handle ? tsm_strdup(handle) : NULL;
+    }
+    pending_free(p);
+    if (!s || !s->credential_id || !s->authenticator_data || !s->signature) {
+        tsm_passkey_signature_free(s);
+        return tsm_no_memory();
+    }
+    *out = s;
+    return TSM_OK;
+}
+
+void tsm_passkey_created_free(tsm_passkey_created *p) {
+    if (p) {
+        free(p->credential_id);
+        free(p->authenticator_data);
+        free(p->attestation_object);
+        free(p->public_key);
+        free(p);
+    }
+}
+
+tsm_error_kind tsm_passkey_create(tsm_client *client, const tsm_passkey_create_request *r, tsm_passkey_created **out) {
+    tsm_json *request, *algorithms;
+    tsm_passkey_created *made;
+    pending *p;
+    char *user_id;
+    long long algorithm = 0;
+    size_t i;
+    tsm_error_kind rc;
+    *out = NULL;
+    if (!r || !r->url || !r->rp_id || !r->user_id || !r->user_id_len || !r->user_name || !r->algorithm_count) {
+        return tsm_set_error(TSM_ERR_INVALID_ARGUMENT, NULL, -1,
+                             "a passkey creation names url, rp_id, user_id, user_name and algorithms");
+    }
+    rc = require_feature(client, "passkeyCreate", "passkey");
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    user_id = tsm_base64url_encode(r->user_id, r->user_id_len);
+    request = tsm_json_object();
+    algorithms = tsm_json_array();
+    for (i = 0; algorithms && i < r->algorithm_count; i++) {
+        if (!tsm_json_push(algorithms, tsm_json_int(r->algorithms[i]))) {
+            tsm_json_free(algorithms);
+            algorithms = NULL;
+        }
+    }
+    if (!user_id || !request || !algorithms || !tsm_json_set(request, "op", tsm_json_str("passkeyCreate")) ||
+        !tsm_json_set(request, "url", tsm_json_str(r->url)) ||
+        !tsm_json_set(request, "rpId", tsm_json_str(r->rp_id)) ||
+        !tsm_json_set(request, "userId", tsm_json_str(user_id)) ||
+        !tsm_json_set(request, "userName", tsm_json_str(r->user_name)) ||
+        !tsm_json_set(request, "algorithms", algorithms) ||
+        (r->display_name && !tsm_json_set(request, "displayName", tsm_json_str(r->display_name))) ||
+        (r->exclude_count &&
+         !tsm_json_set(request, "excludeCredentials", string_array(r->exclude_credentials, r->exclude_count))) ||
+        (r->timeout_ms > 0 && !tsm_json_set(request, "timeoutMs", tsm_json_int(r->timeout_ms)))) {
+        free(user_id);
+        if (request && !tsm_json_get(request, "algorithms")) {
+            tsm_json_free(algorithms);
+        }
+        tsm_json_free(request);
+        return tsm_no_memory();
+    }
+    free(user_id);
+    rc = passkey_request(client, request, "passkeyCreated", r->on_progress, r->progress_context, &p);
+    if (rc != TSM_OK) {
+        return rc;
+    }
+    made = (tsm_passkey_created *)calloc(1, sizeof *made);
+    if (made) {
+        made->credential_id = member(p->answer, "credentialId");
+        made->authenticator_data = member(p->answer, "authenticatorData");
+        made->attestation_object = member(p->answer, "attestationObject");
+        made->public_key = member(p->answer, "publicKey");
+        tsm_json_get_int(p->answer, "publicKeyAlgorithm", &algorithm);
+        made->public_key_algorithm = (int)algorithm;
+    }
+    pending_free(p);
+    if (!made || !made->credential_id || !made->authenticator_data || !made->attestation_object ||
+        !made->public_key) {
+        tsm_passkey_created_free(made);
+        return tsm_no_memory();
+    }
+    *out = made;
     return TSM_OK;
 }

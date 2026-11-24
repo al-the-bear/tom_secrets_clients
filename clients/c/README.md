@@ -16,8 +16,9 @@ grant answers the request, and returns the value.
 This library is the program's side of that. It finds the service in the
 runtime directory of the OS user, connects over a Unix socket (on Windows a
 localhost port, through Winsock), and sends `get`, `getMany` and `getFile`
-requests. It never opens a vault and never resolves a reference: the service
-does both.
+requests, and for the clients the service admits to them the passkey
+requests. It never opens a vault and never resolves a reference: the
+service does both.
 
 It is C99, distributed as source with CMake: the static library `tsm`
 (target `tsm::tsm`), header `tsm/tsm.h`. It links only the C library,
@@ -39,7 +40,7 @@ or fetch a release by its tag (CMake 3.18 or later):
 include(FetchContent)
 FetchContent_Declare(tsm
   GIT_REPOSITORY https://github.com/al-the-bear/tom_secrets_clients.git
-  GIT_TAG clients/c/v0.1.0
+  GIT_TAG clients/c/v0.2.0
   SOURCE_SUBDIR clients/c)
 FetchContent_MakeAvailable(tsm)
 target_link_libraries(my_program PRIVATE tsm::tsm)
@@ -190,6 +191,21 @@ tsm_reference_free(r);
 first: a malformed one fails without a round trip, and so do a field named
 twice (`field_twice`) and a request over 64 KiB (`frame`).
 
+### Passkeys
+
+The passkey requests of protocol.md 5.8 (feature `passkey`) are for the
+clients the service admits to them: the browser host and the Windows
+passkey plugin, each found beside the service. Every other client is
+refused (`TSM_ERR_DENIED`, reason `not_allowed_op`). No key ever reaches
+the client: the service lists, signs and makes the passkeys.
+
+| Function | What it does |
+| --- | --- |
+| `tsm_passkeys(c, url, rp_id, allow, n, no_wait, &list, &count)` | The page's passkeys of relying party `rp_id` (`entry_id`, `title`, `user_name`, `credential_id` base64url), only those `allow` names when `n > 0`; free with `tsm_passkeys_free`. |
+| `tsm_passkey_get(c, url, rp_id, entry_id, hash, &s)` | The service's signature over the 32-byte client data `hash` with that passkey (`credential_id`, `authenticator_data`, `signature`, `user_handle`, base64url); free with `tsm_passkey_signature_free`. |
+| `tsm_passkey_create(c, &request, &made)` | A new passkey for `request` (`url`, `rp_id`, `user_id`, `user_name`, `display_name`, `algorithms`, `exclude_credentials`, `timeout_ms`, `on_progress`), kept once the user confirms it in the app; free with `tsm_passkey_created_free`. `TSM_ERR_DENIED` with reason `excluded` when the site holds this account's passkey already. |
+| `tsm_base64url_encode(bytes, n)`, `tsm_base64url_decode(text, &bytes, &n)` | base64url without padding, and back (either alphabet, padded or not); free with `tsm_free`. |
+
 ### Lower-level functions
 
 | Function | What it is |
@@ -268,7 +284,8 @@ deep in the file system, with a build folder below it, can exceed that
 
 ## Status
 
-Version 0.1.0, protocol version 1 with the features `binary` and `getFile`.
+Version 0.2.0, protocol version 1 with the features `binary`, `getFile`
+and `passkey`.
 The tests check the library against every vector of the protocol document
 that a client computes (references, discovery, port files, frames) and
 against a small service on a local socket; the conformance suite runs it

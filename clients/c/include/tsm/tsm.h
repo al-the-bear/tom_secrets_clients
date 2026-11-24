@@ -37,7 +37,7 @@ typedef struct tsm_client tsm_client;
 /* The protocol version this library speaks. */
 #define TSM_PROTOCOL_VERSION 1
 /* This library's version, sent in hello. */
-#define TSM_CLIENT_VERSION "0.1.0"
+#define TSM_CLIENT_VERSION "0.2.0"
 /* The most references one tsm_get_many carries. */
 #define TSM_MAX_GET_MANY 256
 /* The field a reference without #field names. */
@@ -282,6 +282,86 @@ void tsm_results_free(tsm_result *results, size_t count);
  * features binary and getFile.
  */
 tsm_error_kind tsm_get_file(tsm_client *c, const char *ref, const tsm_get_options *options, tsm_file **out);
+
+/* --------------------------------------------------------------------- */
+/* Passkeys [C] (protocol.md 5.8)                                         */
+/* --------------------------------------------------------------------- */
+
+/*
+ * For the service's passkey clients (the browser host, the Windows passkey
+ * plugin); any other client is answered TSM_ERR_DENIED (reason
+ * not_allowed_op). The service never answers a passkey's key: it lists
+ * passkeys by name and signs. Byte values are base64url without padding.
+ * Each call fails as TSM_ERR_UNSUPPORTED when the service does not offer the
+ * feature passkey.
+ */
+
+/* A passkey of a page (passkeyCandidates). */
+typedef struct tsm_passkey {
+    char *entry_id;      /* the entry as a uuid reference, what tsm_passkey_get names */
+    char *title;
+    char *user_name;
+    char *credential_id; /* base64url */
+} tsm_passkey;
+
+/* The passkeys of rp_id for the page url (passkeys); with allow_count
+ * credential ids (base64url) only those. no_wait: a locked service answers
+ * TSM_ERR_LOCKED at once. *out gets *count passkeys (free with
+ * tsm_passkeys_free). */
+tsm_error_kind tsm_passkeys(tsm_client *c, const char *url, const char *rp_id, const char *const *allow_credentials,
+                            size_t allow_count, int no_wait, tsm_passkey **out, size_t *count);
+void tsm_passkeys_free(tsm_passkey *list, size_t count);
+
+/* A sign-in signed by the service (passkeyAssertion); base64url values. */
+typedef struct tsm_passkey_signature {
+    char *credential_id;
+    char *authenticator_data;
+    char *signature;
+    char *user_handle; /* NULL when the passkey has none */
+} tsm_passkey_signature;
+
+/* Signs a sign-in at rp_id for the page url with the passkey entry_id over
+ * client_data_hash (32 bytes) (passkeyGet). */
+tsm_error_kind tsm_passkey_get(tsm_client *c, const char *url, const char *rp_id, const char *entry_id,
+                               const unsigned char client_data_hash[32], tsm_passkey_signature **out);
+void tsm_passkey_signature_free(tsm_passkey_signature *s);
+
+/* A new passkey's request (passkeyCreate). */
+typedef struct tsm_passkey_create_request {
+    const char *url;
+    const char *rp_id;
+    const unsigned char *user_id; /* the user handle, 1 to 64 bytes */
+    size_t user_id_len;
+    const char *user_name;
+    const char *display_name; /* may be NULL */
+    const int *algorithms;    /* COSE, the site's order */
+    size_t algorithm_count;
+    const char *const *exclude_credentials; /* base64url; may be NULL */
+    size_t exclude_count;
+    long long timeout_ms; /* 0: the service's approval timeout */
+    tsm_progress_fn on_progress;
+    void *progress_context;
+} tsm_passkey_create_request;
+
+/* A passkey just made and kept (passkeyCreated); base64url values. */
+typedef struct tsm_passkey_created {
+    char *credential_id;
+    char *authenticator_data;
+    char *attestation_object;
+    char *public_key; /* DER SubjectPublicKeyInfo */
+    int public_key_algorithm;
+} tsm_passkey_created;
+
+/* A new passkey once the user confirms it in the app, kept in a vault
+ * before the answer (passkeyCreate). */
+tsm_error_kind tsm_passkey_create(tsm_client *c, const tsm_passkey_create_request *request, tsm_passkey_created **out);
+void tsm_passkey_created_free(tsm_passkey_created *p);
+
+/* base64url without padding of len bytes, malloc'd (free with tsm_free). */
+char *tsm_base64url_encode(const unsigned char *data, size_t len);
+/* The bytes of base64url (or base64) text, padding optional, malloc'd
+ * (free with tsm_free); 0 on bad input. */
+int tsm_base64url_decode(const char *text, unsigned char **out, size_t *out_len);
 
 /* --------------------------------------------------------------------- */
 /* References                                                             */

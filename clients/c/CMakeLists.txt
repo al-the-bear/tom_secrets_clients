@@ -4,7 +4,7 @@
 # The C client of the Tom Secrets Manager: the static library tsm (target
 # tsm::tsm), its tests (ctest) and, as a subproject, nothing else.
 cmake_minimum_required(VERSION 3.16)
-project(tom_secrets_client_c VERSION 0.1.0 LANGUAGES C)
+project(tom_secrets_client_c VERSION 0.2.0 LANGUAGES C)
 
 option(TSM_WERROR "Treat warnings as errors" OFF)
 option(TSM_BUILD_TESTS "Build the tests" ${PROJECT_IS_TOP_LEVEL})

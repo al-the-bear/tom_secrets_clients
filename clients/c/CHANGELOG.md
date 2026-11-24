@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- The passkey requests of protocol.md 5.8 (feature `passkey`), for the
+  clients the service admits to them (the browser host and the Windows
+  passkey plugin): `tsm_passkeys` lists a page's passkeys by name and
+  credential id, `tsm_passkey_get` answers the service's signature,
+  `tsm_passkey_create` makes a passkey once the user confirms it in the
+  app; never a key. `TSM_ERR_UNSUPPORTED` from a service without the
+  feature.
+- `tsm_base64url_encode` and `tsm_base64url_decode`.
+
 ## 0.1.0
 
 - The client endpoint of the Tom Secrets Manager protocol, version 1, in

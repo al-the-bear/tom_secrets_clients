@@ -522,12 +522,22 @@ are its `URL` field and every field whose name begins with `KP2A_URL`.
 ### 5.8 Passkeys [C]
 
 The browser host takes over a page's WebAuthn calls (part-browser,
-part-password-manager, DP-120). The passkeys stay in the vaults: the
-service lists them by their names and signs with them. No answer carries a
-private key, and `get` keeps refusing the `KPEX_PASSKEY_*` fields
-(`reserved_field`, 5.6). The messages are the feature `passkey` (section
-8), for the browser host only; any other client is answered `denied`
-(reason `not_allowed_op`). Byte values are base64url without padding.
+part-password-manager, DP-120), and on Windows 11 the passkey plugin
+answers Windows' own passkey dialog (part-os-integration). The passkeys
+stay in the vaults: the service lists them by their names and signs with
+them. No answer carries a private key, and `get` keeps refusing the
+`KPEX_PASSKEY_*` fields (`reserved_field`, 5.6). The messages are the
+feature `passkey` (section 8), for these two clients only, each told by
+its measured executable (7.1):
+
+- the **browser host** of 5.5;
+- the **passkey plugin** `tsm-passkey-plugin.exe` beside the service's
+  executable (its real path; in the app's MSIX package). It may send
+  only these three messages: `get`, `getMany`, `getFile`, `match` and
+  `propose` are refused to it.
+
+Any other client is answered `denied` (reason `not_allowed_op`). Byte
+values are base64url without padding.
 
 | Request | Answer | What |
 | --- | --- | --- |
@@ -540,7 +550,9 @@ reason `url`). `rpId` must be the page's host or a domain above it that is
 not a public suffix (5.7's list); the page must be `https`, or `http` on
 `localhost`. Anything else is `denied` (reason `rp_id`). The browser host
 tells the page by the address the browser reports, never by what the page
-says.
+says. The passkey plugin names `https://<rpId>/`: Windows checked the
+caller's origin against the relying party and signed the request with
+the plugin's operation-signing key, which the plugin verifies.
 
 **`passkeys`** answers the passkeys (entries holding `KPEX_PASSKEY_*`
 fields) of the personal and shared vaults whose relying party is `rpId`;
@@ -560,8 +572,9 @@ authenticator data holds the relying party's hash, the flags user present,
 user verified, backup eligible and backed up, and the counter 0, as a
 synced passkey's do. `signature` is ES256 (DER) or Ed25519 by the key's
 kind. `userHandle` is answered when the passkey has one. It needs no
-prompt: the user picked the passkey in the extension's own list, which the
-page cannot reach. Audited (`passkey <rpId>`).
+prompt: the user picked the passkey in the extension's own list, or in
+Windows' dialog, which the page cannot reach. Audited
+(`passkey <rpId>`).
 
 **`passkeyCreate`** asks the approvers whether to save a passkey for
 `userName` at `rpId` (`approval_needed` with `passkeyCreate`
@@ -1543,7 +1556,7 @@ type and adds `not_running` (section 3).
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant; **[C]** a passkey request from a client that is neither the browser host nor the passkey plugin, or a `get` / `getMany` / `getFile` / `match` / `propose` from the passkey plugin, 5.8), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4), `inbox` (an `inbox.read` of a package that is gone, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
@@ -1865,4 +1878,6 @@ part-service) leaves these open; this document fixes them:
     gesture for a sign-in; a new passkey is confirmed in the app, as it is
     written into a vault. Creating one is answered only once the vault is
     written, so a site never holds a credential the vaults lost. The
-    Windows passkey plugin is meant to use the same three messages.
+    Windows passkey plugin uses the same three messages: Windows'
+    dialog is the gesture there, its grants are the plugin's
+    (`exe-from` its activating process), and it holds no key either.

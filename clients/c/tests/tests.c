@@ -596,6 +596,44 @@ static void serve(void *arg) {
                     send_json(p.fd, &write_mu, v);
                     tsm_json_free(v);
                 }
+            } else if (!strcmp(op, "passkeys")) {
+                const tsm_json *allow = tsm_json_get(m, "allowCredentials");
+                const char *rp = tsm_json_get_str(m, "rpId");
+                int wait_false = tsm_json_get(m, "wait") != NULL;
+                CHECK(!strcmp(tsm_json_get_str(m, "url"), "https://mail.example.com/"), "passkeys url");
+                if (!strcmp(rp, "locked.example")) {
+                    CHECK(wait_false, "passkeys no_wait");
+                    snprintf(text, sizeof text,
+                             "{\"op\":\"error\",\"id\":%lld,\"kind\":\"locked\",\"message\":\"locked\"}", id);
+                } else {
+                    CHECK(allow && allow->count == 1 && !strcmp(allow->items[0]->string, "Y3JlZA"), "allow list");
+                    snprintf(text, sizeof text,
+                             "{\"op\":\"passkeyCandidates\",\"id\":%lld,\"candidates\":[{\"entryId\":\"team/~01\","
+                             "\"title\":\"Mail\",\"userName\":\"demo-user\",\"credentialId\":\"Y3JlZA\"}]}",
+                             id);
+                }
+                send_raw(p.fd, &write_mu, text);
+            } else if (!strcmp(op, "passkeyGet")) {
+                /* 32 bytes of 0xff: "_" * 42 + "8" */
+                CHECK(!strcmp(tsm_json_get_str(m, "clientDataHash"),
+                              "__________________________________________8"),
+                      "passkeyGet hash");
+                snprintf(text, sizeof text,
+                         "{\"op\":\"passkeyAssertion\",\"id\":%lld,\"credentialId\":\"Y3JlZA\","
+                         "\"authenticatorData\":\"ZGF0YQ\",\"signature\":\"c2ln\",\"userHandle\":\"dXNlcg\"}",
+                         id);
+                send_raw(p.fd, &write_mu, text);
+            } else if (!strcmp(op, "passkeyCreate")) {
+                const tsm_json *algs = tsm_json_get(m, "algorithms");
+                CHECK(!strcmp(tsm_json_get_str(m, "userId"), "AQID") && algs && algs->count == 2 &&
+                          algs->items[0]->integer == -8,
+                      "passkeyCreate request");
+                snprintf(text, sizeof text,
+                         "{\"op\":\"passkeyCreated\",\"id\":%lld,\"credentialId\":\"bmV3\","
+                         "\"authenticatorData\":\"ZGF0YQ\",\"attestationObject\":\"YXR0\",\"publicKey\":\"cGs\","
+                         "\"publicKeyAlgorithm\":-8}",
+                         id);
+                send_raw(p.fd, &write_mu, text);
             } else if (!strcmp(op, "getMany")) {
                 const tsm_json *refs = tsm_json_get(m, "refs");
                 tsm_json *answer = tsm_json_object(), *results = tsm_json_array();
@@ -885,6 +923,70 @@ static void test_client(void) {
 }
 #endif
 
+static void test_passkeys(void) {
+    service *s = service_start("[\"passkey\"]");
+    tsm_client *c = client_of(s);
+    static const char *const allow[] = {"Y3JlZA"};
+    static const int algorithms[] = {-8, -7};
+    static const unsigned char user_id[] = {1, 2, 3};
+    unsigned char hash[32];
+    tsm_passkey *list = NULL;
+    size_t count = 0;
+    tsm_passkey_signature *signed_in = NULL;
+    tsm_passkey_create_request r = {0};
+    tsm_passkey_created *made = NULL;
+    unsigned char *bytes = NULL;
+    size_t len = 0;
+    char *text;
+
+    CHECK(tsm_passkeys(c, "https://mail.example.com/", "mail.example.com", allow, 1, 0, &list, &count) == TSM_OK &&
+              count == 1 && !strcmp(list[0].entry_id, "team/~01") && !strcmp(list[0].user_name, "demo-user") &&
+              !strcmp(list[0].credential_id, "Y3JlZA"),
+          "passkeys: %s", tsm_last_error(NULL)->message);
+    tsm_passkeys_free(list, count);
+    CHECK(tsm_passkeys(c, "https://mail.example.com/", "locked.example", NULL, 0, 1, &list, &count) ==
+              TSM_ERR_LOCKED,
+          "passkeys locked");
+
+    memset(hash, 0xff, sizeof hash);
+    CHECK(tsm_passkey_get(c, "https://mail.example.com/", "mail.example.com", "team/~01", hash, &signed_in) ==
+                  TSM_OK &&
+              !strcmp(signed_in->signature, "c2ln") && !strcmp(signed_in->user_handle, "dXNlcg"),
+          "passkey_get");
+    tsm_passkey_signature_free(signed_in);
+
+    r.url = "https://mail.example.com/";
+    r.rp_id = "mail.example.com";
+    r.user_id = user_id;
+    r.user_id_len = sizeof user_id;
+    r.user_name = "demo-user";
+    r.algorithms = algorithms;
+    r.algorithm_count = 2;
+    CHECK(tsm_passkey_create(c, &r, &made) == TSM_OK && made->public_key_algorithm == -8 &&
+              !strcmp(made->attestation_object, "YXR0"),
+          "passkey_create");
+    tsm_passkey_created_free(made);
+    r.algorithm_count = 0;
+    CHECK(tsm_passkey_create(c, &r, &made) == TSM_ERR_INVALID_ARGUMENT, "passkey_create needs algorithms");
+
+    text = tsm_base64url_encode((const unsigned char *)"\xfb\xff\x01", 3);
+    CHECK(text && !strcmp(text, "-_8B"), "base64url encode");
+    CHECK(tsm_base64url_decode("-_8B", &bytes, &len) && len == 3 && bytes[0] == 0xfb && bytes[2] == 1,
+          "base64url decode");
+    tsm_free(text);
+    tsm_free(bytes);
+    tsm_client_free(c);
+    service_stop(s);
+
+    s = service_start("[]");
+    c = client_of(s);
+    CHECK(tsm_passkeys(c, "https://mail.example.com/", "mail.example.com", NULL, 0, 0, &list, &count) ==
+              TSM_ERR_UNSUPPORTED,
+          "passkeys unsupported");
+    tsm_client_free(c);
+    service_stop(s);
+}
+
 int main(void) {
     test_references();
     test_discovery();
@@ -894,6 +996,7 @@ int main(void) {
     test_values();
 #ifndef _WIN32
     test_client();
+    test_passkeys();
 #endif
     printf("%d checks, %d failed\n", checks, failures);
     return failures ? 1 : 0;
