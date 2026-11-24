@@ -253,6 +253,9 @@ stores the service named.
 `tsm` and the service must agree on the runtime directory: set
 `TSM_RUNTIME_DIR` for both or for neither.
 
+Every variable, file and setting of the product is in the
+[configuration reference](https://github.com/al-the-bear/tom_secrets_manager/blob/main/doc/configuration.md).
+
 ## Limits
 
 - **No keychain over SSH.** Where no OS keychain answers (an SSH session on
