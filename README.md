@@ -111,6 +111,11 @@ CMake and `ctest`, as is the C++ client's.
 
 ## Documentation
 
+The product as a whole (how the parts fit together, how secrets are kept
+safe, the main flows) is explained in the documentation set,
+[`tom_secrets_manager/doc`](https://github.com/al-the-bear/tom_secrets_manager/blob/main/doc/README.md).
+This repository's documents:
+
 | Topic | Document |
 | --- | --- |
 | The protocol: wire format, references, approvals, the approval link | [protocol document](protocol/protocol.md) |
