@@ -302,6 +302,15 @@ again, and sets a machine up with `tsm pair` against a pairing window on
 loopback. The tests take the service and the core as dev dependencies, which
 are not linked into `tsm`.
 
+The user guide's transcripts (`doc/tsm_user_guide.md`, blocks marked
+`<!-- transcript <name> -->`) are sessions against a demo installation,
+checked by `test/transcripts_test.dart`. After a change to what `tsm`
+prints, write them again:
+
+```sh
+TSM_UPDATE_TRANSCRIPTS=1 dart test test/transcripts_test.dart
+```
+
 ## Status
 
 Version 0.2.2. The unit suite runs `tsm` against the service in-process; the

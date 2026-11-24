@@ -223,6 +223,18 @@ tsm get db.main --dim env=prod                 # the same, as an option
 tsm get 'fleet/Certs/Server#attachment%3Akey.pem' --base64
 ```
 
+A session against a demo installation:
+
+<!-- transcript get-values -->
+```text
+$ tsm get team/Api/Token -n
+demo-api-token
+$ tsm get 'team/Code/Example git' --field UserName -n
+demo-git-user
+$ tsm get 'team/Code/Example git' --field URL -n
+https://git.example.com
+```
+
 In a shell script:
 
 ```sh
