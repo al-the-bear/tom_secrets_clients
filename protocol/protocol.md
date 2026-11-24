@@ -136,6 +136,17 @@ A client looks for the service in the **runtime directory** of its OS user:
 Trailing separators of an environment value are dropped before the name is
 joined. `<uid>` is the user's numeric id.
 
+**[C] The App Group container (macOS).** A sandboxed client reaches no
+runtime directory in `$TMPDIR`. The Safari Web Extension's handler, and the
+browser host it starts, are such clients. When the service runs from the
+manager app's tools folder and the app names its App Group (`TSMAppGroup`
+in the app's `Info.plist`, the team-signed build), the service also offers
+its client endpoint at
+`~/Library/Group Containers/<group>/tsm/client.sock` (the folder mode
+0700). The handler sets `TSM_RUNTIME_DIR` to that folder for the host. It
+is the same endpoint: the same messages, the same measurement of the peer
+(7.1) and the same grants. Nothing else of 3.2 is there.
+
 ### 3.2 What is in it
 
 | File | OS | Content |
