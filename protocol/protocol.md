@@ -1630,7 +1630,7 @@ defaults):
 
 | What | Limit |
 | --- | --- |
-| `get`, `getMany` and **[B]** `getFile`, `match`, `propose` | a token bucket of 20 per second, bursts of 50 |
+| `get`, `getMany` and **[B]** `getFile`, `match`, `propose` and **[C]** `passkeys`, `passkeyGet`, `passkeyCreate` | a token bucket of 20 per second, bursts of 50 |
 | refusals (`denied`, `not_found`, `ambiguous`) | ten in a minute make the identity wait 10 s per request for ten minutes |
 | open connections | 16 per identity, 256 in all; one over is answered `rate_limited` at its `hello` and closed |
 | pending prompts | one per identity and reference, at most three per identity; three refusals in ten minutes hold the identity back ten minutes |

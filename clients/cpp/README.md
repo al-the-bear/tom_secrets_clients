@@ -200,7 +200,8 @@ one of them is compiled as C++20 to check the designated-initializer call.
 
 ## Status
 
-Version 0.1.0, over the C client 0.1.0 (protocol version 1, features
+Version 0.1.0, over the C client in this repository (0.2.0; the release tag
+`clients/cpp/v0.1.0` pairs with `clients/c/v0.1.0`) (protocol version 1, features
 `binary` and `getFile`). The tests check the reference vectors through
 `tsm::Reference`, the error mapping, and the client against a small service
 on a local socket (values, `get_many`, `get_file`, progress, rate limits,

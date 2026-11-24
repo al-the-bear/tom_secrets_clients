@@ -35,11 +35,12 @@ or in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  tom_secrets_client: ^0.2.1
+  tom_secrets_client: ^0.2.19
 ```
 
-Dart SDK `^3.10.0`. The only dependency is `crypto` (SHA-256 and
-HMAC-SHA256). A secrets service must run on the machine for a call to
+Dart SDK `^3.10.0`. The dependencies are `crypto` (SHA-256 and
+HMAC-SHA256) and `cryptography` (AES-256-GCM of the OS unlock's key bundle,
+in the admin library). A secrets service must run on the machine for a call to
 succeed; without one every call fails as `notRunning`.
 
 ## Features
@@ -431,10 +432,12 @@ token). `setUp` sends the master password; after the code
 the service as usual and unlocks it.
 
 A machine that reaches neither the other machine's network nor the VPN
-pairs through a GitHub repository as the relay (phase C) when the other
-machine's pairing waits there too: the handover names `relay`
-(`github:<owner>/<repo>`) and `relayToken`, this machine's own token for
-that repository, with or without an address (the address is tried first).
+pairs through a relay when the other machine's pairing waits there too: the
+handover names `relay`, with or without an address (the address is tried
+first). A GitHub repository (`github:<owner>/<repo>`) needs `relayToken`,
+this machine's own token for that repository, and `relayApi` for GitHub
+Enterprise Server; a relay server (`tsm:<url>`) and a magic-wormhole server
+(`wormhole:ws(s)://…`) need none.
 
 ## Configuration
 
@@ -546,7 +549,7 @@ service.
 
 ## Status
 
-Version 0.2.3, speaking protocol version 1. The suite runs from the package
+Version 0.2.19, speaking protocol version 1. The suite runs from the package
 folder with `testkit :test` (or `dart test`) and needs no running service:
 the client tests talk to a scripted fake service over a Unix socket, or a
 localhost port with a client token as on Windows; the vector tests check the

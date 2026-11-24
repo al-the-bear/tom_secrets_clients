@@ -38,12 +38,12 @@ disagree with the document, the document wins.
 | --- | --- |
 | [`protocol.md`](protocol.md) | the protocol document |
 | [`schema/`](schema/) | one JSON Schema (draft 2020-12) per message, `<op>.json`, and `common.json` with the shared definitions; each schema's `x-tsm` names its endpoint, direction and phase |
-| [`vectors/`](vectors/) | the test vectors: `frames.json`, `references.json`, `hmac.json`, `discovery.json`, `signatures.json`, `approval_codes.json`, `link_handshake.json` |
+| [`vectors/`](vectors/) | the test vectors: `frames.json`, `references.json`, `hmac.json`, `discovery.json`, `signatures.json`, `approval_codes.json`, `link_handshake.json`, `bundles.json` |
 | [`tool/tsm_protocol.py`](tool/tsm_protocol.py) | the reference implementation of the computable parts: the reference grammar, framing, the admin challenge's MAC, discovery, and the signed bytes, key ids, approval codes and tokens (standard library only) |
 | [`tool/gen_schemas.py`](tool/gen_schemas.py) | writes `schema/` |
 | [`tool/gen_vectors.py`](tool/gen_vectors.py) | writes `frames.json`, `references.json`, `hmac.json`, `discovery.json` and `approval_codes.json` |
 | [`tool/check_protocol.py`](tool/check_protocol.py) | checks that the document, the schemas and the vectors agree |
-| [`tool/vectors_dart/`](tool/vectors_dart/) | writes `signatures.json` and `link_handshake.json` (Ed25519, ML-DSA-65, X25519, ML-KEM-768 on `tom_pqc`) and tests both roles of the approval link against them |
+| [`tool/vectors_dart/`](tool/vectors_dart/) | writes `signatures.json`, `link_handshake.json` and `bundles.json` (the OS unlock's key bundle) (Ed25519, ML-DSA-65, X25519, ML-KEM-768 on `tom_pqc`) and tests both roles of the approval link against them |
 | [`tool/vectors_go/`](tool/vectors_go/) | recomputes the signatures, approval codes, tokens and the link handshake with Go's standard library, independently of the Dart and Python tools |
 
 Every value in the vectors is demo data under demo keys derived from labels;
@@ -79,8 +79,9 @@ python3 protocol/tool/gen_vectors.py
 python3 protocol/tool/check_protocol.py
 ```
 
-`dart run bin/gen_vectors.dart --check` compares `signatures.json` and
-`link_handshake.json` with a fresh generation instead of writing them.
+`dart run bin/gen_vectors.dart --check` compares `signatures.json`,
+`link_handshake.json` and `bundles.json` with a fresh generation instead of
+writing them.
 
 ## Implementing a client
 

@@ -134,7 +134,7 @@ About `run`:
 | `start [--unlock] [--bootstrap FILE] [--service EXE] [--key-file F]` | Starts the service (prints `started`, or `already running`); with `--unlock` it unlocks it too. |
 | `unlock [--key-file F]` | Unlocks with the master password; `--key-file` gives the primary vault's key file when this machine's keychain does not hold it. |
 | `lock` | Locks: drops every secret from memory. |
-| `stop` | Locks and stops the service, and removes its admin key from the keychain. |
+| `stop` | Locks and stops the service, waits until it is gone (its `service.json` removed, at most 10 seconds), and removes its admin key from the keychain. |
 | `reload` | Fetches every store now. |
 
 - `pair` runs the service executable in its pairing mode, which receives the
@@ -194,7 +194,7 @@ switched command-line approvals on.
 
 | Command | What it does |
 | --- | --- |
-| `login [--client-id ID]` | Signs this machine in with the GitHub App: prints the code to enter at github.com/login/device (on any device) and waits; the service keeps the App's tokens and renews them. `--client-id` only while the primary vault (which names the App) cannot be read yet. |
+| `login [--client-id ID]` | Signs this machine in with the GitHub App: prints the code to enter at github.com/login/device (on any device) and waits; the service keeps the App's tokens and renews them. `--client-id` only while the primary vault (which names the App) cannot be read yet. Without an App named there (and no `--client-id`) it fails with `no_github_app`, exit 6. |
 | `logout` | Signs this machine out of the GitHub App; its pasted tokens are used again. |
 
 ### ssh and git
@@ -316,7 +316,7 @@ TSM_UPDATE_TRANSCRIPTS=1 dart test test/transcripts_test.dart
 
 ## Status
 
-Version 0.2.2. The unit suite runs `tsm` against the service in-process; the
+Version 0.2.14. The unit suite runs `tsm` against the service in-process; the
 integration suite (tag `integration`) runs the built service binary and is
 left out of the default test run.
 

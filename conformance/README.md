@@ -69,7 +69,9 @@ is missing is reported **NOT MEASURED**, never passed; `--strict` (and the
 `:conformance` stage of the product's build in
 [`tom_app_secrets_manager`](https://github.com/al-the-bear/tom_app_secrets_manager))
 makes that a failure. Scratch goes to `conformance/ztmp/` (the compiled fake
-service and runners in `ztmp/bin/`, one runtime directory per case in
+service and the Dart and Go runners in `ztmp/bin/`, the other compiled
+runners' build folders in `ztmp/` (`cargo`, `cbuild`, `cppbuild`, `java`),
+one runtime directory per case in
 `ztmp/rt/`).
 
 ## How a case runs
@@ -229,7 +231,7 @@ A new client library joins the suite with a runner of its own:
    command that starts it; `actions` the actions the library offers. Commands
    run in `conformance/`; `{exe}` becomes `.exe` on Windows,
    `{python}` the interpreter running the driver. Build output goes
-   to `ztmp/bin/`.
+   under `ztmp/` (`ztmp/bin/` for a single executable).
 3. Run `conformance/tool/run_all.sh --runner <lang> -v` until every table
    passes, then `conformance/tool/parity_gate.sh --runner <lang>`, which must
    turn it red.

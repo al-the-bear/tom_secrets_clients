@@ -57,7 +57,7 @@ To write a client in another language, start with the
 | --- | --- | --- | --- |
 | [`tom_secrets_client`](clients/dart/tom_secrets_client/README.md) | the Dart client: finding the service, frames, `get`, `getMany`, `getFile` (for a service that offers it), waiting for an unlock or an approval, the reference grammar; and its admin library (`admin.dart`): the admin client, the runtime and data directories, starting the service, the keychain names | pub.dev | — |
 | [`tsm`](clients/dart/tsm/README.md) | the command line: `get`, `run`, `ref`, and the admin commands (`pair`, `start`, `unlock`, `status`, `approve`, `grants`, `audit`, …); its integration suite runs the real service | pub.dev, as `tom_secrets_tsm` | `tsm` |
-| [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md) | the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, waiting for an unlock or an approval, the reference grammar | npm | — |
+| [`@al-the-bear/tom-secrets-client`](clients/typescript/README.md) | the TypeScript and JavaScript client for Node.js (one npm package, CommonJS with type declarations): finding the service, frames, `get`, `getMany`, `getFile`, waiting for an unlock or an approval, the reference grammar | npm | — |
 | [`tom-secrets-client`](clients/python/README.md) (Python) | the Python client (import name `tsm`, standard library only): finding the service, frames, `get`, `getMany`, `getFile`, waiting for an unlock or an approval, the reference grammar; a blocking, thread-safe `tsm.Client` and `tsm.aio.Client` for asyncio | PyPI | — |
 | [Go client](clients/go/README.md) (`clients/go`, package `tsm`) | the Go client (standard library only): finding the service, frames, `Get`, `GetMany`, `GetFile`, waiting for an unlock or an approval, the reference grammar; a `Client` safe for concurrent use, every call with a `context.Context`, `*tsm.Error` with `Kind` for `errors.As` | Go module path | — |
 | [`tom-secrets-client`](clients/rust/README.md) (Rust crate) | the Rust client (no dependency without the `tokio` feature): finding the service, frames, `get`, `get_many`, `get_file`, waiting for an unlock or an approval, the reference grammar; a blocking `Client` that is `Send` and `Sync`, an async client with the feature `tokio`, `Error` with one variant per kind | crates.io | — |
@@ -113,8 +113,8 @@ CMake and `ctest`, as is the C++ client's.
 
 The product as a whole (how the parts fit together, how secrets are kept
 safe, the main flows) is explained in the documentation set,
-[`tom_secrets_manager/doc`](https://github.com/al-the-bear/tom_secrets_manager/blob/main/doc/README.md).
-This repository's documents:
+[`tom_secrets_manager/doc`](https://github.com/al-the-bear/tom_secrets_manager/blob/main/doc/README.md);
+start with the [overview](https://github.com/al-the-bear/tom_secrets_manager/blob/main/doc/overview.md). This repository's documents:
 
 | Topic | Document |
 | --- | --- |
@@ -122,7 +122,7 @@ This repository's documents:
 | Schemas, vectors and their tools; implementing a client | [protocol README](protocol/README.md) |
 | The conformance suite and adding a runner | [conformance README](conformance/README.md) |
 | The Dart client and its admin library | [`tom_secrets_client` README](clients/dart/tom_secrets_client/README.md) |
-| The command line | [`tsm` README](clients/dart/tsm/README.md) |
+| The command line | [`tsm` README](clients/dart/tsm/README.md) and [user guide](clients/dart/tsm/doc/tsm_user_guide.md) |
 | The TypeScript and JavaScript client | [TypeScript client README](clients/typescript/README.md) |
 | The Python client | [Python client README](clients/python/README.md) |
 | The Go client | [Go client README](clients/go/README.md) |
