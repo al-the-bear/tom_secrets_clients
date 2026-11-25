@@ -93,6 +93,13 @@
           "keyChanged": {
             "description": "[C] Served from a copy under the old key, read-only: another device re-keyed the store and its new key is not listed here yet (section 6.4).",
             "type": "boolean"
+          },
+          "reason": {
+            "description": "Why an unavailable store waits for its remote while no copy of it is held (section 6.3).",
+            "enum": [
+              "offline",
+              "token_expired"
+            ]
           }
         }
       }
@@ -106,6 +113,14 @@
       "additionalProperties": {
         "type": "boolean"
       }
+    },
+    "keepsUnwritten": {
+      "description": "While unlocked: whether a save the remote cannot take waits in memory (the offline cache off; section 6.4).",
+      "type": "boolean"
+    },
+    "offlineCacheRemoved": {
+      "description": "When this start applied the in-memory default to device settings stored before it and deleted their offline cache.",
+      "$ref": "common.json#/$defs/timestamp"
     },
     "expiring": {
       "type": "array",

@@ -275,7 +275,9 @@ message('claim', 'admin', 'a2s', 'A', 'Sent instead of auth by an admin without 
 message('claimed', 'admin', 's2a', 'A', 'The new admin key after a successful claim.',
         ['adminKey'], adminKey=ref('base64_32'))
 message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing to return.',
-        ['id'], also=['link'], id=ref('id'))
+        ['id'], also=['link'], id=ref('id'),
+        pending={'description': 'save only: the remote could not take the file and it waits '
+                 'in memory as a change not written (section 6.4).', 'const': True})
 message('unlock', 'admin', 'a2s', 'A', 'Open the primary file and the stores (phase A), or '
         'a vault with a sealed key bundle (phase B).', ['id'], id=ref('id'),
         password=STR, keyFile=ref('base64'), vault=STR,
@@ -292,11 +294,13 @@ REWRITTEN = {'description': 'The branch was rewritten without a compaction: the 
 KEY_CHANGED = {'description': '[C] Served from a copy under the old key, read-only: another '
                'device re-keyed the store and its new key is not listed here yet (section 6.4).',
                'type': 'boolean'}
+WAIT_REASON = {'description': 'Why an unavailable store waits for its remote while no copy '
+               'of it is held (section 6.3).', 'enum': ['offline', 'token_expired']}
 STORE_STATUS = {'type': 'object', 'required': ['name', 'state', 'source', 'notPushed'],
                 'properties': {'name': ref('storeName'), 'state': ref('storeState'),
                                'source': ref('source'), 'fetchedAt': ref('timestamp'),
                                'notPushed': INT0, 'rewritten': REWRITTEN,
-                               'keyChanged': KEY_CHANGED}}
+                               'keyChanged': KEY_CHANGED, 'reason': WAIT_REASON}}
 EXPIRING_KEY = {'type': 'object', 'required': ['kind', 'key', 'expiresAt', 'daysLeft'],
                 'properties': {'kind': {'enum': ['github_token', 'vault_keys',
                                                  'approver_key', 'link_key',
@@ -327,6 +331,12 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
                  'properties': {'version': STR, 'start': ref('epochMs')}},
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
+        keepsUnwritten={'description': 'While unlocked: whether a save the remote cannot take '
+                        'waits in memory (the offline cache off; section 6.4).',
+                        'type': 'boolean'},
+        offlineCacheRemoved={'description': 'When this start applied the in-memory default to '
+                             'device settings stored before it and deleted their offline cache.',
+                             **ref('timestamp')},
         expiring={'type': 'array', 'items': EXPIRING_KEY},
         links={'description': '[C] The approval links while unlocked (section 9.7): the hosts '
                'this device approves for and the approvers of this host, with their state.',
@@ -731,7 +741,7 @@ message('store_changed', 'admin', 's2a', 'A', 'A store was reopened with new con
 message('store_state', 'admin', 's2a', 'A', 'A store changed state.',
         ['store', 'state', 'source', 'notPushed'], store=ref('storeName'),
         state=ref('storeState'), source=ref('source'), fetchedAt=ref('timestamp'),
-        notPushed=INT0, rewritten=REWRITTEN, keyChanged=KEY_CHANGED)
+        notPushed=INT0, rewritten=REWRITTEN, keyChanged=KEY_CHANGED, reason=WAIT_REASON)
 message('key_expiry', 'admin', 's2a', 'A', 'A key the product rotates expires soon.',
         ['key', 'expiresAt', 'daysLeft'], key=STR, expiresAt=ref('timestamp'),
         daysLeft={'type': 'integer'})

@@ -14,6 +14,10 @@
     },
     "id": {
       "$ref": "common.json#/$defs/id"
+    },
+    "pending": {
+      "description": "save only: the remote could not take the file and it waits in memory as a change not written (section 6.4).",
+      "const": true
     }
   },
   "x-tsm": {
