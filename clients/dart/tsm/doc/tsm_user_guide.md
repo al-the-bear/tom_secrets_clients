@@ -432,9 +432,9 @@ store    team  current  file  fetched just now
   `export SSH_AUTH_SOCK=<that path>`.
 - Each store shows its state (`current`, `offline`, `token_expired`, ...),
   where its copy comes from (`github`, `file`, `cache`) and how old the copy
-  is. A store on its offline copy says why (`GitHub not reachable`, or
-  `token expired: enter a new one`); a copy older than 7 days is flagged
-  `offline copy older than 7 days`.
+  is. A store on the copy held (GitHub cannot serve it now) says why
+  (`GitHub not reachable`, or `token expired: enter a new one`); a copy
+  older than 7 days is flagged `offline copy older than 7 days`.
 - Lines starting with `expiring` name the keys a reminder is due for, with
   their expiry date (as [`tsm keys`](#tsm-keys) shows them).
 
@@ -456,7 +456,7 @@ reloaded
 ```
 
 Errors: `offline` or `token_expired` (exit 11): a store could not be
-fetched; it keeps serving its offline copy, and `tsm status` shows why.
+fetched; it keeps serving the copy it holds, and `tsm status` shows why.
 
 ### `tsm stop`
 
@@ -1164,9 +1164,9 @@ the store the service named, and exits with the code of the kind:
 | 8 | `malformed` | The reference does not parse (`tsm ref parse` shows the reason), or a binary value was mapped by `tsm run`. |
 | 9 | `timeout`, `rate_limited` | No approval came in time, or the client is being held back; try again later. |
 | 10 | `unsupported` | The service does not offer this (for example `run --file`). |
-| 11 | `offline`, `token_expired` | `tsm reload` could not fetch: the network, or GitHub refused the token. The store keeps serving its offline copy; a new token is entered in the manager app. `tsm status` shows the state. |
+| 11 | `offline`, `token_expired` | `tsm reload` could not fetch: the network, or GitHub refused the token. The store keeps serving the copy it holds; a new token is entered in the manager app. `tsm status` shows the state. |
 | 11 | `needs_unlock` | A store's key changed since the unlock. `tsm lock` and `tsm unlock` reopen the stores whose keys the primary holds; a store with a password of its own is opened in the manager app. |
-| 11 | `unavailable` | The store could not be fetched and has no offline copy. Check the network and run `tsm reload`. |
+| 11 | `unavailable` | The store could not be fetched and no copy of it is held. Check the network and run `tsm reload`. |
 | 11 | `internal` | A failure of the service; its log is in the data directory. |
 
 Common situations:

@@ -810,7 +810,7 @@ What went wrong: the protocol's error kinds plus `notRunning`.
 | `notFound` | No candidate, or the winning entry lacks the field |
 | `ambiguous` | Several candidates rank equal (`details['candidates']`) |
 | `needsUnlock` | The store holding the answer could not be reopened since its key changed |
-| `unavailable` | The store could not be fetched and has no offline copy |
+| `unavailable` | The store could not be fetched and no copy of it is held |
 | `offline` | Admin only: a fetch failed for a network reason |
 | `tokenExpired` | Admin only: GitHub refused the token |
 | `malformed` | A frame, reference, binding or request cannot be read (`details['reason']`) |
@@ -857,7 +857,7 @@ Where a value came from.
 | --- | --- |
 | `github` | Fetched from GitHub in this refresh cycle |
 | `file` | Read from a `file:` vault on the local disk in this refresh cycle |
-| `cache` | The service's offline copy |
+| `cache` | The copy the service holds (in memory, or its offline cache) while the store cannot be fetched |
 
 #### Static Methods
 

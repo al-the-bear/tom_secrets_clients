@@ -289,7 +289,7 @@ for people and `details` (`reason`, `candidates`, `retryAfterMs`, ...).
 | `notFound` | No candidate, or the winning entry lacks the field |
 | `ambiguous` | Several candidates rank equal (`details['candidates']`) |
 | `needsUnlock` | The store could not be reopened since its key changed |
-| `unavailable` | The store could not be fetched and has no offline copy |
+| `unavailable` | The store could not be fetched and no copy of it is held |
 | `malformed` | A reference, binding or request cannot be read (`reason`) |
 | `timeout` | An approval was not answered in time |
 | `rateLimited` | The identity is held back (`details['retryAfterMs']`) |

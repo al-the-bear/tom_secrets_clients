@@ -164,7 +164,7 @@ About `run`:
 | `keys [--json]` | Every key with its due date; `*` marks those a reminder is due for. |
 | `audit [--since T] [--until T] [--subject S] [--ref R] [--json]` | The audit log: time, outcome, references and the client. Default: the last 7 days; times in ISO 8601. |
 
-`status` explains why a store runs on its offline copy (`GitHub not
+`status` explains why a store runs on the copy held (`GitHub not
 reachable`, `token expired: enter a new one`) and flags a copy older than
 7 days.
 
@@ -270,8 +270,8 @@ Every variable, file and setting of the product is in the
   vault.
 - **`pair` needs the address.** It does not browse by mDNS, so it works
   across a VPN; the other machine's Pairing screen shows the address.
-- **No GitHub token command.** A store whose token expired keeps serving its
-  offline copy; the new token is entered in the manager app.
+- **No GitHub token command.** A store whose token expired keeps serving the
+  copy it holds; the new token is entered in the manager app.
 - A `run` carries at most 256 references; a reference is at most 1,024 bytes.
 
 ## Further documentation
