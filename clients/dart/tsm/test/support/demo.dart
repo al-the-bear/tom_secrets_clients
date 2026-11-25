@@ -283,6 +283,8 @@ final class Demo {
     Future<int> Function(List<String>, Map<String, String>)? run,
     String executableDirectory = '/nonexistent',
     DateTime Function()? clock,
+    TomSecretsEndpointInspector endpointInspector =
+        const TomSecretsSystemEndpointInspector(),
   }) async {
     final out = BytesBuilder();
     final err = StringBuffer();
@@ -303,6 +305,7 @@ final class Demo {
         keychain: () async => keychain,
         executableDirectory: executableDirectory,
         runCommand: run ?? (command, env) async => 0,
+        endpointInspector: endpointInspector,
         clock: clock,
       ),
     );

@@ -781,10 +781,10 @@ packages:
     dependency: transitive
     description:
       name: tom_kpasslib
-      sha256: "63d384e312bcfa9a6968168a2ff4847b21fa998f2dbcdfd922ebaf70afdeac31"
+      sha256: dfd344599dd217c8e3e8e31aa70881f0efd6af618008263dc51b87670d7a08ab
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2+tom.4"
+    version: "1.1.2+tom.5"
   tom_pqc:
     dependency: transitive
     description:
@@ -793,30 +793,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.0"
+  tom_secrets_age:
+    dependency: transitive
+    description:
+      name: tom_secrets_age
+      sha256: "4bf3d6ebff7a95405817e68556ce97fe759e40a4a5d9c3628317d50b1d7bbf6b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   tom_secrets_client:
     dependency: "direct main"
     description:
       name: tom_secrets_client
-      sha256: c891bc3ee427a66ac70b2a09dd449cb11b29e52e641d5ea0c675254b101bd7e4
+      sha256: "5964f90a1035af55ff354cf3e4e43c1d107816bd3e5d74672fa0ea652b40fa03"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.19"
+    version: "0.2.23"
   tom_secrets_core:
     dependency: "direct dev"
     description:
       name: tom_secrets_core
-      sha256: "8b6b2b90d947c15fb5a149f43434f2bd465a3fe563d866f0723e5db8f345d38f"
+      sha256: "2b359fc8b343eb6155a0848c760df757759fc0c0a15efd32660ce5683c0882fe"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.21"
+    version: "0.2.36"
   tom_secrets_service:
     dependency: "direct dev"
     description:
       name: tom_secrets_service
-      sha256: f8a580398c1bd20a9b933885822f11c0697b0c3b4506096defa8560ae05704d2
+      sha256: a0877d1a65788fa09d8d4176f69ec1e04a021f2da2f41b717acd7b4850a8d8d8
       url: "https://pub.dev"
     source: hosted
-    version: "0.23.0"
+    version: "0.25.9"
   typed_data:
     dependency: transitive
     description:

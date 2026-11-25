@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.15
+
+- Admin commands check who answers before they send anything
+  (`tom_secrets_client` 0.2.22, protocol.md 6.0): the runtime directory and
+  the admin socket are the user's alone, the process answering runs as the
+  user and is the service beside `tsm` (or the one `TSM_SERVICE` or
+  `--service` names). Otherwise the command ends with `service_untrusted`
+  (exit code 12), says what is wrong and what to do, and never asks for the
+  master password: a claim no longer hands it to whatever answers.
+
 ## 0.2.14
 
 - `tsm stop` returns once the service is gone (its `service.json`

@@ -71,6 +71,14 @@ void main() {
   late String serviceExe;
   late Directory build;
 
+  /// The folder of the built service: tsm runs as if it were beside it, as
+  /// in an install, so the service is the one tsm expects to answer
+  /// (protocol.md 6.0).
+  late String serviceBin;
+
+  /// The check for the admin connections the tests open themselves.
+  late TomSecretsServiceTrust builtService;
+
   setUpAll(() async {
     build = Directory.systemTemp.createTempSync('tsm_service_build');
     final source = Directory('${build.path}${Platform.pathSeparator}source')
@@ -95,6 +103,10 @@ void main() {
         '${build.path}/out/bundle/bin/tom_secrets_service'
         '${Platform.isWindows ? '.exe' : ''}';
     expect(File(serviceExe).existsSync(), isTrue);
+    serviceBin = File(serviceExe).parent.path;
+    builtService = TomSecretsServiceTrust(
+      executables: {tomSecretsRealExecutable(serviceExe)},
+    );
   });
 
   tearDownAll(() => deleteWhenFree(build));
@@ -107,7 +119,7 @@ void main() {
     final demo = await Demo.create(adminExecutables: [self.exe]);
     final keychain = TomInMemorySecretStore();
     Future<TsmRun> tsm(List<String> args) =>
-        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+        demo.tsm(args, keychain: keychain, executableDirectory: serviceBin);
     addTearDown(() async {
       await tsm(['stop']);
       await _gone(demo);
@@ -168,6 +180,7 @@ void main() {
     final app = await TomSecretsAdminClient.connect(
       demo.runtime,
       base64.decode((await keychain.read(tomSecretsAdminKeyHandle(start)))!),
+      trust: builtService,
     );
     await app.request('subscribe');
     final progress = <TomSecretsPending>[];
@@ -237,7 +250,7 @@ void main() {
     File(demo.bootstrapPath).deleteSync();
     final keychain = TomInMemorySecretStore();
     Future<TsmRun> tsm(List<String> args) =>
-        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+        demo.tsm(args, keychain: keychain, executableDirectory: serviceBin);
     addTearDown(() async {
       await tsm(['stop']);
       await _gone(demo);
@@ -331,7 +344,7 @@ void main() {
     File(demo.bootstrapPath).deleteSync();
     final keychain = TomInMemorySecretStore();
     Future<TsmRun> tsm(List<String> args) =>
-        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+        demo.tsm(args, keychain: keychain, executableDirectory: serviceBin);
     addTearDown(() async {
       await tsm(['stop']);
       await _gone(demo);
@@ -438,7 +451,7 @@ void main() {
       final demo = await Demo.create(adminExecutables: [self.exe]);
       final keychain = TomInMemorySecretStore();
       Future<TsmRun> tsm(List<String> args) =>
-          demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+          demo.tsm(args, keychain: keychain, executableDirectory: serviceBin);
       addTearDown(() async {
         await tsm(['stop']);
         await _gone(demo);
@@ -449,6 +462,7 @@ void main() {
       final app = await TomSecretsAdminClient.connect(
         demo.runtime,
         base64.decode((await keychain.read(tomSecretsAdminKeyHandle(start)))!),
+        trust: builtService,
       );
       addTearDown(app.close);
       await app.request('subscribe');
@@ -529,7 +543,7 @@ void main() {
     final demo = await Demo.create(adminExecutables: [self.exe]);
     final keychain = TomInMemorySecretStore();
     Future<TsmRun> tsm(List<String> args) =>
-        demo.tsm(args, keychain: keychain, executableDirectory: build.path);
+        demo.tsm(args, keychain: keychain, executableDirectory: serviceBin);
     addTearDown(() async {
       await tsm(['stop']);
       await _gone(demo);
@@ -540,6 +554,7 @@ void main() {
     final app = await TomSecretsAdminClient.connect(
       demo.runtime,
       base64.decode((await keychain.read(tomSecretsAdminKeyHandle(start)))!),
+      trust: builtService,
     );
     addTearDown(app.close);
     await app.request('subscribe');

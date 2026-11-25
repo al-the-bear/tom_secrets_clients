@@ -34,6 +34,8 @@ abstract final class TsmExit {
     'malformed' => 8,
     'timeout' || 'rate_limited' => 9,
     'unsupported' => 10,
+    // The admin endpoint is not this user's service: nothing was sent.
+    'service_untrusted' => 12,
     _ => 11, // internal, needs_unlock, unavailable, offline, token_expired
   };
 }
@@ -77,6 +79,22 @@ final class TsmContext {
 
   String? _password;
 
+  /// The service executable a command named (`--service`), which the
+  /// check of who answers on the admin endpoint then expects too.
+  String? namedService;
+
+  /// The check an admin connection runs before it sends anything
+  /// (protocol.md 6.0): the service expected is the one beside tsm, the
+  /// one `TSM_SERVICE` names, or [namedService].
+  TomSecretsServiceTrust get serviceTrust => TomSecretsServiceTrust(
+    executables: tomSecretsExpectedServiceExecutables(
+      ownExecutable: '${io.executableDirectory}${Platform.pathSeparator}tsm',
+      environment: io.environment,
+      configured: [?namedService],
+    ),
+    inspector: io.endpointInspector,
+  );
+
   /// The runtime directory (`TSM_RUNTIME_DIR`, else protocol.md 3.1).
   TomSecretsRuntime get runtime =>
       TomSecretsRuntime.current(environment: io.environment);
@@ -119,19 +137,30 @@ final class TsmContext {
       }
       if (stored != null) {
         try {
-          final client = await TomSecretsAdminClient.connect(rt, stored);
+          final client = await TomSecretsAdminClient.connect(
+            rt,
+            stored,
+            trust: serviceTrust,
+          );
           await _pruneOthers(keyring, start);
           return client;
         } on TomSecretsAdminException catch (e) {
-          // Another admin claimed the service since: claim again.
-          if (e.kind == 'not_running') rethrow;
+          // Another admin claimed the service since: claim again. An
+          // endpoint that is not this user's service gets no claim.
+          if (e.kind == 'not_running' || e.kind == tomSecretsServiceUntrusted) {
+            rethrow;
+          }
         }
       }
     }
+    // Checked before the password is asked for, so it is never typed for
+    // an endpoint that is not this user's service.
+    await TomSecretsAdminClient.checkService(rt, trust: serviceTrust);
     final (client, key) = await TomSecretsAdminClient.claim(
       rt,
       password: await password(),
       keyFile: keyFile,
+      trust: serviceTrust,
     );
     await keepAdminKey(start, key);
     return client;
@@ -210,6 +239,11 @@ final class TsmContext {
     io.err.writeln(
       'tsm: $kind: $message${extra.isEmpty ? '' : ' (${extra.join('; ')})'}',
     );
+    if (kind == tomSecretsServiceUntrusted) {
+      io.err.writeln(
+        'tsm: ${tomSecretsUntrustedAdvice(details['reason'] as String?)}',
+      );
+    }
     return TsmExit.of(kind);
   }
 }

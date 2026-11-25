@@ -38,6 +38,12 @@ the output; `[exit code N]` marks a command that failed.
   asking. Where no keychain answers, for example in an SSH session on Linux,
   every admin command asks for the master password and claims the service,
   which issues a new admin key.
+- **Who answers is checked first.** Before an admin command sends its key
+  proof or a master password, and before it asks for the password, it
+  checks that the admin endpoint is this user's service: the runtime
+  directory and the socket are the user's alone, and the process answering
+  runs as the user and is the service that belongs to this `tsm`. See
+  [`service_untrusted`](#service_untrusted).
 - **Every failure has its own exit code**, listed under
   [Exit codes and troubleshooting](#exit-codes-and-troubleshooting).
 
@@ -421,7 +427,7 @@ tsm status [--json]
 <!-- transcript status -->
 ```text
 $ tsm status
-service  running, unlocked, lock mode b, version 0.23.0
+service  running, unlocked, lock mode b, version 0.25.9
 agent    /run/user/1000/tsm/agent.sock  (SSH_AUTH_SOCK or IdentityAgent for ssh)
 store    primary  current  file  fetched just now
 store    team  current  file  fetched just now
@@ -1168,6 +1174,7 @@ the store the service named, and exits with the code of the kind:
 | 11 | `needs_unlock` | A store's key changed since the unlock. `tsm lock` and `tsm unlock` reopen the stores whose keys the primary holds; a store with a password of its own is opened in the manager app. |
 | 11 | `unavailable` | The store could not be fetched and no copy of it is held. Check the network and run `tsm reload`. |
 | 11 | `internal` | A failure of the service; its log is in the data directory. |
+| 12 | `service_untrusted` | The admin endpoint is not this user's service; nothing was sent and no password was asked for. See [below](#service_untrusted). |
 
 Common situations:
 
@@ -1179,6 +1186,22 @@ Common situations:
 - **The pairing fails.** The code is burnt after one attempt and the window
   closes after five minutes; open a new one on the desktop and check that the
   address is reachable from the new machine.
+
+### `service_untrusted`
+
+An admin command sends nothing until it knows who answers. `tsm` prints
+what is wrong, the reason, and what to do:
+
+| Reason | What is wrong | What to do |
+| --- | --- | --- |
+| `owner` | The runtime directory or `admin.sock` belongs to another user, is a link, or is not a directory / socket. On a shared Linux host without `XDG_RUNTIME_DIR` this is `/tmp/tsm-<uid>`, which another user made first. | Do not enter the master password. Set `XDG_RUNTIME_DIR` (or `TSM_RUNTIME_DIR`) to a directory of your own, or have the one named removed; then `tsm start`. |
+| `mode` | The runtime directory or the socket is open to group or others (on Windows: its access list grants someone besides you and SYSTEM). | Close them to others and run the command again: `chmod 700` on the runtime directory, `chmod 600` on its sockets. A service older than 0.25.7 left its sockets open inside its closed directory; once it is replaced by the current one this does not come back. |
+| `peer_user` | The process answering runs as another user, or cannot be read. | Do not enter the master password. Find out what runs under the process id named; start your own service once it is gone. |
+| `peer_executable` | The process answering is not the `tom_secrets_service` beside this `tsm` (the message names the one answering and the ones expected). | If it is a service you installed elsewhere, name it in `TSM_SERVICE`. Else stop that process and `tsm start`. |
+
+On Linux a service hides its executable from its own user once it has
+hardened itself (no process of the user reads its memory): there the
+owner, mode and user checks hold and the executable is not compared.
 
 The error kinds and their details are listed in
 [the protocol, section 10](../../../../protocol/protocol.md#10-error-kinds).

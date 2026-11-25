@@ -278,6 +278,38 @@ void main() {
       expect(r.text, 'not running\n');
     });
 
+    test('an admin endpoint that is not this user\'s service gets no claim: '
+        'exit 12, what is wrong and what to do on standard error, and the '
+        'master password is never asked for (protocol.md 6.0)', () async {
+      service = await demo.startInProcess(adminKey: tomSecretsRandomBytes());
+      // Another user's process answers where the service would.
+      final other = await demo.tsm([
+        'unlock',
+      ], endpointInspector: const _OtherUsersPeer());
+      expect(other.code, 12);
+      expect(other.err, contains('tsm: service_untrusted: '));
+      expect(other.err, contains('reason peer_user'));
+      expect(other.err, contains('Do not enter the master password'));
+      expect(demo.passwordPrompts, 0);
+      expect(other.out, isEmpty);
+
+      if (!Platform.isWindows) {
+        // The real socket, opened to others.
+        final socket = demo.runtime.adminSocket;
+        Process.runSync('chmod', ['666', socket]);
+        final loose = await demo.tsm(['status']);
+        expect(loose.code, 12);
+        expect(loose.err, contains('the admin socket is open to others'));
+        expect(loose.err, contains('reason mode'));
+        expect(loose.err, contains('chmod 700'));
+        expect(demo.passwordPrompts, 0);
+        Process.runSync('chmod', ['600', socket]);
+      }
+      // The service as it is passes, and the claim goes.
+      expect((await demo.tsm(['unlock'])).code, 0);
+      expect(demo.passwordPrompts, 1);
+    });
+
     test('without a keychain each admin command claims with the master '
         'password (asked once); with one the claimed key is kept', () async {
       await running(unlock: false);
@@ -541,4 +573,31 @@ void main() {
       expect(r.out, isEmpty);
     });
   });
+}
+
+/// The endpoint as it is, but the process answering runs as another user.
+final class _OtherUsersPeer implements TomSecretsEndpointInspector {
+  const _OtherUsersPeer();
+
+  static const _system = TomSecretsSystemEndpointInspector();
+
+  @override
+  TomSecretsEndpointFacts files(TomSecretsRuntime runtime) =>
+      _system.files(runtime);
+
+  @override
+  TomSecretsEndpointFacts withPeer(TomSecretsEndpointFacts f, Socket s) =>
+      TomSecretsEndpointFacts(
+        operatingSystem: f.operatingSystem,
+        ownUser: f.ownUser,
+        ownPid: f.ownPid,
+        directory: f.directory,
+        socket: f.socket,
+        directoryGrantees: f.directoryGrantees,
+        peer: const TomSecretsServicePeer(
+          pid: 4711,
+          user: 'another-user',
+          executable: '/opt/demo/tom_secrets_service',
+        ),
+      );
 }

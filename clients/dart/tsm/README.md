@@ -222,6 +222,13 @@ invocations the admin key stays in the OS keychain; where no keychain answers,
 each admin command asks for the master password and claims the service,
 which issues a new admin key.
 
+Before an admin command sends anything, and before it asks for the master
+password, it checks who answers on the admin endpoint: the runtime
+directory and the socket are the user's alone, the process answering runs
+as the user and is the service beside `tsm` (or the one `TSM_SERVICE` or
+`--service` names). When that fails the command ends with
+`service_untrusted` (exit code 12), saying what is wrong and what to do.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -237,6 +244,7 @@ which issues a new admin key.
 | 9 | `timeout` or `rate_limited` |
 | 10 | `unsupported` |
 | 11 | `internal`, `needs_unlock`, `unavailable`, `offline`, `token_expired` |
+| 12 | `service_untrusted`: the admin endpoint is not this user's service; nothing was sent |
 
 Values and listings go to standard output only. Messages, prompts and progress
 go to standard error, as `tsm: <kind>: <message>` with the reason, store or
@@ -316,7 +324,7 @@ TSM_UPDATE_TRANSCRIPTS=1 dart test test/transcripts_test.dart
 
 ## Status
 
-Version 0.2.14. The unit suite runs `tsm` against the service in-process; the
+Version 0.2.15. The unit suite runs `tsm` against the service in-process; the
 integration suite (tag `integration`) runs the built service binary and is
 left out of the default test run.
 

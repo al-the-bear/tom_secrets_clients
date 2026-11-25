@@ -16,7 +16,11 @@ import 'package:tom_build_base/tom_build_base_v2.dart' show ConsoleMarkdownSink;
 import 'package:tom_core_storage/io.dart' show TomDesktopSecretStore;
 import 'package:tom_core_storage/settings.dart'
     show TomSecretStore, TomSecretStoreAvailability;
-import 'package:tom_secrets_client/admin.dart' show tomSecretsKeychainService;
+import 'package:tom_secrets_client/admin.dart'
+    show
+        TomSecretsEndpointInspector,
+        TomSecretsSystemEndpointInspector,
+        tomSecretsKeychainService;
 
 /// tsm's input and output.
 final class TsmIo {
@@ -30,6 +34,7 @@ final class TsmIo {
     required this.keychain,
     required this.executableDirectory,
     required this.runCommand,
+    this.endpointInspector = const TomSecretsSystemEndpointInspector(),
     DateTime Function()? clock,
     StringSink? messages,
   }) : clock = clock ?? DateTime.now,
@@ -112,6 +117,9 @@ final class TsmIo {
 
   /// The directory of tsm's executable, where the service's is looked for.
   final String executableDirectory;
+
+  /// Reads who answers on the admin endpoint (protocol.md 6.0).
+  final TomSecretsEndpointInspector endpointInspector;
 
   /// Starts [command] with [environment] added to tsm's own, its standard
   /// streams tsm's, and answers its exit code.

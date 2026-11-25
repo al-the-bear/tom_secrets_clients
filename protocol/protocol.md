@@ -174,6 +174,13 @@ A client looks for the service in the **runtime directory** of its OS user:
 Trailing separators of an environment value are dropped before the name is
 joined. `<uid>` is the user's numeric id.
 
+`/tmp/tsm-<uid>/` is a name anyone on the machine can take first. A
+directory there that is not the user's own (another owner, a link, or open
+to group or others) is never used: the service refuses to start in it and
+does not change it, and an admin refuses to connect (6.0). A shared Linux
+host without `$XDG_RUNTIME_DIR` should set it, or `TSM_RUNTIME_DIR`, to a
+directory of the user's own.
+
 **[C] The App Group container (macOS).** A sandboxed client reaches no
 runtime directory in `$TMPDIR`. The Safari Web Extension's handler, and the
 browser host it starts, are such clients. When the service runs from the
@@ -204,7 +211,10 @@ is the same endpoint: the same messages, the same measurement of the peer
   optionally followed by one line end. It changes with every service start,
   so a library re-reads it at every connect and sends it as `hello.token`.
 - The directory is the user's alone (mode 0700; on Windows an ACL of the user
-  and SYSTEM). The service checks its owner and mode at every start.
+  and SYSTEM). The service checks its owner and mode at every start, the
+  directory itself and never what a link there points to.
+- The sockets are the user's alone (mode 0600), whatever the umask the
+  service started under.
 
 A library that finds no socket or port file, finds an unreadable port file,
 or has its connection refused reports **`not_running`**. `not_running` is not
@@ -676,6 +686,49 @@ unanswered, `denied` (reason `refused`, `timeout`).
 
 ## 6. The admin endpoint
 
+### 6.0 Who answers
+
+An admin sends nothing, neither `auth` nor `claim`, before it has checked
+that the endpoint is its own user's service. It checks, in this order:
+
+1. **The files**, before it connects. On Linux and macOS the runtime
+   directory is a directory (itself, no link to one), belongs to the user
+   and gives group and others nothing (0700); `admin.sock` is a socket,
+   belongs to the user and gives group and others nothing (0600). On
+   Windows the runtime directory's access list grants only the user and
+   SYSTEM.
+2. **The user of the process answering**, once connected: `SO_PEERCRED` on
+   Linux, `LOCAL_PEERPID` and `LOCAL_PEERCRED` on macOS; on Windows the
+   process owning the other end of the TCP connection
+   (`GetExtendedTcpTable`: the row whose local port is the service's and
+   whose remote port is the admin's) and its token's SID. It is the admin's
+   own user.
+3. **The executable of that process** (`/proc/<pid>/exe`, `proc_pidpath`,
+   `QueryFullProcessImageNameW`), as a real path: the service executable
+   the admin expects. That is `tom_secrets_service` beside the admin's own
+   executable or in its distribution's tools folder (`tsm/bin`), or the one
+   its configuration names (`TSM_SERVICE`, `tsm start --service`). Windows
+   paths compare without case. An admin that serves the endpoint itself
+   (the same process) passes.
+
+A check that fails ends the connection, and the library reports
+**`service_untrusted`** with `details.reason`: `owner` (the directory or
+socket belongs to someone else, or is not what it should be), `mode` (it is
+open to others), `peer_user` (the process answering runs as another user, or
+cannot be measured) or `peer_executable`. Like `not_running` it is not a
+message: no one sends it. The admin says what is wrong and what to do; it
+asks for no master password.
+
+The one thing the OS does not always show: on Linux a process that made
+itself not dumpable, as the service does at its start (so that no process
+of the user reads its memory), hides `/proc/<pid>/exe` from its own user.
+For such a peer checks 1 and 2 hold and check 3 cannot be made; a peer whose
+executable can be read must match.
+
+The checks say which user's which program answers. They do not prove the
+service holds a key: that is the challenge (6.1), which a claimant cannot
+run.
+
 ### 6.1 The challenge
 
 The admin endpoint answers nothing before both sides have proven they hold
@@ -709,8 +762,10 @@ features}` instead of `auth`. The service checks the master password (and key fi
 against the primary file it has open, answers `claimed {adminKey}` with a new
 admin key and revokes the old one. A wrong password is `denied` (reason
 `bad_password`), logged, and counts as a failed authentication. The service
-cannot prove itself to a claimant, which shares no key with it yet; the app
-warns before it sends a master password in a claim.
+cannot prove it holds a key to a claimant, which shares none with it yet.
+What stands between the master password and whatever answers is 6.0: a
+claim is sent only after the files, the user and the executable passed, and
+an admin runs those checks before it asks the user for the password.
 
 ### 6.3 Requests and answers
 
@@ -1616,7 +1671,9 @@ names no relay link and pairs as before.
 
 An `error` has `kind`, `message` (for people; never a value, a token or a
 key) and optional `details`. Every library maps the kinds to its own error
-type and adds `not_running` (section 3).
+type and adds `not_running` (section 3). An admin library adds
+`service_untrusted` (6.0; `details.reason`: `owner`, `mode`, `peer_user`,
+`peer_executable`) and `service_impostor` (a wrong `mac2`, 6.1).
 
 | Kind | Meaning | `details` |
 | --- | --- | --- |
@@ -1967,3 +2024,15 @@ part-service) leaves these open; this document fixes them:
     next refresh that reaches it, as the phone does, at the price of losing
     it if the service stops first; the app says so. Settings stored before
     the default carry no marker and take it once.
+52. An admin checks who answers before it sends an `auth` or a `claim`
+    (6.0): the endpoint's files are the user's alone, the process answering
+    runs as the user and is the service executable expected. A claim hands
+    over the master password and cannot run the challenge, so without the
+    check it went to whatever answered: another user's process on a shared
+    host that took `/tmp/tsm-<uid>` first, or any local process on the
+    Windows port a dead service left in its port file. The checks are the
+    ones the service makes of its peers, turned round. The reasons are
+    told apart, since what the user does differs. On Linux the executable
+    of a hardened service cannot be read by its own user; the user check
+    still holds there, and a key the admin pins at pairing closes what is
+    left.

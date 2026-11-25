@@ -411,8 +411,10 @@ void _json(TsmContext c, Object? value) =>
 /// `tom_secrets_service` beside tsm; null (told) when it is not there.
 Future<String?> _serviceExecutable(TsmContext c, TsmArgs a) async {
   final exe = Platform.isWindows ? '.exe' : '';
+  // A service named on the command line is the one expected to answer.
+  c.namedService = a.option('service');
   final service =
-      a.option('service') ??
+      c.namedService ??
       c.io.environment['TSM_SERVICE'] ??
       '${c.io.executableDirectory}${Platform.pathSeparator}'
           'tom_secrets_service$exe';
