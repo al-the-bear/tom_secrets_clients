@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.21
+
+- `tomSecretsPrepareDataDirectory` runs its `stat`, `chmod` and `icacls`
+  synchronously: a caller in a zone that pumps only its own microtasks (a
+  widget test driving the First run) never saw the asynchronous processes
+  finish.
+- The version sent in `hello` is the package's again (0.2.20 sent 0.2.19).
+
 ## 0.2.20
 
 - `tomSecretsPrepareDataDirectory` (admin library): the data directory is

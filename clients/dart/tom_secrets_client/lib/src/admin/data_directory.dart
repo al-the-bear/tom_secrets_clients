@@ -179,8 +179,11 @@ Future<TomSecretsDataDirectoryState> _prepareWindows(
   return const TomSecretsDataDirectoryState(created: false, tightened: 1);
 }
 
+// Why synchronous: `stat` and `chmod` return at once, and a caller running
+// in a zone that only pumps its own microtasks (a widget test, the app's
+// First run under one) would never see an asynchronous process finish.
 Future<String> _run(String executable, List<String> args) async {
-  final result = await Process.run(executable, args);
+  final result = Process.runSync(executable, args);
   if (result.exitCode != 0) {
     throw FileSystemException(
       '$executable ${args.join(' ')} failed: ${result.stderr}',

@@ -51,8 +51,9 @@ Future<void> tomSecretsRestrictWindowsDirectory(String path) async {
   }
 }
 
+// Synchronous for the reason data_directory.dart's commands are.
 Future<String> _icacls(List<String> args) async {
-  final result = await Process.run('icacls', args);
+  final result = Process.runSync('icacls', args);
   if (result.exitCode != 0) {
     throw FileSystemException(
       'icacls ${args.skip(1).join(' ')} failed: ${result.stderr}',
