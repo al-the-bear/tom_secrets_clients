@@ -399,7 +399,7 @@ The answer is `value`:
 | `id` | the request id |
 | `value` | the value: the text, or the bytes in base64 |
 | `encoding` | `utf8` for text, `base64` for bytes; a library refuses text access to a `base64` value |
-| `entry` | `{store, uuid, source, fetchedAt}`: the entry's store and UUID; `source` is `github` when the store was fetched from GitHub in this refresh cycle, `file` when it is a `file:` vault read from the local disk in this cycle, and `cache` when the service serves its offline copy of a GitHub store; `fetchedAt` the last successful fetch or read |
+| `entry` | `{store, uuid, source, fetchedAt}`: the entry's store and UUID; `source` is `github` when the store was fetched from GitHub in this refresh cycle, `file` when it is a `file:` vault read from the local disk in this cycle, and `cache` when the service serves the copy of a GitHub store it holds (in memory since the last fetch, or from its offline cache) because the store cannot be fetched now; `fetchedAt` the last successful fetch or read |
 | `bound` | the bindings the winning entry carries, `{dimension: value}` |
 | `version` | `{modified, revision}`: the entry's last modification time and the store file revision it was read from; a client caching the value compares it to see a change |
 | `expires` | the entry's expiry time, when it has one |
