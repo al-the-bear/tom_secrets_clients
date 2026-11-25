@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../tom_secrets_client.dart';
+import 'windows_acl.dart';
 
 /// A runtime directory that is not the user's alone, or cannot be made.
 final class TomSecretsRuntimeException implements Exception {
@@ -143,7 +144,7 @@ final class TomSecretsRuntime {
     if (!await dir.exists()) {
       await dir.create(recursive: true);
       if (Platform.isWindows) {
-        await _windowsRestrict();
+        await tomSecretsRestrictWindowsDirectory(directory);
       } else {
         await _run('chmod', ['700', directory]);
       }
@@ -154,16 +155,8 @@ final class TomSecretsRuntime {
   /// Checks owner and mode (see [prepare]).
   Future<void> check() async {
     if (Platform.isWindows) {
-      final out = await _run('icacls', [directory]);
-      final user = Platform.environment['USERNAME'] ?? '';
-      final lines = out
-          .split(RegExp(r'\r?\n'))
-          .map((l) => l.replaceFirst(directory, '').trim())
-          .where((l) => l.contains(':('))
-          .toList();
-      for (final line in lines) {
-        final who = line.split(':(').first.split(r'\').last.toLowerCase();
-        if (who != user.toLowerCase() && who != 'system' && who != 'system-') {
+      for (final who in await tomSecretsWindowsGrantees(directory)) {
+        if (!tomSecretsWindowsUserOnly({who})) {
           throw TomSecretsRuntimeException(
             'the runtime directory grants $who access',
           );
@@ -194,18 +187,6 @@ final class TomSecretsRuntime {
         'the runtime directory belongs to user $owner',
       );
     }
-  }
-
-  Future<void> _windowsRestrict() async {
-    final user = Platform.environment['USERNAME'] ?? '';
-    await _run('icacls', [
-      directory,
-      '/inheritance:r',
-      '/grant:r',
-      '$user:(OI)(CI)F',
-      '/grant:r',
-      'SYSTEM:(OI)(CI)F',
-    ]);
   }
 
   static Future<String> _run(String executable, List<String> args) async {

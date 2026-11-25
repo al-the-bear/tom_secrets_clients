@@ -12,6 +12,8 @@
   - [TomSecretsAdminKeyring](#tomsecretsadminkeyring)
   - [TomSecretsRuntime](#tomsecretsruntime)
   - [TomSecretsRuntimeException](#tomsecretsruntimeexception)
+  - [TomSecretsDataDirectoryState](#tomsecretsdatadirectorystate)
+  - [TomSecretsDataDirectoryException](#tomsecretsdatadirectoryexception)
   - [TomSecretsAlreadyRunning](#tomsecretsalreadyrunning)
   - [TomSecretsHandover](#tomsecretshandover)
   - [TomSecretsStartResult](#tomsecretsstartresult)
@@ -68,9 +70,11 @@ Object
 ├── TomSecretsServicePairing
 ├── TomSecretsUnlockBundle
 ├── TomSecretsChunkAssembler
+├── TomSecretsDataDirectoryState
 └── (implements Exception)
     ├── TomSecretsAdminException
     ├── TomSecretsRuntimeException
+    ├── TomSecretsDataDirectoryException
     ├── TomSecretsAlreadyRunning
     ├── TomSecretsPairingModeException
     └── TomSecretsBundleException
@@ -261,6 +265,51 @@ TomSecretsRuntimeException(String message)
 | Method | Return Type | Description |
 | --- | --- | --- |
 | `toString()` | `String` | `TomSecretsRuntimeException: <message>` |
+
+---
+
+### TomSecretsDataDirectoryState
+
+What `tomSecretsPrepareDataDirectory` did.
+
+#### Constructors
+
+```dart
+const TomSecretsDataDirectoryState({required bool created, required int tightened})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `created` | `bool` | Whether the folder was made |
+| `tightened` | `int` | How many entries others could reach before (the folder included); 0 when it already was the user's alone |
+
+---
+
+### TomSecretsDataDirectoryException
+
+A data directory that is not the user's alone and cannot be made so.
+
+**Implements:** `Exception`
+
+#### Constructors
+
+```dart
+TomSecretsDataDirectoryException(String message)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `message` | `String` | What is wrong |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `toString()` | `String` | `TomSecretsDataDirectoryException: <message>` |
 
 ---
 
@@ -764,6 +813,7 @@ A developer tool the product configures: `ssh` (the service's agent as
 | `tomSecretsBrowserHostBeside` | `String tomSecretsBrowserHostBeside(String serviceExecutable, {required String operatingSystem})` | The browser host beside the service, where the service recognises it |
 | `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set |
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory |
+| `tomSecretsPrepareDataDirectory` | `Future<TomSecretsDataDirectoryState> tomSecretsPrepareDataDirectory(String path)` | Makes the data directory the user's alone: created 0700 (Windows: the inheritance cut, only the user and SYSTEM); an existing one others can reach tightened (`chmod -R go=`, files 0600, folders 0700; Windows: the ACL replaced); throws `TomSecretsDataDirectoryException` for no folder, another user's (POSIX), or one it cannot tighten |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder |
 | `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin |
 | `tomSecretsApprovalLinkProblem` | `String? tomSecretsApprovalLinkProblem(String text, {bool anyPort = false})` | Why a text cannot be the device setting `approvalLink`, or null: `host:port` (an IPv6 address in brackets), a port 1–65535 (with `anyPort` also 0), never every interface (`0.0.0.0`, `::`) |

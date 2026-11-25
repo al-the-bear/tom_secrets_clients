@@ -135,6 +135,7 @@ manager app, `tsm` and the service.
 | `tomSecretsOpenBundle` | `Future<Uint8List> tomSecretsOpenBundle({...})` | Opens a sealed key bundle | [→](api_summary_admin.md#functions) |
 | `tomSecretsDataDirectory` | `String tomSecretsDataDirectory({Map<String, String>? environment, String? operatingSystem})` | The data directory: `TSM_DATA_DIR`, else the OS's application-data folder; throws `StateError` when its variables are not set | [→](api_summary_admin.md#functions) |
 | `tomSecretsBootstrapPath` | `String tomSecretsBootstrapPath({Map<String, String>? environment, String? operatingSystem})` | The default bootstrap file, `bootstrap.yaml` in the data directory | [→](api_summary_admin.md#functions) |
+| `tomSecretsPrepareDataDirectory` | `Future<TomSecretsDataDirectoryState> tomSecretsPrepareDataDirectory(String path)` | Makes the data directory the user's alone (0700, files 0600; Windows the user-only ACL), tightening a looser one | [→](api_summary_admin.md#functions) |
 | `tomSecretsServiceCandidates` | `List<String> tomSecretsServiceCandidates(String appDirectory, {required String operatingSystem})` | Where the app looks for the service, in order: beside itself, then the distribution's tools folder | [→](api_summary_admin.md#functions) |
 | `tomSecretsDistributionApp` | `String tomSecretsDistributionApp(String serviceDirectory, {required String operatingSystem})` | The app executable of the distribution around a service in `.../tsm/bin`, which the service admits as an admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsStartService` | `Future<TomSecretsStartResult> tomSecretsStartService({required String executable, List<String> arguments = const [], required String bootstrap, Map<String, String>? environment, Duration timeout = const Duration(seconds: 60)})` | Starts the service detached with a fresh admin key handed on its standard input; waits for its answer line | [→](api_summary_admin.md#functions) |
@@ -231,6 +232,9 @@ manager app, `tsm` and the service.
 | `tomSecretsAdminKeyHandle` | Admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsAuthDelay` | Admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsBootstrapPath` | Admin | [→](api_summary_admin.md#functions) |
+| `tomSecretsPrepareDataDirectory` | Admin | [→](api_summary_admin.md#functions) |
+| `TomSecretsDataDirectoryState` | Admin | [→](api_summary_admin.md#tomsecretsdatadirectorystate) |
+| `TomSecretsDataDirectoryException` | Admin | [→](api_summary_admin.md#tomsecretsdatadirectoryexception) |
 | `tomSecretsChallengeInput` | Admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsChallengeMac` | Admin | [→](api_summary_admin.md#functions) |
 | `tomSecretsConstantTimeEquals` | Admin | [→](api_summary_admin.md#functions) |

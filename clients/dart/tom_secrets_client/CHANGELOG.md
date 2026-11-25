@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.20
+
+- `tomSecretsPrepareDataDirectory` (admin library): the data directory is
+  the user's alone, as the runtime directory is. A missing one is created
+  0700 (Windows: the inheritance cut, only the user and SYSTEM, inherited by
+  what is inside); an existing one others can reach is tightened (POSIX
+  `chmod -R go=`: files 0600, folders 0700, the user's own bits kept;
+  Windows: the ACL replaced, other accounts removed), and the count is
+  answered (`TomSecretsDataDirectoryState`). One of another user, or a path
+  that is no folder, is refused (`TomSecretsDataDirectoryException`).
+- The runtime directory's Windows ACL code is shared with it; restricting a
+  runtime directory now also removes accounts granted explicitly.
+
 ## 0.2.19
 
 - Chunked members on the admin endpoint (protocol.md 2.7, feature

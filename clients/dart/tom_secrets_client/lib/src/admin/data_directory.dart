@@ -9,6 +9,9 @@ library;
 
 import 'dart:io';
 
+import '../discovery.dart' show currentUid;
+import 'windows_acl.dart';
+
 /// The data directory: `TSM_DATA_DIR` when set; on macOS
 /// `~/Library/Application Support/TomSecretsManager`; on Windows
 /// `%LOCALAPPDATA%\TomSecretsManager` (the runtime directory is its `run\`);
@@ -55,4 +58,133 @@ String tomSecretsBootstrapPath({
   final separator = os == 'windows' ? '\\' : '/';
   return '${tomSecretsDataDirectory(environment: environment, operatingSystem: os)}'
       '${separator}bootstrap.yaml';
+}
+
+/// A data directory that is not the user's alone and cannot be made so.
+final class TomSecretsDataDirectoryException implements Exception {
+  /// A problem described by [message].
+  TomSecretsDataDirectoryException(this.message);
+
+  /// What is wrong.
+  final String message;
+
+  @override
+  String toString() => 'TomSecretsDataDirectoryException: $message';
+}
+
+/// What [tomSecretsPrepareDataDirectory] did.
+final class TomSecretsDataDirectoryState {
+  /// [created] when it made the folder; [tightened] the entries (the folder
+  /// included) others could reach before.
+  const TomSecretsDataDirectoryState({
+    required this.created,
+    required this.tightened,
+  });
+
+  /// Whether the folder was made.
+  final bool created;
+
+  /// How many entries others could reach before (the folder included); 0
+  /// when it already was the user's alone.
+  final int tightened;
+}
+
+/// Makes the data directory [path] the user's alone, as the runtime
+/// directory is: a missing one is created with no access for anyone else
+/// (POSIX: mode 0700; Windows: the inheritance cut, only the user and
+/// SYSTEM granted, inherited by what is inside). An existing one that
+/// others can reach is tightened: on POSIX group and others lose every bit
+/// on the folder and on everything inside (`chmod -R go=`, so files are
+/// 0600, folders 0700, the user's own bits kept); on Windows the ACL is
+/// replaced as for a new one. The data directory holds the offline cache,
+/// the audit log, the device settings, the service's log and the agent's
+/// keys, none of them for another user.
+///
+/// Throws [TomSecretsDataDirectoryException] for a path that is not a
+/// folder, a folder another user owns (POSIX), or one that cannot be
+/// tightened.
+Future<TomSecretsDataDirectoryState> tomSecretsPrepareDataDirectory(
+  String path,
+) async {
+  final dir = Directory(path);
+  final type = await FileSystemEntity.type(path);
+  if (type != FileSystemEntityType.notFound &&
+      type != FileSystemEntityType.directory) {
+    throw TomSecretsDataDirectoryException('$path is not a folder');
+  }
+  final created = type == FileSystemEntityType.notFound;
+  if (created) await dir.create(recursive: true);
+  try {
+    return Platform.isWindows
+        ? await _prepareWindows(path, created)
+        : await _preparePosix(path, created);
+  } on FileSystemException catch (e) {
+    throw TomSecretsDataDirectoryException(
+      'the data directory $path could not be made the user\'s alone: '
+      '${e.message}',
+    );
+  }
+}
+
+Future<TomSecretsDataDirectoryState> _preparePosix(
+  String path,
+  bool created,
+) async {
+  final owner = await _run('stat', [
+    Platform.isMacOS ? '-f' : '-c',
+    '%u',
+    path,
+  ]);
+  final me = currentUid();
+  if (me != null && int.tryParse(owner.trim()) != me) {
+    throw TomSecretsDataDirectoryException(
+      'the data directory $path belongs to user ${owner.trim()}, not to '
+      'this user ($me)',
+    );
+  }
+  var loose = 0;
+  if ((await FileStat.stat(path)).mode & 0x3F != 0) loose++;
+  await for (final entry in Directory(
+    path,
+  ).list(recursive: true, followLinks: false)) {
+    if (entry is Link) continue;
+    if ((await entry.stat()).mode & 0x3F != 0) loose++;
+  }
+  // Why: one chmod for the whole tree, not one process per file; the
+  // user's own bits stay as they are.
+  if (loose > 0) await _run('chmod', ['-R', 'go=', path]);
+  return TomSecretsDataDirectoryState(
+    created: created,
+    tightened: created ? 0 : loose,
+  );
+}
+
+Future<TomSecretsDataDirectoryState> _prepareWindows(
+  String path,
+  bool created,
+) async {
+  if (created) {
+    await tomSecretsRestrictWindowsDirectory(path);
+    return const TomSecretsDataDirectoryState(created: true, tightened: 0);
+  }
+  if (tomSecretsWindowsUserOnly(await tomSecretsWindowsGrantees(path))) {
+    return const TomSecretsDataDirectoryState(created: false, tightened: 0);
+  }
+  await tomSecretsRestrictWindowsDirectory(path);
+  if (!tomSecretsWindowsUserOnly(await tomSecretsWindowsGrantees(path))) {
+    throw TomSecretsDataDirectoryException(
+      'the data directory $path still grants others access',
+    );
+  }
+  return const TomSecretsDataDirectoryState(created: false, tightened: 1);
+}
+
+Future<String> _run(String executable, List<String> args) async {
+  final result = await Process.run(executable, args);
+  if (result.exitCode != 0) {
+    throw FileSystemException(
+      '$executable ${args.join(' ')} failed: ${result.stderr}',
+    );
+  }
+  return result.stdout as String;
 }
