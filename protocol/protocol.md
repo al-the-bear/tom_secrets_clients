@@ -1524,9 +1524,12 @@ length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
    (`giverKeys`: `approverKey`, `linkKey`, `linkAddress`). Never a private
    approver or link key, a master password, the allow list or the audit
    log.
-5. A answers `{"op":"done","keys"}` with its own public keys (`linkKey`,
-   `approverKey` when it approves, `linkAddress`: where its approval link
-   listens, its device setting `approvalLink`, when it has one), or
+5. A answers `{"op":"done","keys","platform"}` with its own public keys
+   (`linkKey`, `approverKey` when it approves, `linkAddress`: where its
+   approval link listens, its device setting `approvalLink`, when it has
+   one) and its platform (`macos`, `linux`, `windows`, `ios`, `android`;
+   the giving side records it in the device record, `pair.record`'s
+   `record.platform`, and leaves out one that is no lower-case name), or
    `{"op":"refused","reason"}` when it cannot take the bundle (a machine
    being set up needs the primary, and a `github:` primary its token); then
    both sides end and nothing is stored. Both derive the approval-token key,
@@ -1942,3 +1945,8 @@ part-service) leaves these open; this document fixes them:
     handlers and the app's code are unchanged. They are read only after the
     admin has authenticated, so an unauthenticated peer can never make the
     service hold more than one 64 KiB frame.
+50. The receiving device names its own platform in the pairing's `done`
+    answer, so the device record says what each paired device is without a
+    message of its own; the field is optional, so an older device simply
+    names none and its record leaves the platform empty, and a value that
+    is no lower-case name is dropped rather than recorded.
