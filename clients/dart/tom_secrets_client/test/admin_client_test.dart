@@ -162,11 +162,33 @@ void main() {
       expect(e.auth!['features'], contains(tomSecretsChunkedFeature));
       expect(admin.sendsChunked, isTrue);
 
+      // The bytes written are reported as they go: rising, and all of
+      // them at the end; a request of one frame reports nothing.
+      final progress = <(int, int)>[];
       final saved = await admin.request('save', {
         'store': 'primary',
         'bytes': file,
-      });
+      }, (sent, total) => progress.add((sent, total)));
       expect(saved['size'], file.length);
+      expect(progress.length, greaterThan(1));
+      expect(progress.last.$1, progress.last.$2);
+      expect(progress.last.$2, greaterThan(file.length));
+      for (var i = 1; i < progress.length; i++) {
+        expect(progress[i].$1, greaterThan(progress[i - 1].$1));
+        expect(progress[i].$2, progress.first.$2);
+      }
+      final small = <(int, int)>[];
+      await admin.request('status', const {}, (s, t) => small.add((s, t)));
+      expect(small, isEmpty);
+      // Requests sent while a large one is being written keep their order
+      // and their answers.
+      final both = await Future.wait([
+        admin.request('save', {'store': 'primary', 'bytes': file}),
+        admin.request('status'),
+      ]);
+      expect(both[0]['size'], file.length);
+      expect(both[1]['op'], isNotNull);
+      e.requests.removeRange(1, e.requests.length);
       expect(e.requests.single['bytes'], file);
       expect(
         e.frameSizes.every((s) => s <= tomSecretsMaxRequestPayload),

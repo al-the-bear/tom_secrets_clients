@@ -37,9 +37,16 @@ List<Uint8List> tomSecretsChunkedFrames(
   Map<String, Object?> message, {
   required int limit,
 }) {
-  final whole = tomSecretsJsonPayload(message);
-  if (whole.length <= limit) {
-    return [tomSecretsEncodeFrame(tomSecretsFrameJson, whole)];
+  // A member longer than the limit cannot fit whole: the message is not
+  // encoded as one first (a vault file of tens of megabytes).
+  final oversized = message.values.any((v) => v is String && v.length > limit);
+  var wholeLength = 0;
+  if (!oversized) {
+    final whole = tomSecretsJsonPayload(message);
+    if (whole.length <= limit) {
+      return [tomSecretsEncodeFrame(tomSecretsFrameJson, whole)];
+    }
+    wholeLength = whole.length;
   }
   final id = message['id'];
   if (id is! int) {
@@ -66,7 +73,9 @@ List<Uint8List> tomSecretsChunkedFrames(
   final head = tomSecretsJsonPayload(rest);
   if (head.length > limit || named.isEmpty) {
     throw TomSecretsFrameException(
-      'a message of ${whole.length} bytes does not fit a frame of $limit',
+      'a message of '
+      '${wholeLength == 0 ? tomSecretsJsonPayload(message).length : wholeLength}'
+      ' bytes does not fit a frame of $limit',
     );
   }
   final body = bytes.takeBytes();

@@ -350,24 +350,70 @@ final class TomSecretsAdminClient {
     }
   }
 
-  void _send(Map<String, Object?> message) {
-    if (!_sendsChunked) {
-      _socket.add(tomSecretsJsonFrame(message));
-      return;
-    }
-    for (final frame in tomSecretsChunkedFrames(
-      message,
-      limit: tomSecretsMaxRequestPayload,
-    )) {
-      _socket.add(frame);
+  /// The frames of [message] as this connection sends it: one JSON frame,
+  /// or with chunked members (protocol.md 2.7) when the service offered
+  /// them and it does not fit.
+  List<Uint8List> _framesOf(Map<String, Object?> message) => _sendsChunked
+      ? tomSecretsChunkedFrames(message, limit: tomSecretsMaxRequestPayload)
+      : [tomSecretsJsonFrame(message)];
+
+  // What is being written, in order: a chunked message is flushed as it
+  // goes, and the socket takes nothing more while a flush is pending.
+  Future<void> _sending = Future<void>.value();
+
+  /// How many bytes are written between two flushes (and two progress
+  /// reports) of a chunked message.
+  static const int _progressStep = 256 * 1024;
+
+  void _send(
+    Map<String, Object?> message, {
+    void Function(int sent, int total)? onProgress,
+  }) {
+    final frames = _framesOf(message);
+    _sending = _sending.then((_) => _write(frames, onProgress));
+  }
+
+  Future<void> _write(
+    List<Uint8List> frames,
+    void Function(int sent, int total)? onProgress,
+  ) async {
+    if (_closed) return;
+    try {
+      if (frames.length == 1) {
+        _socket.add(frames.single);
+        return;
+      }
+      final total = frames.fold<int>(0, (n, f) => n + f.length);
+      var sent = 0;
+      var unflushed = 0;
+      for (final frame in frames) {
+        _socket.add(frame);
+        sent += frame.length;
+        unflushed += frame.length;
+        if (unflushed >= _progressStep || sent == total) {
+          // Handed to the OS: the progress is what has left this process.
+          await _socket.flush();
+          unflushed = 0;
+          onProgress?.call(sent, total);
+          if (_closed) return;
+        }
+      }
+    } on Object {
+      // The connection ended meanwhile: its requests fail as `closed`.
     }
   }
 
   /// Sends the admin request [op] with [fields]; answers the answer, or
   /// throws [TomSecretsAdminException] for an `error`.
+  ///
+  /// A request that goes in chunks (a large vault's `save`) reports
+  /// [onProgress] as it is written: the bytes handed to the OS so far and
+  /// the bytes in all, about every 256 KiB and at the end. A request that
+  /// fits one frame reports nothing.
   Future<Map<String, Object?>> request(
     String op, [
     Map<String, Object?> fields = const {},
+    void Function(int sent, int total)? onProgress,
   ]) async {
     // A connection that ended answers nothing more: waiting would never end.
     if (_closed) {
@@ -377,7 +423,7 @@ final class TomSecretsAdminClient {
     final c = Completer<Map<String, Object?>>();
     _pending[id] = c;
     try {
-      _send({...fields, 'op': op, 'id': id});
+      _send({...fields, 'op': op, 'id': id}, onProgress: onProgress);
     } on TomSecretsFrameException catch (e) {
       _pending.remove(id);
       throw TomSecretsAdminException(

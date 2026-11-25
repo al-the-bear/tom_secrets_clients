@@ -120,7 +120,7 @@ An authenticated admin connection: requests by id and the pushed events.
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `request(String op, [Map<String, Object?> fields = const {}])` | `Future<Map<String, Object?>>` | Sends an admin request with an id (its large members as chunks when it exceeds the request limit and the service offers them); answers the answer, or throws `TomSecretsAdminException` for an `error`, and `closed` at once on a connection that has ended |
+| `request(String op, [Map<String, Object?> fields = const {}, void Function(int sent, int total)? onProgress])` | `Future<Map<String, Object?>>` | Sends an admin request with an id; a request that goes in chunks reports `onProgress` as it is written (the bytes handed to the OS so far and in all, about every 256 KiB) (its large members as chunks when it exceeds the request limit and the service offers them); answers the answer, or throws `TomSecretsAdminException` for an `error`, and `closed` at once on a connection that has ended |
 | `unlock(String password, {List<int>? keyFile})` | `Future<void>` | Unlocks with the master password (and key file) |
 | `unlockWithBundle(String vault, TomSecretsUnlockBundle bundle)` | `Future<void>` | Unlocks a store (the primary: the service) with the OS unlock's key bundle, sealed under this connection's bundle key (protocol.md 6.4); `unsupported` on a connection that claimed the service |
 | `close()` | `Future<void>` | Ends the connection |

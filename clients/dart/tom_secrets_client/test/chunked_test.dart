@@ -8,6 +8,7 @@
 // SHA-256 are refused. Demo data only.
 
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
@@ -115,6 +116,64 @@ void main() {
         ],
       }),
       throwsA(isA<TomSecretsFrameException>()),
+    );
+  });
+
+  test('the frame reader: a frame arriving in many small reads, frames '
+      'split across reads and several frames in one read come out the '
+      'same; an oversized length is refused as soon as its header is in', () {
+    final random = Random(7);
+    Uint8List payload(int n) =>
+        Uint8List.fromList(List.generate(n, (_) => random.nextInt(256)));
+    final payloads = [
+      payload(tomSecretsMaxAnswerPayload),
+      payload(0),
+      payload(3),
+      payload(70000),
+      payload(1),
+    ];
+    final stream = BytesBuilder();
+    for (final p in payloads) {
+      stream.add(tomSecretsEncodeFrame(tomSecretsFrameBinary, p));
+    }
+    final bytes = stream.takeBytes();
+    for (final step in [1 << 13, 4099, bytes.length, 7]) {
+      // Reads of one byte over the megabyte would take too long here.
+      if (step == 7 && bytes.length > 200000) continue;
+      final reader = TomSecretsFrameReader(
+        maxPayload: tomSecretsMaxAnswerPayload,
+      )..binaryAllowed = true;
+      final got = <TomSecretsFrame>[];
+      for (var at = 0; at < bytes.length; at += step) {
+        got.addAll(
+          reader.add(
+            Uint8List.sublistView(
+              bytes,
+              at,
+              at + step < bytes.length ? at + step : bytes.length,
+            ),
+          ),
+        );
+      }
+      expect(got, hasLength(payloads.length), reason: 'step $step');
+      for (var i = 0; i < payloads.length; i++) {
+        expect(got[i].type, tomSecretsFrameBinary);
+        expect(got[i].payload, payloads[i], reason: 'step $step, frame $i');
+      }
+    }
+    final small = TomSecretsFrameReader(maxPayload: 16);
+    final frames = small.add([
+      ...tomSecretsEncodeFrame(tomSecretsFrameJson, Uint8List(16)),
+      0,
+      0,
+      0,
+    ]);
+    expect(frames, hasLength(1));
+    expect(
+      // The rest of the second frame's header says 17 bytes.
+      () => small.add([17, 0]),
+      throwsA(isA<TomSecretsFrameException>()),
+      reason: 'a length of 17 over 16, refused before its payload',
     );
   });
 }

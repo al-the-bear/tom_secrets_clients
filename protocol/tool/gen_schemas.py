@@ -276,6 +276,10 @@ message('claimed', 'admin', 's2a', 'A', 'The new admin key after a successful cl
         ['adminKey'], adminKey=ref('base64_32'))
 message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing to return.',
         ['id'], also=['link'], id=ref('id'),
+        revision={'description': 'save only: the revision the file has now (section 6.4).',
+                  'type': 'string'},
+        merged={'description': 'save only: the app\'s copy was merged with what was there; '
+                'the app reads the file again (section 6.4).', 'const': True},
         pending={'description': 'save only: the remote could not take the file and it waits '
                  'in memory as a change not written (section 6.4).', 'const': True})
 message('unlock', 'admin', 'a2s', 'A', 'Open the primary file and the stores (phase A), or '

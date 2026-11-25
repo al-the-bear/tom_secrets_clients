@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.24
+
+- Large vaults (protocol.md 2.7): `TomSecretsAdminClient.request` takes
+  `onProgress(sent, total)`, called as a chunked request is written (about
+  every 256 KiB, the bytes handed to the OS); requests are written in
+  order behind it.
+- `TomSecretsFrameReader` copies a frame once, not once per socket read: a
+  1 MiB frame arrives in more than a hundred reads, and the old buffer was
+  copied at each (a 40 MB answer: about 2 s less). Bytes a frame carried
+  are overwritten in the buffer once the frame is taken.
+- `tomSecretsChunkedFrames` no longer encodes a message as one JSON text
+  first when a member alone is over the limit.
+
 ## 0.2.23
 
 - `tomSecretsUntrustedAdvice('mode')` names the fix that needs no admin

@@ -101,22 +101,52 @@ final class TomSecretsFrameReader {
   /// Whether binary frames were negotiated (both sides named `binary`).
   bool binaryAllowed = false;
 
-  final BytesBuilder _buffer = BytesBuilder(copy: false);
-  Uint8List _pending = Uint8List(0);
+  // The bytes not yet consumed are `_data[_start.._end]`. One growing
+  // buffer, appended to and consumed from the front: a frame arriving in
+  // many reads is copied once, not once per read (a 1 MiB frame comes in
+  // more than a hundred of them).
+  Uint8List _data = Uint8List(0);
+  int _start = 0;
+  int _end = 0;
+
+  void _append(List<int> bytes) {
+    final pending = _end - _start;
+    if (_data.length - _end < bytes.length) {
+      final needed = pending + bytes.length;
+      // Room in front is reused before the buffer grows; it grows by
+      // doubling, so appending stays linear.
+      final grown = needed > _data.length
+          ? Uint8List(needed > _data.length * 2 ? needed : _data.length * 2)
+          : _data;
+      if (identical(grown, _data)) {
+        _data.setRange(0, pending, _data, _start);
+        _data.fillRange(pending, _end, 0);
+      } else {
+        grown.setRange(0, pending, _data, _start);
+        // What a connection carried does not stay behind in a dropped
+        // buffer.
+        _data.fillRange(0, _data.length, 0);
+        _data = grown;
+      }
+      _start = 0;
+      _end = pending;
+    }
+    _data.setRange(_end, _end + bytes.length, bytes);
+    _end += bytes.length;
+  }
 
   /// Adds [bytes] and returns the frames now complete; throws
   /// [TomSecretsFrameException] on an oversized length or a bad type.
   List<TomSecretsFrame> add(List<int> bytes) {
-    _buffer
-      ..add(_pending)
-      ..add(bytes);
-    var data = _buffer.takeBytes();
+    _append(bytes);
     final frames = <TomSecretsFrame>[];
-    var offset = 0;
-    while (data.length - offset >= 5) {
-      final view = ByteData.sublistView(data, offset);
-      final length = view.getUint32(0);
-      final type = data[offset + 4];
+    while (_end - _start >= 5) {
+      final length = ByteData.sublistView(
+        _data,
+        _start,
+        _start + 4,
+      ).getUint32(0);
+      final type = _data[_start + 4];
       if (length > maxPayload) {
         throw TomSecretsFrameException(
           'frame of $length bytes over $maxPayload',
@@ -126,17 +156,19 @@ final class TomSecretsFrameReader {
           !(type == tomSecretsFrameBinary && binaryAllowed)) {
         throw TomSecretsFrameException('frame type $type');
       }
-      if (data.length - offset - 5 < length) break;
+      if (_end - _start - 5 < length) break;
+      final from = _start + 5;
       frames.add(
         TomSecretsFrame(
           type,
-          Uint8List.fromList(data.sublist(offset + 5, offset + 5 + length)),
+          Uint8List.fromList(Uint8List.sublistView(_data, from, from + length)),
         ),
       );
-      offset += 5 + length;
+      // The frame is its own copy now: its bytes leave the buffer.
+      _data.fillRange(_start, from + length, 0);
+      _start = from + length;
     }
-    _pending = Uint8List.fromList(data.sublist(offset));
-    data = Uint8List(0);
+    if (_start == _end) _start = _end = 0;
     return frames;
   }
 }

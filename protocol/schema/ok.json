@@ -15,6 +15,14 @@
     "id": {
       "$ref": "common.json#/$defs/id"
     },
+    "revision": {
+      "description": "save only: the revision the file has now (section 6.4).",
+      "type": "string"
+    },
+    "merged": {
+      "description": "save only: the app's copy was merged with what was there; the app reads the file again (section 6.4).",
+      "const": true
+    },
     "pending": {
       "description": "save only: the remote could not take the file and it waits in memory as a change not written (section 6.4).",
       "const": true
