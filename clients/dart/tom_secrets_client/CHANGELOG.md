@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.23
+
+- `tomSecretsUntrustedAdvice('mode')` names the fix that needs no admin
+  command: `chmod 700` on the runtime directory and `chmod 600` on its
+  sockets (a service older than 0.25.7 left its sockets open inside its
+  closed directory, and `tsm stop` is an admin command too).
+
 ## 0.2.22
 
 - The admin client checks who answers before it sends anything

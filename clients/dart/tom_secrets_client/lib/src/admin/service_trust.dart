@@ -66,9 +66,11 @@ String tomSecretsUntrustedAdvice(String? reason) => switch (reason) {
         'XDG_RUNTIME_DIR (or TSM_RUNTIME_DIR) at a directory of your own, '
         'or have the one named removed, then start the service again.',
   'mode' =>
-    'Others can reach the service\'s directory or socket. Stop the '
-        'service, close the directory to others (chmod 700; on Windows '
-        'only you and SYSTEM in its access list) and start it again.',
+    'Others can reach the service\'s directory or socket. Close them to '
+        'others and run this again: chmod 700 on the runtime directory and '
+        'chmod 600 on its sockets (a service older than 0.25.7 left its '
+        'sockets open inside its closed directory); on Windows only you '
+        'and SYSTEM in the directory\'s access list.',
   'peer_user' =>
     'A process of another user answers where this user\'s service would. '
         'Do not enter the master password. Find out what runs under the '
