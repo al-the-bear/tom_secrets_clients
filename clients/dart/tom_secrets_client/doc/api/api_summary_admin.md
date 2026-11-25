@@ -9,6 +9,10 @@
 - [Classes](#classes)
   - [TomSecretsAdminClient](#tomsecretsadminclient)
   - [TomSecretsAdminException](#tomsecretsadminexception)
+  - [TomSecretsServiceTrust](#tomsecretsservicetrust)
+  - [TomSecretsEndpointFacts](#tomsecretsendpointfacts)
+  - [TomSecretsServicePeer](#tomsecretsservicepeer)
+  - [TomSecretsEndpointInspector](#tomsecretsendpointinspector)
   - [TomSecretsAdminKeyring](#tomsecretsadminkeyring)
   - [TomSecretsRuntime](#tomsecretsruntime)
   - [TomSecretsRuntimeException](#tomsecretsruntimeexception)
@@ -36,6 +40,7 @@
   - [TomSecretsTransport](#tomsecretstransport)
   - [TomSecretsBrowser](#tomsecretsbrowser)
   - [TomSecretsIntegration](#tomsecretsintegration)
+  - [TomSecretsUntrustedReason](#tomsecretsuntrustedreason)
 - [Typedefs](#typedefs)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -46,7 +51,8 @@
 The admin module is `package:tom_secrets_client/admin.dart`: the admin side
 of the Tom Secrets Manager's local protocol, used by the manager app, `tsm`
 and the service itself. It holds the admin client with its mutual challenge
-and `claim`, the runtime directory, starting the service with its admin-key
+and `claim`, the check of who answers on the admin endpoint, the runtime
+directory, starting the service with its admin-key
 handover, the service's pairing mode, the admin keys in the OS keychain,
 where the product keeps its data, the keychain names and the layout of the
 app's distribution. A program that only reads secrets needs none of it.
@@ -58,6 +64,11 @@ app's distribution. A program that only reads secrets needs none of it.
 ```text
 Object
 ├── TomSecretsAdminClient
+├── TomSecretsServiceTrust
+├── TomSecretsEndpointFacts
+├── TomSecretsServicePeer
+├── TomSecretsEndpointInspector (interface)
+│   └── TomSecretsSystemEndpointInspector
 ├── TomSecretsAdminKeyring
 ├── TomSecretsRuntime
 ├── TomSecretsHandover
@@ -92,8 +103,9 @@ An authenticated admin connection: requests by id and the pushed events.
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `connect(TomSecretsRuntime runtime, List<int> adminKey, {Map<String, Object?> client = const {'name': 'tsm'}})` | `Future<TomSecretsAdminClient>` | Connects to the admin endpoint and runs the mutual challenge; throws `service_impostor` when the service's proof is wrong, `denied` when the service refuses the key, `not_running` when no service answers |
-| `claim(TomSecretsRuntime runtime, {required String password, List<int>? keyFile, Map<String, Object?> client = const {'name': 'tsm'}})` | `Future<(TomSecretsAdminClient, Uint8List)>` | Takes the service over with the master password; answers the connection and the new admin key. The service cannot prove itself here, so the caller warns the user first |
+| `connect(TomSecretsRuntime runtime, List<int> adminKey, {Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<TomSecretsAdminClient>` | Connects to the admin endpoint and runs the mutual challenge; throws `service_untrusted` (before anything is sent) when `trust` finds the endpoint is not this user's service, `service_impostor` when the service's proof is wrong, `denied` when the service refuses the key, `not_running` when no service answers |
+| `claim(TomSecretsRuntime runtime, {required String password, List<int>? keyFile, Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<(TomSecretsAdminClient, Uint8List)>` | Takes the service over with the master password; answers the connection and the new admin key. The service cannot prove it holds a key here: the claim is sent only to an endpoint `trust` accepts (`service_untrusted` otherwise, nothing sent) |
+| `checkService(TomSecretsRuntime runtime, {TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<void>` | Checks that the admin endpoint is this user's service and sends nothing: what an admin does before it asks for the master password of a `claim`. Throws `not_running` or `service_untrusted` |
 
 #### Properties
 
@@ -135,7 +147,7 @@ TomSecretsAdminException(
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `kind` | `String` | The error kind (`denied`, `locked`, ...) or `closed`, `not_running`, `service_impostor` |
+| `kind` | `String` | The error kind (`denied`, `locked`, ...) or `closed`, `not_running`, `service_impostor`, `service_untrusted` (the endpoint is not this user's service: `details.reason` `owner`, `mode`, `peer_user` or `peer_executable`; nothing was sent) |
 | `message` | `String` | What happened |
 | `details` | `Map<String, Object?>` | The error's details |
 
@@ -144,6 +156,69 @@ TomSecretsAdminException(
 | Method | Return Type | Description |
 | --- | --- | --- |
 | `toString()` | `String` | `TomSecretsAdminException(<kind>): <message>` |
+
+---
+
+### TomSecretsServiceTrust
+
+The check an admin connection runs before it sends anything (protocol.md
+6.0): the runtime directory and the admin socket are this user's alone, the
+process answering runs as this user and is the service executable expected.
+
+```dart
+const TomSecretsServiceTrust({
+  Set<String>? executables,
+  TomSecretsEndpointInspector inspector =
+      const TomSecretsSystemEndpointInspector(),
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `executables` | `Set<String>?` | The service executables expected, as real paths; null: `tomSecretsExpectedServiceExecutables()` of this process |
+| `inspector` | `TomSecretsEndpointInspector` | Reads the endpoint |
+| `expected` | `Set<String>` | The executables expected |
+
+#### Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `judgeFiles(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the endpoint's files are not trusted, or null |
+| `judgePeer(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the process answering is not trusted, or null |
+
+---
+
+### TomSecretsEndpointFacts
+
+What was measured of an endpoint: `operatingSystem`, `ownUser`, `ownPid`,
+on Linux and macOS the `directory` and `socket` (owner, mode, type; a link
+is not followed), on Windows the `directoryGrantees`, and the `peer`.
+
+---
+
+### TomSecretsServicePeer
+
+The process at the other end of the admin connection.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `pid` | `int` | Its process id |
+| `user` | `Object?` | Its OS user: a number on Linux and macOS, a SID string on Windows; null when it could not be read |
+| `executable` | `String?` | Its executable's real path, or null when it could not be read |
+| `executableHidden` | `bool` | Whether the OS hides the executable from its own user (Linux, a process that made itself not dumpable, as the service does): it cannot be checked then |
+
+---
+
+### TomSecretsEndpointInspector
+
+Reads the facts of an endpoint: `files(runtime)` before the connection is
+opened, `withPeer(facts, socket)` once it is.
+`TomSecretsSystemEndpointInspector` is the one of this OS (`stat`;
+`SO_PEERCRED` and `/proc` on Linux, `LOCAL_PEERPID`, `LOCAL_PEERCRED` and
+`proc_pidpath` on macOS, `icacls`, `GetExtendedTcpTable`, the process
+token's SID and `QueryFullProcessImageNameW` on Windows).
 
 ---
 
@@ -756,10 +831,25 @@ A developer tool the product configures: `ssh` (the service's agent as
 
 ---
 
+### TomSecretsUntrustedReason
+
+Why an endpoint is not trusted (`details.reason` of `service_untrusted`).
+
+| Value | `wireName` | Meaning |
+| --- | --- | --- |
+| `owner` | `owner` | The runtime directory or the socket belongs to another user, or is no directory / socket |
+| `mode` | `mode` | The runtime directory or the socket is open to others |
+| `peerUser` | `peer_user` | The process answering runs as another user, or cannot be measured |
+| `peerExecutable` | `peer_executable` | The process answering is not the service executable expected |
+
+---
+
 ## Typedefs
 
 | Typedef | Definition | Description |
 | --- | --- | --- |
+| `TomSecretsFileFacts` | `({int owner, int mode, String type})` | A file as the check reads it: owner, permission bits, `directory` / `socket` / `link` / `file` / `other` |
+| `TomSecretsUntrusted` | `({TomSecretsUntrustedReason reason, String message})` | A verdict against an endpoint: the reason and a sentence for the user |
 | `TomSecretsPairedVault` | `({String name, String locator, bool primary})` | One vault a pairing gave |
 
 ---
@@ -780,6 +870,7 @@ A developer tool the product configures: `ssh` (the service's agent as
 | `tomSecretsServiceExecutable` | `String` | The service's executable name without `.exe`, `tom_secrets_service` |
 | `tomSecretsBrowserHostId` | `String` | The native-messaging host's name, `net.tom.secrets` |
 | `tomSecretsChunkedFeature` | `String` | The admin feature of chunked members, `chunked` (protocol.md 2.7) |
+| `tomSecretsServiceUntrusted` | `String` | The admin error kind of an endpoint that is not this user's service, `service_untrusted` (protocol.md 6.0) |
 | `tomSecretsMaxChunkedBytes` | `int` | The most a chunked message may carry in all (512 MiB) |
 | `tomSecretsFirefoxExtensionId` | `String` | The Firefox extension's id, `tom-secrets@enterprise-flutter.dev` |
 | `tomSecretsChromiumDevelopmentKey` | `String` | The Chromium development build's public key (the manifest's `key`) |
@@ -799,6 +890,18 @@ A developer tool the product configures: `ssh` (the service's agent as
 
 | Function | Signature | Description |
 | --- | --- | --- |
+| `tomSecretsJudgeService` | `TomSecretsUntrusted? tomSecretsJudgeService(TomSecretsEndpointFacts facts, {required Set<String> executables, bool Function(Set<String>) userOnly})` | Why the endpoint is not this user's service, or null: its files, then the process answering |
+| `tomSecretsJudgeEndpointFiles` | `TomSecretsUntrusted? tomSecretsJudgeEndpointFiles(TomSecretsEndpointFacts facts, {bool Function(Set<String>) userOnly})` | Why the runtime directory and the admin socket (Windows: the directory's access list) are not this user's alone, or null |
+| `tomSecretsJudgeServicePeer` | `TomSecretsUntrusted? tomSecretsJudgeServicePeer(TomSecretsEndpointFacts facts, {required Set<String> executables})` | Why the process answering is not the service expected, or null; this very process passes, and so does one whose executable the OS hides from its own user |
+| `tomSecretsJudgeFile` | `TomSecretsUntrusted? tomSecretsJudgeFile(String what, TomSecretsFileFacts? file, String type, Object? ownUser)` | Why a file is not the user's alone: not the type expected, another owner, or open to group or others |
+| `tomSecretsExpectedServiceExecutables` | `Set<String> tomSecretsExpectedServiceExecutables({String? ownExecutable, Map<String, String>? environment, Iterable<String> configured, String? operatingSystem})` | The service executables an admin expects, as real paths: beside it, in its distribution's tools folder, `TSM_SERVICE`, and those configured |
+| `tomSecretsUntrustedAdvice` | `String tomSecretsUntrustedAdvice(String? reason)` | What the user can do about an endpoint refused for that reason |
+| `tomSecretsServicePeerOf` | `TomSecretsServicePeer? tomSecretsServicePeerOf(Socket socket)` | The process at the other end of a connection this process opened |
+| `tomSecretsStatFiles` | `Map<String, TomSecretsFileFacts> tomSecretsStatFiles(List<String> paths)` | Owner, mode and type of each path itself, read with `stat`'s raw mode |
+| `tomSecretsParseStat` | `TomSecretsFileFacts? tomSecretsParseStat(String line)` | A line `<uid> <raw mode in hex>` as the facts |
+| `tomSecretsOwnUser` | `Object? tomSecretsOwnUser()` | This process's OS user: a number, or a SID string on Windows |
+| `tomSecretsRealExecutable` | `String tomSecretsRealExecutable(String path)` | The path with its links resolved, or as it is when it does not exist |
+| `tomSecretsWindowsTcpOwner` | `int? tomSecretsWindowsTcpOwner({required int localPort, required int remotePort})` | Windows: the PID owning that end of a localhost TCP connection |
 | `tomSecretsChallengeInput` | `Uint8List tomSecretsChallengeInput(String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | The MAC input: the label's ASCII, both 32-byte nonces, the service start as 8 bytes big-endian |
 | `tomSecretsChallengeMac` | `Uint8List tomSecretsChallengeMac(List<int> adminKey, String label, List<int> serviceNonce, List<int> adminNonce, int serviceStart)` | HMAC-SHA256 of the challenge input under the admin key |
 | `tomSecretsConstantTimeEquals` | `bool tomSecretsConstantTimeEquals(List<int> a, List<int> b)` | Equality in time independent of where the lists differ |

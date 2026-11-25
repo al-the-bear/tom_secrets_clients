@@ -20,6 +20,7 @@ import '../../tom_secrets_client.dart';
 import 'admin_auth.dart';
 import 'chunked.dart';
 import 'runtime.dart';
+import 'service_trust.dart';
 import 'unlock_bundle.dart';
 
 /// The admin endpoint refused or broke the conversation.
@@ -28,7 +29,9 @@ final class TomSecretsAdminException implements Exception {
   TomSecretsAdminException(this.kind, this.message, {this.details = const {}});
 
   /// The error kind (`denied`, `locked`, ...) or `closed`, `not_running`,
-  /// `service_impostor`.
+  /// `service_impostor`, `service_untrusted` (the endpoint is not this
+  /// user's service: `details.reason` `owner`, `mode`, `peer_user` or
+  /// `peer_executable`; nothing was sent).
   final String kind;
 
   /// What happened.
@@ -47,13 +50,16 @@ final class TomSecretsAdminClient {
 
   /// Connects to the admin endpoint of [runtime] and proves both sides hold
   /// [adminKey]; throws `service_impostor` when the service's `mac2` is
-  /// wrong, `denied` when the service refuses the key.
+  /// wrong, `denied` when the service refuses the key, and
+  /// `service_untrusted` (before anything is sent) when [trust] finds the
+  /// endpoint is not this user's service.
   static Future<TomSecretsAdminClient> connect(
     TomSecretsRuntime runtime,
     List<int> adminKey, {
     Map<String, Object?> client = const {'name': 'tsm'},
+    TomSecretsServiceTrust trust = const TomSecretsServiceTrust(),
   }) async {
-    final admin = await _open(runtime);
+    final admin = await _open(runtime, trust);
     final challenge = await admin._next();
     admin._takeFeatures(challenge);
     final serviceNonce = base64.decode(challenge['serviceNonce']! as String);
@@ -100,15 +106,19 @@ final class TomSecretsAdminClient {
   }
 
   /// Takes the service over with the master password (`claim`): the service
-  /// cannot prove itself here, so the caller warns the user first. Answers
-  /// the connection and the new admin key.
+  /// cannot prove it holds a key here, so [trust] is all that stands
+  /// between the password and whatever answers: the claim is sent only to
+  /// an endpoint that is this user's service (`service_untrusted`
+  /// otherwise, nothing sent). Answers the connection and the new admin
+  /// key.
   static Future<(TomSecretsAdminClient, Uint8List)> claim(
     TomSecretsRuntime runtime, {
     required String password,
     List<int>? keyFile,
     Map<String, Object?> client = const {'name': 'tsm'},
+    TomSecretsServiceTrust trust = const TomSecretsServiceTrust(),
   }) async {
-    final admin = await _open(runtime);
+    final admin = await _open(runtime, trust);
     // The challenge, unanswerable without the key; its features count.
     admin._takeFeatures(await admin._next());
     admin._send({
@@ -124,7 +134,56 @@ final class TomSecretsAdminClient {
     return (admin, base64.decode(answer['adminKey']! as String));
   }
 
-  static Future<TomSecretsAdminClient> _open(TomSecretsRuntime runtime) async {
+  static Never _untrusted(TomSecretsUntrusted why) =>
+      throw TomSecretsAdminException(
+        tomSecretsServiceUntrusted,
+        'the admin endpoint is not this user\'s service: ${why.message}',
+        details: {'reason': why.reason.wireName},
+      );
+
+  /// Checks that the admin endpoint of [runtime] is this user's service
+  /// ([trust]) and sends nothing: what an admin does before it asks the
+  /// user for the master password of a `claim`. Throws `not_running` or
+  /// `service_untrusted`.
+  static Future<void> checkService(
+    TomSecretsRuntime runtime, {
+    TomSecretsServiceTrust trust = const TomSecretsServiceTrust(),
+  }) async => (await _connectChecked(runtime, trust)).destroy();
+
+  static Future<TomSecretsAdminClient> _open(
+    TomSecretsRuntime runtime,
+    TomSecretsServiceTrust trust,
+  ) async {
+    final socket = await _connectChecked(runtime, trust);
+    final admin = TomSecretsAdminClient._(socket);
+    admin._subscription = socket.listen(
+      admin._data,
+      onDone: admin._done,
+      onError: (Object _) => admin._done(),
+    );
+    return admin;
+  }
+
+  /// A connection to the admin endpoint of [runtime] that passed [trust];
+  /// nothing was sent on it.
+  static Future<Socket> _connectChecked(
+    TomSecretsRuntime runtime,
+    TomSecretsServiceTrust trust,
+  ) async {
+    // Nothing is running where there is no endpoint: said before the files
+    // are judged, so a stopped service reads as stopped.
+    final endpoint = runtime.transport == TomSecretsTransport.unix
+        ? runtime.adminSocket
+        : runtime.adminPortFile;
+    if (await FileSystemEntity.type(endpoint, followLinks: false) ==
+        FileSystemEntityType.notFound) {
+      throw TomSecretsAdminException('not_running', 'no service answers');
+    }
+    // The files first: a directory or socket of someone else is never
+    // connected to.
+    final files = trust.inspector.files(runtime);
+    final early = trust.judgeFiles(files);
+    if (early != null) _untrusted(early);
     final Socket socket;
     try {
       socket = runtime.transport == TomSecretsTransport.unix
@@ -145,13 +204,13 @@ final class TomSecretsAdminClient {
     } on Object {
       throw TomSecretsAdminException('not_running', 'no service answers');
     }
-    final admin = TomSecretsAdminClient._(socket);
-    admin._subscription = socket.listen(
-      admin._data,
-      onDone: admin._done,
-      onError: (Object _) => admin._done(),
-    );
-    return admin;
+    // Then who answers, before a byte is sent.
+    final why = trust.judgePeer(trust.inspector.withPeer(files, socket));
+    if (why != null) {
+      socket.destroy();
+      _untrusted(why);
+    }
+    return socket;
   }
 
   final Socket _socket;

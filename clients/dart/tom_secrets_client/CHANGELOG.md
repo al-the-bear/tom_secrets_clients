@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.22
+
+- The admin client checks who answers before it sends anything
+  (protocol.md 6.0, `TomSecretsServiceTrust`): `connect` and `claim` go on
+  only when the runtime directory and the admin socket are this user's
+  alone (0700 / 0600; on Windows the directory's access list), the process
+  answering runs as this user, and it is the service executable expected
+  (beside the admin or in its distribution, the one `TSM_SERVICE` names, or
+  one handed in). Otherwise they throw `service_untrusted` with
+  `details.reason` `owner`, `mode`, `peer_user` or `peer_executable`, and
+  nothing was sent: a `claim` no longer hands the master password to
+  whatever answers. `TomSecretsAdminClient.checkService` runs the check
+  alone, before the password is asked for; `tomSecretsUntrustedAdvice`
+  says what to do about each reason.
+- `TomSecretsRuntime.check` judges the runtime directory itself, never what
+  a link there points to: a directory or link another user left in `/tmp`
+  is refused, never used.
+- New dependency: `ffi`.
+
 ## 0.2.21
 
 - `tomSecretsPrepareDataDirectory` runs its `stat`, `chmod` and `icacls`

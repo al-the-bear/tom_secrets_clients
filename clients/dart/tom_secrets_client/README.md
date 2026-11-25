@@ -345,9 +345,39 @@ key without sending it, and the service's proof is checked before anything
 secret is sent (a wrong one throws `TomSecretsAdminException` of kind
 `service_impostor`). `claim` takes the service over with the master password
 when no admin key is held and answers the connection with a new admin key;
-the service cannot prove itself there, so the caller warns the user first.
-Failures are `TomSecretsAdminException` with the protocol's error kind, or
-`closed` / `not_running`.
+the service cannot prove it holds a key there.
+
+Before either sends anything, the client checks who answers
+(`TomSecretsServiceTrust`, protocol.md 6.0):
+
+- the runtime directory and the admin socket belong to this user and are
+  closed to everyone else (0700 / 0600; on Windows the directory's access
+  list grants only the user and SYSTEM);
+- the process answering runs as this user;
+- that process is the service executable expected: `tom_secrets_service`
+  beside the program or in its distribution's `tsm/bin`, the one
+  `TSM_SERVICE` names, or the ones handed in (`executables`).
+
+A check that fails throws `service_untrusted` with `details.reason`
+(`owner`, `mode`, `peer_user`, `peer_executable`) and nothing was sent;
+`tomSecretsUntrustedAdvice` says what to do. `checkService` runs the check
+alone, so a program asks for the master password only once it passed.
+
+```dart
+try {
+  await TomSecretsAdminClient.checkService(runtime);
+} on TomSecretsAdminException catch (e) {
+  if (e.kind == tomSecretsServiceUntrusted) {
+    print(e.message);
+    print(tomSecretsUntrustedAdvice(e.details['reason'] as String?));
+  }
+}
+```
+
+On Linux a service that hardened itself (not dumpable) hides its executable
+from its own user: there the owner, mode and user checks hold and the
+executable cannot be compared. Other failures are `TomSecretsAdminException`
+with the protocol's error kind, or `closed` / `not_running`.
 
 #### The runtime directory
 

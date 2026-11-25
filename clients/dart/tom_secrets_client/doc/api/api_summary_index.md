@@ -102,6 +102,10 @@ manager app, `tsm` and the service.
 | `TomSecretsUnlockBundle` | The OS unlock's key material of one vault: its composite key and repository key. | [→](api_summary_admin.md#tomsecretsunlockbundle) |
 | `TomSecretsBundleException` | A sealed bundle did not open, or is no bundle. | [→](api_summary_admin.md#tomsecretsbundleexception) |
 | `TomSecretsAdminException` | The admin endpoint refused or broke the conversation. | [→](api_summary_admin.md#tomsecretsadminexception) |
+| `TomSecretsServiceTrust` | The check an admin connection runs before it sends anything: the endpoint's files are the user's alone, the process answering runs as the user and is the service expected. | [→](api_summary_admin.md#tomsecretsservicetrust) |
+| `TomSecretsEndpointFacts` | What was measured of an endpoint. | [→](api_summary_admin.md#tomsecretsendpointfacts) |
+| `TomSecretsServicePeer` | The process at the other end of the admin connection. | [→](api_summary_admin.md#tomsecretsservicepeer) |
+| `TomSecretsEndpointInspector` | Reads the facts of an endpoint; `TomSecretsSystemEndpointInspector` is this OS's. | [→](api_summary_admin.md#tomsecretsendpointinspector) |
 | `TomSecretsAdminKeyring` | The admin keys the app and `tsm` keep in the OS keychain, one per start of the service, and the index of the starts they were kept for. | [→](api_summary_admin.md#tomsecretsadminkeyring) |
 | `TomSecretsRuntime` | The runtime directory of this OS user: its check, the single-instance lock `service.lock`, `service.json` and the endpoint files. | [→](api_summary_admin.md#tomsecretsruntime) |
 | `TomSecretsRuntimeException` | A runtime directory that is not the user's alone, or cannot be made. | [→](api_summary_admin.md#tomsecretsruntimeexception) |

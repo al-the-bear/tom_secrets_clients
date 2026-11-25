@@ -16,6 +16,29 @@ import 'package:test/test.dart';
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 
+/// The endpoint here is TCP on every OS, which only Windows can measure:
+/// the check of who answers (service_trust_test.dart) is handed facts that
+/// pass.
+final class _Passing implements TomSecretsEndpointInspector {
+  const _Passing();
+
+  @override
+  TomSecretsEndpointFacts files(TomSecretsRuntime runtime) =>
+      TomSecretsEndpointFacts(
+        operatingSystem: 'linux',
+        ownUser: 1000,
+        ownPid: pid,
+        directory: (owner: 1000, mode: 448, type: 'directory'),
+        socket: (owner: 1000, mode: 384, type: 'socket'),
+        peer: TomSecretsServicePeer(pid: pid, user: 1000, executable: null),
+      );
+
+  @override
+  TomSecretsEndpointFacts withPeer(TomSecretsEndpointFacts f, Socket s) => f;
+}
+
+const _trusted = TomSecretsServiceTrust(inspector: _Passing());
+
 /// An admin endpoint that authenticates [adminKey] and hands every request
 /// after that to [onRequest]; [features] are offered in the challenge.
 final class _Endpoint {
@@ -130,7 +153,11 @@ void main() {
         },
       );
       addTearDown(e.server.close);
-      final admin = await TomSecretsAdminClient.connect(e.runtime, adminKey);
+      final admin = await TomSecretsAdminClient.connect(
+        e.runtime,
+        adminKey,
+        trust: _trusted,
+      );
       addTearDown(admin.close);
       expect(e.auth!['features'], contains(tomSecretsChunkedFeature));
       expect(admin.sendsChunked, isTrue);
@@ -160,7 +187,11 @@ void main() {
           socket.add(tomSecretsJsonFrame({'op': 'ok', 'id': m['id']})),
     );
     addTearDown(e.server.close);
-    final admin = await TomSecretsAdminClient.connect(e.runtime, adminKey);
+    final admin = await TomSecretsAdminClient.connect(
+      e.runtime,
+      adminKey,
+      trust: _trusted,
+    );
     addTearDown(admin.close);
     expect(admin.sendsChunked, isFalse);
     await admin.request('status');
@@ -174,7 +205,11 @@ void main() {
       onRequest: (e, socket, m) => socket.destroy(),
     );
     addTearDown(e.server.close);
-    final admin = await TomSecretsAdminClient.connect(e.runtime, adminKey);
+    final admin = await TomSecretsAdminClient.connect(
+      e.runtime,
+      adminKey,
+      trust: _trusted,
+    );
     await expectLater(
       admin.request('save', {'store': 'primary', 'bytes': 'AAAA'}),
       throwsA(

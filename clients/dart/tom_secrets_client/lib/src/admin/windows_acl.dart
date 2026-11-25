@@ -9,8 +9,13 @@ import 'dart:io';
 
 /// Who [path]'s ACL grants, each account in lower case without its domain
 /// (`alice`, `system`, `administrators`).
-Future<Set<String>> tomSecretsWindowsGrantees(String path) async {
-  final out = await _icacls([path]);
+Future<Set<String>> tomSecretsWindowsGrantees(String path) async =>
+    tomSecretsWindowsGranteesSync(path);
+
+/// [tomSecretsWindowsGrantees], at once. Throws [FileSystemException] when
+/// the ACL cannot be read.
+Set<String> tomSecretsWindowsGranteesSync(String path) {
+  final out = _icaclsSync([path]);
   return {
     for (final line in out.split(RegExp(r'\r?\n')))
       if (line.replaceFirst(path, '').trim().contains(':('))
@@ -52,7 +57,9 @@ Future<void> tomSecretsRestrictWindowsDirectory(String path) async {
 }
 
 // Synchronous for the reason data_directory.dart's commands are.
-Future<String> _icacls(List<String> args) async {
+Future<String> _icacls(List<String> args) async => _icaclsSync(args);
+
+String _icaclsSync(List<String> args) {
   final result = Process.runSync('icacls', args);
   if (result.exitCode != 0) {
     throw FileSystemException(

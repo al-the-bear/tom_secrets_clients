@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../tom_secrets_client.dart';
+import 'service_trust.dart';
 import 'windows_acl.dart';
 
 /// A runtime directory that is not the user's alone, or cannot be made.
@@ -152,7 +153,8 @@ final class TomSecretsRuntime {
     await check();
   }
 
-  /// Checks owner and mode (see [prepare]).
+  /// Checks owner and mode (see [prepare]): a directory that exists but is
+  /// not this user's own is refused, never used or changed.
   Future<void> check() async {
     if (Platform.isWindows) {
       for (final who in await tomSecretsWindowsGrantees(directory)) {
@@ -164,29 +166,15 @@ final class TomSecretsRuntime {
       }
       return;
     }
-    final stat = await FileStat.stat(directory);
-    if (stat.type != FileSystemEntityType.directory) {
-      throw TomSecretsRuntimeException('$directory is not a directory');
-    }
-    if (stat.mode & 0x3F != 0) {
-      throw TomSecretsRuntimeException(
-        'the runtime directory is open to others '
-        '(mode ${(stat.mode & 0x1FF).toRadixString(8)})',
-      );
-    }
-    final owner = int.parse(
-      (await _run('stat', [
-        Platform.isMacOS ? '-f' : '-c',
-        '%u',
-        directory,
-      ])).trim(),
+    // The directory itself, not what a link there points to: in `/tmp`
+    // another user can leave a link, or the directory, first.
+    final why = tomSecretsJudgeFile(
+      'runtime directory',
+      tomSecretsStatFiles([directory])[directory],
+      'directory',
+      currentUid(),
     );
-    final me = currentUid();
-    if (me != null && owner != me) {
-      throw TomSecretsRuntimeException(
-        'the runtime directory belongs to user $owner',
-      );
-    }
+    if (why != null) throw TomSecretsRuntimeException(why.message);
   }
 
   static Future<String> _run(String executable, List<String> args) async {

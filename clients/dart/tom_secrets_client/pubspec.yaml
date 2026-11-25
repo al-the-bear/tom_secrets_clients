@@ -3,7 +3,7 @@ description: >-
   The Dart client of the Tom Secrets Manager: finds the local secrets service,
   speaks its client protocol (frames, hello, get, getMany, getFile) and parses
   and formats secret references.
-version: 0.2.21
+version: 0.2.22
 homepage: https://enterprise-flutter.dev
 repository: https://github.com/al-the-bear/tom_secrets_clients
 
@@ -15,6 +15,8 @@ dependencies:
   crypto: ^3.0.6
   # AES-256-GCM of the OS unlock's key bundle (protocol.md 6.4, admin only).
   cryptography: ^2.9.0
+  # Native buffers of the admin's check of who answers (protocol.md 6.0).
+  ffi: ^2.1.0
 
 dev_dependencies:
   lints: ^6.0.0
