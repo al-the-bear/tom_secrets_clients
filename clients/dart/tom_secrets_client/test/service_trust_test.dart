@@ -579,6 +579,53 @@ void main() {
     );
   }, testOn: 'windows');
 
+  test('the service\'s own check at its start (TomSecretsRuntime.check): a '
+      'directory open to others, and a link where the directory should be '
+      '(as another user could leave in /tmp), are refused and left as they '
+      'are', () async {
+    final dir = Directory.systemTemp.createTempSync('tsm');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final real = Directory('${dir.path}/real')..createSync();
+    Process.runSync('chmod', ['700', real.path]);
+    await TomSecretsRuntime(
+      real.path,
+      transport: TomSecretsTransport.unix,
+    ).check();
+
+    final link = Link('${dir.path}/link')..createSync(real.path);
+    final linked = TomSecretsRuntime(
+      link.path,
+      transport: TomSecretsTransport.unix,
+    );
+    await expectLater(
+      linked.prepare(),
+      throwsA(
+        isA<TomSecretsRuntimeException>().having(
+          (e) => e.message,
+          'message',
+          contains('is no directory (link)'),
+        ),
+      ),
+    );
+    expect(link.existsSync(), isTrue, reason: 'left as it is');
+
+    Process.runSync('chmod', ['755', real.path]);
+    await expectLater(
+      TomSecretsRuntime(
+        real.path,
+        transport: TomSecretsTransport.unix,
+      ).prepare(),
+      throwsA(
+        isA<TomSecretsRuntimeException>().having(
+          (e) => e.message,
+          'message',
+          contains('open to others (mode 755)'),
+        ),
+      ),
+    );
+    expect(FileStat.statSync(real.path).mode % 512, 493, reason: 'not changed');
+  }, testOn: '!windows');
+
   test('checkService sends nothing', () async {
     final dir = Directory.systemTemp.createTempSync('tsm');
     addTearDown(() => dir.deleteSync(recursive: true));
