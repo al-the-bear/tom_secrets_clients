@@ -199,3 +199,24 @@ Future<ServerSocket> fakeIdentityEndpoint(
   });
   return server;
 }
+
+/// Facts of an endpoint that pass the check of who answers (protocol.md
+/// 6.0), for tests of what follows it: the check itself is tested in
+/// service_trust_test.dart.
+final class PassingInspector implements TomSecretsEndpointInspector {
+  const PassingInspector();
+
+  @override
+  TomSecretsEndpointFacts files(TomSecretsRuntime runtime) =>
+      TomSecretsEndpointFacts(
+        operatingSystem: 'linux',
+        ownUser: 1000,
+        ownPid: pid,
+        directory: (owner: 1000, mode: 448, type: 'directory'),
+        socket: (owner: 1000, mode: 384, type: 'socket'),
+        peer: TomSecretsServicePeer(pid: pid, user: 1000, executable: null),
+      );
+
+  @override
+  TomSecretsEndpointFacts withPeer(TomSecretsEndpointFacts f, Socket s) => f;
+}

@@ -152,6 +152,11 @@ void main() {
 
   TomSecretsServiceTrust trust({bool firstUse = false}) =>
       TomSecretsServiceTrust(
+        // The endpoint here is a Unix socket in a scratch folder, whose
+        // access list Windows' check of the files would refuse.
+        inspector: Platform.isWindows
+            ? const PassingInspector()
+            : const TomSecretsSystemEndpointInspector(),
         identity: fakeIdentityTrust(pins: pins, firstUse: firstUse),
       );
 
