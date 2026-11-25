@@ -15,6 +15,8 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
+import 'package:tom_secrets_core/tom_secrets_core.dart'
+    show TomSecretsServiceIdentityKey;
 import 'package:tom_secrets_service/tom_secrets_service.dart';
 import 'package:tom_secrets_tsm/tom_secrets_tsm.dart' show tsmPairingAddress;
 
@@ -222,6 +224,140 @@ void main() {
     });
   });
 
+  group('the service\'s identity (protocol.md 6.1)', () {
+    test('a service tsm did not start and has no pin for gets nothing: '
+        '`unpinned` with its words, no password asked; `tsm trust` with '
+        'the words pins it; --list and --remove', () async {
+      demo.pinOnFirstUse = false;
+      final key = tomSecretsRandomBytes();
+      service = await demo.startInProcess(adminKey: key);
+      final words = tomSecretsIdentityWords(service.identityKey);
+      // With the admin key in the keychain, and without (a claim).
+      for (final store in [keychain, null]) {
+        if (store != null) {
+          await store.write(
+            tomSecretsAdminKeyHandle(service.startedAt),
+            base64.encode(key),
+          );
+        }
+        final r = await demo.tsm(['unlock'], keychain: store);
+        expect(r.code, 12, reason: '$r');
+        expect(r.err, contains('service_untrusted'));
+        expect(r.err, contains('reason unpinned'));
+        expect(r.err, contains(words));
+        expect(r.err, contains('tsm trust'));
+        expect(demo.passwordPrompts, 0);
+      }
+      expect(service.isLocked, isTrue);
+
+      var r = await demo.tsm(['trust']);
+      expect(r.code, 0, reason: '$r');
+      expect(
+        r.text,
+        'identity $words\n'
+        'fingerprint ${tomSecretsIdentityFingerprint(service.identityKey)}\n'
+        'not pinned\n',
+      );
+      expect(await demo.pins.all(), isEmpty, reason: 'showing pins nothing');
+      r = await demo.tsm(['trust', 'harbor-violet-cedar-lantern']);
+      expect(r.code, 13);
+      expect(r.err, contains('presents another identity: $words'));
+      expect(await demo.pins.all(), isEmpty);
+
+      // The words as eight arguments, in any case.
+      r = await demo.tsm(['trust', ...words.toUpperCase().split('-')]);
+      expect(r.code, 0, reason: '$r');
+      expect(r.text, 'trusted $words\n');
+      final pin = (await demo.pins.all()).single;
+      expect(pin.key, service.identityKey);
+      expect(pin.source, TomSecretsPinSource.trust);
+      expect(pin.runtime, demo.runtimeDirectory);
+      expect((await demo.tsm(['trust'])).text, endsWith('\npinned\n'));
+
+      r = await demo.tsm(['unlock'], keychain: keychain);
+      expect(r.code, 0, reason: '$r');
+      expect(r.text, 'unlocked\nidentity $words\n');
+      // This device's record names the key: pinned for the host too.
+      r = await demo.tsm(['trust', '--list']);
+      final lines = const LineSplitter().convert(r.text);
+      expect(lines, hasLength(2));
+      expect(lines, everyElement(contains(words)));
+      expect(lines.where((l) => l.contains(' trust ')), hasLength(1));
+      expect(
+        lines.where((l) => l.startsWith('demo-host  (wherever it answers)')),
+        hasLength(1),
+      );
+
+      r = await demo.tsm(['trust', '--remove']);
+      expect(r.text, 'removed 1\n');
+      expect((await demo.tsm(['trust', '--remove'])).code, 6);
+      r = await demo.tsm(['trust', '--remove', '--host', 'demo-host']);
+      expect(r.text, 'removed 1\n');
+      expect(await demo.pins.all(), isEmpty);
+      expect((await demo.tsm(['trust', '--host', 'x'])).code, 2);
+    });
+
+    test('the fingerprint and a key file name the service too', () async {
+      demo.pinOnFirstUse = false;
+      service = await demo.startInProcess(adminKey: tomSecretsRandomBytes());
+      final fingerprint = tomSecretsIdentityFingerprint(service.identityKey);
+      var r = await demo.tsm(['trust', fingerprint]);
+      expect(r.code, 0, reason: '$r');
+      await demo.pins.remove(Platform.localHostname, null);
+      final file = File('${demo.dir}/service.pub')
+        ..writeAsStringSync('${base64.encode(service.identityKey)}\n');
+      r = await demo.tsm(['trust', file.path]);
+      expect(r.code, 0, reason: '$r');
+      expect((await demo.pins.all()).single.key, service.identityKey);
+      file.writeAsStringSync('no key');
+      expect((await demo.tsm(['trust', file.path])).code, 2);
+    });
+
+    test('a service with another key than the pinned one stops tsm: '
+        '`service_key_changed`, exit 13, no password asked and nothing '
+        'sent', () async {
+      demo.pinOnFirstUse = false;
+      final key = tomSecretsRandomBytes();
+      service = await demo.startInProcess(adminKey: key);
+      final other = await TomSecretsServiceIdentityKey.generate();
+      addTearDown(other.dispose);
+      await demo.pins.pin(
+        Platform.localHostname,
+        demo.runtimeDirectory,
+        other.publicKey,
+        TomSecretsPinSource.start,
+      );
+      for (final store in [keychain, null]) {
+        if (store != null) {
+          await store.write(
+            tomSecretsAdminKeyHandle(service.startedAt),
+            base64.encode(key),
+          );
+        }
+        final r = await demo.tsm(['unlock'], keychain: store);
+        expect(r.code, 13, reason: '$r');
+        expect(r.err, contains('service_key_changed'));
+        expect(r.err, contains(tomSecretsIdentityWords(other.publicKey)));
+        expect(r.err, contains(tomSecretsIdentityWords(service.identityKey)));
+        expect(r.err, contains('do not enter the master password'));
+        expect(demo.passwordPrompts, 0);
+      }
+      expect(service.isLocked, isTrue);
+      // The admin key was not replaced: no claim reached the service.
+      final admin = await TomSecretsAdminClient.connect(demo.runtime, key);
+      await admin.close();
+      // `tsm trust` shows it, and says which key is pinned.
+      final r = await demo.tsm(['trust']);
+      expect(
+        r.text,
+        endsWith(
+          'not pinned: another key is '
+          '(${tomSecretsIdentityWords(other.publicKey)})\n',
+        ),
+      );
+    });
+  });
+
   group('administering', () {
     test('unlock, status, lock and stop with the keychain\'s admin key: '
         'no password asked but for the unlock', () async {
@@ -236,7 +372,7 @@ void main() {
       await running(unlock: false);
       var r = await demo.tsm(['unlock'], keychain: keychain);
       expect(r.code, 0, reason: '$r');
-      expect(r.text, 'unlocked\n');
+      expect(r.text, matches(RegExp(r'^unlocked\nidentity [a-z-]+\n$')));
       expect(demo.passwordPrompts, 1);
       expect(await keychain.read(tomSecretsAdminKeyHandle(111)), isNull);
       expect(await keychain.read(tomSecretsAdminKeyHandle(222)), isNull);

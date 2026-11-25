@@ -610,7 +610,8 @@ message('pairedDevices', 'admin', 's2a', 'A', 'The answer to pair.list.',
                            'linkKeySince': ref('timestamp'),
                            'revoked': ref('timestamp'),
                            'githubAuth': {'enum': ['app', 'token']},
-                           'githubTokenExpires': ref('timestamp')}}})
+                           'githubTokenExpires': ref('timestamp'),
+                           'serviceKey': ref('base64')}}})
 message('subscribe', 'admin', 'a2s', 'A', 'Start the event stream on this connection.',
         ['id'], id=ref('id'))
 message('approve', 'admin', 'a2s', 'A', 'The answer to an approval prompt.',

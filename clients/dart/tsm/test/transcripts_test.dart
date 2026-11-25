@@ -148,6 +148,21 @@ const sessions = <String, List<Step>>{
   'reload': [
     Step(['reload']),
   ],
+  'trust': [
+    Step(['trust']),
+    Step(['trust', transcriptWords]),
+    Step([
+      'trust',
+      'harbor',
+      'violet',
+      'cedar',
+      'lantern',
+      'maple',
+      'orbit',
+      'pebble',
+      'wrong',
+    ], code: 13),
+  ],
   'lock-unlock': [
     Step(['lock']),
     Step(['get', 'team/Api/Token', '--no-wait'], code: 4),
@@ -231,6 +246,9 @@ const approvedSessions = <String, List<Step>>{
   ],
 };
 
+/// The words a transcript shows for the demo service's identity.
+const transcriptWords = 'harbor-violet-cedar-lantern-maple-orbit-pebble-quill';
+
 /// The session that stops the service.
 const stopSession = <String, List<Step>>{
   'stop': [
@@ -279,6 +297,20 @@ String normalize(String text, Map<String, String> paths, DateTime today) {
     out = out.replaceAll(p, paths[p]!);
   }
   out = out.replaceAll(RegExp(r'\bg-[0-9a-f]{16}\b'), transcriptGrantId);
+  // The identity key is made anew for every demo installation.
+  out = out
+      .replaceAllMapped(
+        RegExp(r'^(identity|trusted) [a-z]+(-[a-z]+){7}$', multiLine: true),
+        (m) => '${m[1]} $transcriptWords',
+      )
+      .replaceAll(
+        RegExp(r'presents another identity: [a-z]+(-[a-z]+){7};'),
+        'presents another identity: $transcriptWords;',
+      )
+      .replaceAll(
+        RegExp(r'^fingerprint [0-9a-f]{64}$', multiLine: true),
+        'fingerprint ${'5c1e' * 16}',
+      );
   final shift = transcriptToday.difference(
     DateTime.utc(today.year, today.month, today.day),
   );
@@ -378,9 +410,14 @@ final class Installation {
   /// command's after tsm's own output), and its exit code.
   Future<({int code, String err, String out})> run(Step step) async {
     final played = StringBuffer();
+    // The words the guide shows stand for this installation's.
+    final words = (await demo.pins.all()).firstOrNull?.words;
     final TsmRun r = switch (step.program) {
       Program.tsm => await demo.tsm(
-        step.args,
+        [
+          for (final a in step.args)
+            a == transcriptWords && words != null ? words : a,
+        ],
         keychain: keychain,
         stdinLines: step.input,
         executableDirectory: bin,

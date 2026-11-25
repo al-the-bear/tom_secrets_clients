@@ -105,6 +105,13 @@ final class Demo {
     final dir = Directory.systemTemp.createTempSync('tsm');
     addTearDown(() => deleteWhenFree(dir));
     final demo = Demo._(dir.path);
+    // The tests' own admin connections (beside tsm's) pin the service they
+    // started as it presents itself.
+    TomSecretsServiceTrust.fallbackIdentity ??= TomSecretsIdentityTrust(
+      pins: TomSecretsMemoryPins(),
+      crypto: const TomSecretsPqcIdentityCrypto(),
+      pinOnFirstUse: true,
+    );
     final team = tomSecretsNewVault(
       Credentials(ProtectedValue.fromString(teamPassword)),
       'team',
@@ -231,6 +238,28 @@ final class Demo {
   TomSecretsTransport get transport =>
       Platform.isWindows ? TomSecretsTransport.tcp : TomSecretsTransport.unix;
 
+  /// The pins of this installation's tsm runs.
+  final TomSecretsMemoryPins pins = TomSecretsMemoryPins();
+
+  /// Whether a service tsm has not met is pinned as it presents itself: the
+  /// tests start their service in this process, not with `tsm start`,
+  /// which is where tsm pins it.
+  bool pinOnFirstUse = true;
+
+  /// Whether tsm checks the service's identity as the command line does:
+  /// with the pin file in its configuration directory and the service
+  /// executable's helper mode (the integration suite, with the built
+  /// service).
+  bool commandLineIdentity = false;
+
+  /// What tsm checks the service's identity key with: the real primitives
+  /// over [pins].
+  TomSecretsIdentityTrust get identityTrust => TomSecretsIdentityTrust(
+    pins: pins,
+    crypto: const TomSecretsPqcIdentityCrypto(),
+    pinOnFirstUse: pinOnFirstUse,
+  );
+
   /// Variables a test adds to tsm's environment (`HOME`, `PATH`).
   Map<String, String> environmentOverrides = const {};
 
@@ -239,6 +268,8 @@ final class Demo {
     ...Platform.environment,
     'TSM_RUNTIME_DIR': runtimeDirectory,
     'TSM_DATA_DIR': dataDirectory,
+    // Where tsm's own pin file is (never the user's).
+    'TSM_CONFIG_DIR': '$dir/config',
     ...environmentOverrides,
   };
 
@@ -285,6 +316,7 @@ final class Demo {
     DateTime Function()? clock,
     TomSecretsEndpointInspector endpointInspector =
         const TomSecretsSystemEndpointInspector(),
+    TomSecretsIdentityTrust? identity,
   }) async {
     final out = BytesBuilder();
     final err = StringBuffer();
@@ -306,6 +338,7 @@ final class Demo {
         executableDirectory: executableDirectory,
         runCommand: run ?? (command, env) async => 0,
         endpointInspector: endpointInspector,
+        identity: identity ?? (commandLineIdentity ? null : identityTrust),
         clock: clock,
       ),
     );

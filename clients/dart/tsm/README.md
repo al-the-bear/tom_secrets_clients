@@ -229,6 +229,18 @@ as the user and is the service beside `tsm` (or the one `TSM_SERVICE` or
 `--service` names). When that fails the command ends with
 `service_untrusted` (exit code 12), saying what is wrong and what to do.
 
+It also checks which service it is. Every service has an identity key;
+`tsm start` pins it (the service says it to the `tsm` that started it), and
+from then on an admin command sends its key proof or a master password
+only to the service that proves it holds that key. The master password of
+a claim is encrypted to that service. `tsm unlock` and `tsm status` print
+the key's fingerprint as eight words, the same words the app's device list
+shows on your other devices. `tsm trust` shows the identity, pins a
+service `tsm` did not start once you compared its words (`tsm trust
+<words>`), and lists and removes pins. A service that presents another key
+than the pinned one ends the command with `service_key_changed` (exit
+code 13). The checks are run by the service executable beside `tsm`.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -244,7 +256,8 @@ as the user and is the service beside `tsm` (or the one `TSM_SERVICE` or
 | 9 | `timeout` or `rate_limited` |
 | 10 | `unsupported` |
 | 11 | `internal`, `needs_unlock`, `unavailable`, `offline`, `token_expired` |
-| 12 | `service_untrusted`: the admin endpoint is not this user's service; nothing was sent |
+| 12 | `service_untrusted`: the admin endpoint is not this user's service, or is not pinned yet; nothing was sent |
+| 13 | `service_key_changed`: the service presents another identity key than the one pinned; nothing was sent |
 
 Values and listings go to standard output only. Messages, prompts and progress
 go to standard error, as `tsm: <kind>: <message>` with the reason, store or

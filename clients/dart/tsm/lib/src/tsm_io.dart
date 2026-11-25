@@ -19,6 +19,7 @@ import 'package:tom_core_storage/settings.dart'
 import 'package:tom_secrets_client/admin.dart'
     show
         TomSecretsEndpointInspector,
+        TomSecretsIdentityTrust,
         TomSecretsSystemEndpointInspector,
         tomSecretsKeychainService;
 
@@ -35,6 +36,7 @@ final class TsmIo {
     required this.executableDirectory,
     required this.runCommand,
     this.endpointInspector = const TomSecretsSystemEndpointInspector(),
+    this.identity,
     DateTime Function()? clock,
     StringSink? messages,
   }) : clock = clock ?? DateTime.now,
@@ -120,6 +122,11 @@ final class TsmIo {
 
   /// Reads who answers on the admin endpoint (protocol.md 6.0).
   final TomSecretsEndpointInspector endpointInspector;
+
+  /// What the service's identity key is checked with (protocol.md 6.1);
+  /// null (the command line): the pin file tsm shares with the app, and
+  /// the primitives of the service executable's helper mode.
+  final TomSecretsIdentityTrust? identity;
 
   /// Starts [command] with [environment] added to tsm's own, its standard
   /// streams tsm's, and answers its exit code.

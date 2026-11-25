@@ -450,10 +450,15 @@ Future<int> _start(TsmContext c, String service, String bootstrap) async {
     environment: c.io.environment,
   );
   switch (result) {
-    case TomSecretsStarted(:final adminKey):
+    case TomSecretsStarted(:final adminKey, :final identity):
       final start = (await c.runtime.readInfo())?['start'];
       if (start is int) await c.keepAdminKey(start, adminKey);
       c.io.outln('started');
+      // First contact: the process tsm started said its identity key on
+      // its standard output; from now on every connection checks it.
+      if (identity != null) {
+        c.io.outln('identity ${await c.pinStarted(identity)}');
+      }
     case TomSecretsAlreadyStarted():
       c.io.outln('already running');
     case TomSecretsStartFailed(:final code, :final message):
@@ -655,20 +660,128 @@ Future<int> tsmPair(TsmContext c, TsmArgs a) async {
   if (started != TsmExit.ok) return started;
   return _withAdmin(c, (admin) async {
     await admin.unlock(await c.password());
-    c.io.outln('unlocked');
+    await _unlocked(c, admin);
     return TsmExit.ok;
   });
 }
 
-/// `tsm unlock [--key-file F]`: unlocks with the master password.
+/// `tsm unlock [--key-file F]`: unlocks with the master password, and
+/// shows the service's identity words (what the other devices show for
+/// this machine).
 Future<int> tsmUnlock(TsmContext c, TsmArgs a) async {
   final keyFile = a.option('key-file');
   if (keyFile != null) await c.readKeyFile(keyFile);
   return _withAdmin(c, (admin) async {
     await admin.unlock(await c.password(), keyFile: c.keyFile);
-    c.io.outln('unlocked');
+    await _unlocked(c, admin);
     return TsmExit.ok;
   });
+}
+
+/// After an unlock: the service's identity words, and the keys of the
+/// other devices' services, which the primary's device records name,
+/// pinned.
+Future<void> _unlocked(TsmContext c, TomSecretsAdminClient admin) async {
+  c.io.outln('unlocked');
+  final identity = admin.identity;
+  if (identity != null) c.io.outln('identity ${identity.words}');
+  try {
+    final devices = (await admin.request('pair.list'))['devices'];
+    if (devices is List) await tomSecretsPinDevices(c.pins, devices);
+  } on TomSecretsAdminException {
+    // The pins of the other devices are a convenience; the unlock stands.
+  } on FileSystemException catch (e) {
+    c.io.err.writeln('tsm: the pin file was not written: ${e.message}');
+  }
+}
+
+/// `tsm trust [<words | fingerprint | key file>] [--list] [--remove
+/// [--host NAME]]`: the pins of the services this user's tsm and app
+/// talk to (protocol.md 6.1). With the words (or the SHA-256 fingerprint,
+/// or a file holding the public key in base64) the service's machine
+/// shows, the service on this machine is pinned when it presents that
+/// key; without an argument it shows what the service presents and
+/// whether that is pinned.
+Future<int> tsmTrust(TsmContext c, TsmArgs a) async {
+  final pins = c.pins;
+  final host = c.identityTrust.host;
+  if (a.flag('list-pins')) {
+    for (final p in await pins.all()) {
+      c.io.outln(
+        '${p.host}  ${p.runtime ?? '(wherever it answers)'}  ${p.words}  '
+        '${p.source.wireName}  ${p.at.toUtc().toIso8601String()}',
+      );
+    }
+    return TsmExit.ok;
+  }
+  if (a.flag('remove')) {
+    final named = a.option('host');
+    final removed = named == null
+        ? await pins.remove(host, c.runtime.directory)
+        : await pins.remove(named, null);
+    c.io.outln('removed $removed');
+    return removed == 0 ? TsmExit.of('not_found') : TsmExit.ok;
+  }
+  if (a.option('host') != null) {
+    throw TsmFailure.usage('--host goes with --remove');
+  }
+  final TomSecretsServiceIdentity presented;
+  try {
+    presented = await TomSecretsAdminClient.presentedIdentity(
+      c.runtime,
+      trust: c.serviceTrust,
+    );
+  } on TomSecretsAdminException catch (e) {
+    return c.adminError(e);
+  }
+  final pinned = await tomSecretsPinsFor(pins, host, c.runtime.directory);
+  final isPinned = pinned.any(
+    (p) => tomSecretsIdentityNamedBy(
+      tomSecretsIdentityFingerprint(p.key),
+      presented.publicKey,
+    ),
+  );
+  if (a.positional.isEmpty) {
+    c.io.outln('identity ${presented.words}');
+    c.io.outln(
+      'fingerprint ${tomSecretsIdentityFingerprint(presented.publicKey)}',
+    );
+    c.io.outln(
+      isPinned
+          ? 'pinned'
+          : pinned.isEmpty
+          ? 'not pinned'
+          : 'not pinned: another key is (${pinned.first.words})',
+    );
+    return TsmExit.ok;
+  }
+  // The words may come as one argument or as eight.
+  var given = a.positional.join(' ').trim();
+  final file = File(given);
+  if (a.positional.length == 1 && await file.exists()) {
+    try {
+      given = tomSecretsIdentityFingerprint(
+        base64.decode((await file.readAsString()).trim()),
+      );
+    } on FormatException {
+      throw TsmFailure.usage('the file $given holds no public key in base64');
+    }
+  }
+  if (!tomSecretsIdentityNamedBy(given, presented.publicKey)) {
+    c.io.err.writeln(
+      'tsm: the service on this machine presents another identity: '
+      '${presented.words}; nothing was pinned',
+    );
+    return TsmExit.of(tomSecretsServiceKeyChanged);
+  }
+  await pins.pin(
+    host,
+    c.runtime.directory,
+    presented.publicKey,
+    TomSecretsPinSource.trust,
+  );
+  c.io.outln('trusted ${presented.words}');
+  return TsmExit.ok;
 }
 
 /// `tsm lock`.
@@ -747,6 +860,9 @@ Future<int> tsmStatus(TsmContext c, TsmArgs a) async {
       'service  running, ${report['locked'] == true ? 'locked' : 'unlocked'}, '
       'lock mode ${report['lockMode']}, version ${service['version']}',
     );
+    // The words the other devices show for this machine's service.
+    final identity = report['identity'];
+    if (identity is Map) c.io.outln('identity ${identity['words']}');
     // The ssh-agent's endpoint [B]: what SSH_AUTH_SOCK or IdentityAgent
     // names (protocol.md 7.6).
     final agent = report['agent'];

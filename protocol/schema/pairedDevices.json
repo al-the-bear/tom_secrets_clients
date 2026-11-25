@@ -64,6 +64,9 @@
           },
           "githubTokenExpires": {
             "$ref": "common.json#/$defs/timestamp"
+          },
+          "serviceKey": {
+            "$ref": "common.json#/$defs/base64"
           }
         }
       }

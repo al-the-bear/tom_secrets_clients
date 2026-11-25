@@ -44,6 +44,11 @@ the output; `[exit code N]` marks a command that failed.
   directory and the socket are the user's alone, and the process answering
   runs as the user and is the service that belongs to this `tsm`. See
   [`service_untrusted`](#service_untrusted).
+- **Which service it is, is checked too.** Every service has an identity
+  key of its own. `tsm` pins it when it starts the service, and from then
+  on sends its key proof or a master password only to the service that
+  proves it holds that key; the master password is encrypted so that only
+  that service reads it. See [`tsm trust`](#tsm-trust).
 - **Every failure has its own exit code**, listed under
   [Exit codes and troubleshooting](#exit-codes-and-troubleshooting).
 
@@ -366,6 +371,11 @@ tsm start            # prints started (or already running)
 tsm start --unlock   # started, then the master password, then unlocked
 ```
 
+After `started`, `tsm` prints the service's identity as eight words
+(`identity harbor-violet-…`) and pins it: the service says its identity
+key to the `tsm` that started it, and every later admin command checks
+that the service answering holds that key (see [`tsm trust`](#tsm-trust)).
+
 **Unattended start.** A start script that cannot type the password uses
 `--password-stdin`, which reads the first line of standard input:
 
@@ -404,12 +414,18 @@ tsm: locked: the service is locked
 $ tsm unlock
 Master password:
 unlocked
+identity harbor-violet-cedar-lantern-maple-orbit-pebble-quill
 $ tsm get team/Api/Token -n
 demo-api-token
 ```
 
+After `unlocked`, `unlock` prints the service's identity words. They are
+the words the manager app on your other devices shows for this machine in
+its device list: when you look at them there, they are the same.
+
 Errors: `denied` (`bad_password`, exit 5) after a wrong password;
-`not_running` (exit 3).
+`not_running` (exit 3); `service_untrusted` (`unpinned`, exit 12) and
+`service_key_changed` (exit 13), see [`tsm trust`](#tsm-trust).
 
 ### `tsm status`
 
@@ -427,12 +443,15 @@ tsm status [--json]
 <!-- transcript status -->
 ```text
 $ tsm status
-service  running, unlocked, lock mode b, version 0.25.9
+service  running, unlocked, lock mode b, version 0.26.1
+identity harbor-violet-cedar-lantern-maple-orbit-pebble-quill
 agent    /run/user/1000/tsm/agent.sock  (SSH_AUTH_SOCK or IdentityAgent for ssh)
 store    primary  current  file  fetched just now
 store    team  current  file  fetched just now
 ```
 
+- `identity` is the service's identity as words (see
+  [`tsm trust`](#tsm-trust)); `tsm status --json` has its fingerprint too.
 - `agent` is the service's ssh-agent: `tsm integrations install ssh` points
   `ssh` at it (see [`tsm integrations`](#tsm-integrations)), or by hand
   `export SSH_AUTH_SOCK=<that path>`.
@@ -463,6 +482,81 @@ reloaded
 
 Errors: `offline` or `token_expired` (exit 11): a store could not be
 fetched; it keeps serving the copy it holds, and `tsm status` shows why.
+
+### `tsm trust`
+
+Shows the identity of the service on this machine, and pins it.
+
+```text
+tsm trust [<words | fingerprint | key file>]
+tsm trust --list
+tsm trust --remove [--host NAME]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--list` | List the services pinned. |
+| `--remove` | Remove the pin of this machine's service (with `--host`: every pin of that host). |
+| `--host` | The host whose pins `--remove` removes. |
+
+Every service has an identity key, made at its first start and kept in its
+data directory (`service-identity.json`); it stays the same across restarts
+and updates. Its fingerprint is shown as eight words. `tsm` and the manager
+app keep the keys of the services they know in one file, the *pins*
+(`~/.config/tsm/services`; on Windows `%APPDATA%\tsm\services`), and send
+an admin key's proof or a master password only to a service that proves it
+holds the pinned key. The master password of a claim is encrypted to a
+one-time key that service signed, so nothing else on the machine reads it.
+
+A service is pinned without your doing:
+
+- when `tsm start` or the manager app starts it (it says its key to the
+  program that started it);
+- when the machine is set up with [`tsm pair`](#tsm-pair);
+- when you unlock: the keys of your other devices' services, which the
+  primary vault records, are pinned for those hosts.
+
+You pin by hand only when `tsm` meets a running service it did not start
+and has no pin for (`service_untrusted`, reason `unpinned`): the error
+shows the words the service presents. Compare them with the words another
+of your devices shows for this machine (the manager app's Pairing screen,
+the device list) or with what `tsm status` showed here before, and give
+them:
+
+<!-- transcript trust -->
+```text
+$ tsm trust
+identity harbor-violet-cedar-lantern-maple-orbit-pebble-quill
+fingerprint 5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e5c1e
+pinned
+$ tsm trust harbor-violet-cedar-lantern-maple-orbit-pebble-quill
+trusted harbor-violet-cedar-lantern-maple-orbit-pebble-quill
+$ tsm trust harbor violet cedar lantern maple orbit pebble wrong
+tsm: the service on this machine presents another identity: harbor-violet-cedar-lantern-maple-orbit-pebble-quill; nothing was pinned
+[exit code 13]
+```
+
+- Without an argument, `trust` shows what the service presents and whether
+  it is pinned; it pins nothing.
+- The words may be given with hyphens or spaces; the fingerprint is the 64
+  hexadecimal digits; a file holds the public key in base64.
+- `--list` prints each pin: the host, the runtime directory (or `(wherever
+  it answers)` for a pin from a device record), the words, where the pin
+  came from (`start`, `pairing`, `trust`, `rotation`) and when.
+
+**When the key changed** (`service_key_changed`, exit 13): the service
+presents another key than the pinned one. `tsm` sends nothing and offers no
+way to go on. If you set the service up anew or replaced its data
+directory, remove the old pin (`tsm trust --remove`) and start the service
+with `tsm start`, or compare the new words and give them to `tsm trust`.
+If you did neither, something else answers in the service's place: do not
+enter the master password. A key the manager app rotated (Keys, "This
+service's identity key") needs nothing: the old key signs the new one, and
+`tsm` follows.
+
+Errors: `service_key_changed` (exit 13) when the words given are not the
+ones the service presents; `not_found` (exit 6) when `--remove` finds no
+pin; `not_running` (exit 3).
 
 ### `tsm stop`
 
@@ -1174,7 +1268,8 @@ the store the service named, and exits with the code of the kind:
 | 11 | `needs_unlock` | A store's key changed since the unlock. `tsm lock` and `tsm unlock` reopen the stores whose keys the primary holds; a store with a password of its own is opened in the manager app. |
 | 11 | `unavailable` | The store could not be fetched and no copy of it is held. Check the network and run `tsm reload`. |
 | 11 | `internal` | A failure of the service; its log is in the data directory. |
-| 12 | `service_untrusted` | The admin endpoint is not this user's service; nothing was sent and no password was asked for. See [below](#service_untrusted). |
+| 12 | `service_untrusted`, `service_impostor` | The admin endpoint is not this user's service, is not pinned yet, or could not prove its identity key; nothing was sent and no password was asked for. See [below](#service_untrusted). |
+| 13 | `service_key_changed` | The service presents another identity key than the one pinned; nothing was sent. See [`tsm trust`](#tsm-trust). |
 
 Common situations:
 
@@ -1198,10 +1293,13 @@ what is wrong, the reason, and what to do:
 | `mode` | The runtime directory or the socket is open to group or others (on Windows: its access list grants someone besides you and SYSTEM). | Close them to others and run the command again: `chmod 700` on the runtime directory, `chmod 600` on its sockets. A service older than 0.25.7 left its sockets open inside its closed directory; once it is replaced by the current one this does not come back. |
 | `peer_user` | The process answering runs as another user, or cannot be read. | Do not enter the master password. Find out what runs under the process id named; start your own service once it is gone. |
 | `peer_executable` | The process answering is not the `tom_secrets_service` beside this `tsm` (the message names the one answering and the ones expected). | If it is a service you installed elsewhere, name it in `TSM_SERVICE`. Else stop that process and `tsm start`. |
+| `unpinned` | The service is this user's, but this `tsm` has no pin for it (it did not start it). The message shows the words the service presents. | Compare the words with the ones another of your devices shows for this machine, then `tsm trust <the words>`. |
+| `no_identity` | The service running is older than this `tsm` and has no identity key. | Stop it (end the process `service.json` names) and `tsm start` the service that came with this `tsm`. |
 
 On Linux a service hides its executable from its own user once it has
 hardened itself (no process of the user reads its memory): there the
-owner, mode and user checks hold and the executable is not compared.
+owner, mode and user checks hold, the executable is not compared, and the
+identity key tells the service apart from anything else the user runs.
 
 The error kinds and their details are listed in
 [the protocol, section 10](../../../../protocol/protocol.md#10-error-kinds).

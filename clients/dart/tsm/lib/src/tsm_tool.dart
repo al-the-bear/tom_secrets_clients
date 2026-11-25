@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.15';
+const String tsmVersion = '0.2.16';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -320,6 +320,41 @@ final ToolDefinition tsmTool = ToolDefinition(
       'Unlock with the master password.',
       options: const [_keyFile],
     ),
+    _command(
+      'trust',
+      'Trust the service on this machine by its identity: give the words '
+          '(or the fingerprint, or a file holding the key) the service\'s '
+          'machine shows; without one, show what the service presents.',
+      options: const [
+        OptionDefinition.flag(
+          name: 'list',
+          description: 'List the services pinned.',
+        ),
+        // What `--list` arrives as (see [tsmMain]).
+        OptionDefinition.flag(
+          name: 'list-pins',
+          description: 'List the services pinned.',
+          hidden: true,
+        ),
+        OptionDefinition.flag(
+          name: 'remove',
+          description:
+              'Remove the pin of this machine\'s service (with --host: '
+              'every pin of that host).',
+        ),
+        OptionDefinition.option(
+          name: 'host',
+          description: 'The host whose pins --remove removes.',
+          valueName: 'name',
+        ),
+      ],
+      examples: const [
+        'tsm trust',
+        'tsm trust harbor-violet-cedar-lantern-maple-orbit-pebble-quill',
+        'tsm trust --list',
+        'tsm trust --remove',
+      ],
+    ),
     _command('lock', 'Lock: drop every secret from memory.'),
     _command('stop', 'Lock and stop the service.'),
     _command('reload', 'Fetch every store now.'),
@@ -434,6 +469,7 @@ const Map<String, _Command> _commands = {
   'stop': tsmStop,
   'reload': tsmReload,
   'status': tsmStatus,
+  'trust': tsmTrust,
   'keys': tsmKeys,
   'approvals': tsmApprovals,
   'approve': tsmApprove,
@@ -491,6 +527,20 @@ Future<int> tsmMain(List<String> arguments, TsmIo io) async {
         ),
     },
   );
-  final result = await runner.run(arguments);
+  // Why: `--list` is one of the command-line base's own flags (it lists
+  // projects and runs no command); for `tsm trust` it lists the pins.
+  final trust = arguments.indexOf('trust');
+  if (trust >= 0) {
+    arguments = [
+      for (final (i, a) in arguments.indexed)
+        i > trust && a == '--list' ? '--list-pins' : a,
+    ];
+  }
+  final ToolResult result;
+  try {
+    result = await runner.run(arguments);
+  } finally {
+    await context.close();
+  }
   return context.processExitCode ?? (result.success ? 0 : TsmExit.usage);
 }

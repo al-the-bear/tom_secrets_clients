@@ -34,8 +34,11 @@ abstract final class TsmExit {
     'malformed' => 8,
     'timeout' || 'rate_limited' => 9,
     'unsupported' => 10,
-    // The admin endpoint is not this user's service: nothing was sent.
-    'service_untrusted' => 12,
+    // The admin endpoint is not this user's service, or not one this
+    // program knows: nothing was sent.
+    'service_untrusted' || 'service_impostor' => 12,
+    // The service presents another identity key than the one pinned.
+    'service_key_changed' => 13,
     _ => 11, // internal, needs_unlock, unavailable, offline, token_expired
   };
 }
@@ -93,7 +96,66 @@ final class TsmContext {
       configured: [?namedService],
     ),
     inspector: io.endpointInspector,
+    identity: identityTrust,
   );
+
+  TomSecretsIdentityTrust? _identityTrust;
+  TomSecretsIdentityHelper? _helper;
+
+  /// What the service's identity key is checked with (protocol.md 6.1):
+  /// the pins in the file tsm shares with the app, and the two primitives
+  /// run by the service executable's helper mode (tsm links no
+  /// post-quantum code).
+  TomSecretsIdentityTrust get identityTrust =>
+      io.identity ??
+      (_identityTrust ??= TomSecretsIdentityTrust(
+        pins: TomSecretsPinFile(
+          File(tomSecretsPinFile(environment: io.environment)),
+        ),
+        crypto: _HelperCrypto(this),
+      ));
+
+  /// The pins.
+  TomSecretsServicePins get pins => identityTrust.pins;
+
+  /// The helper mode of the service executable expected: the one named
+  /// (`--service`, `TSM_SERVICE`), else the one beside tsm.
+  TomSecretsIdentityHelper get _identityHelper {
+    final found = _helper;
+    if (found != null) return found;
+    final executable = serviceTrust.expected
+        .where((e) => File(e).existsSync())
+        .firstOrNull;
+    if (executable == null) {
+      throw TsmFailure(
+        TsmExit.of(tomSecretsServiceUntrusted),
+        'no service executable to check the service\'s identity with: it is '
+        'expected beside tsm; name it in TSM_SERVICE',
+      );
+    }
+    return _helper = TomSecretsIdentityHelper(
+      executable,
+      environment: io.environment,
+    );
+  }
+
+  /// Ends what this invocation started (the identity helper).
+  Future<void> close() async {
+    await _helper?.close();
+    _helper = null;
+  }
+
+  /// Pins the identity key the service this invocation started said on its
+  /// standard output (first contact, protocol.md 6.1); answers its words.
+  Future<String> pinStarted(List<int> identity) async {
+    await pins.pin(
+      identityTrust.host,
+      runtime.directory,
+      identity,
+      TomSecretsPinSource.start,
+    );
+    return tomSecretsIdentityWords(identity);
+  }
 
   /// The runtime directory (`TSM_RUNTIME_DIR`, else protocol.md 3.1).
   TomSecretsRuntime get runtime =>
@@ -147,7 +209,12 @@ final class TsmContext {
         } on TomSecretsAdminException catch (e) {
           // Another admin claimed the service since: claim again. An
           // endpoint that is not this user's service gets no claim.
-          if (e.kind == 'not_running' || e.kind == tomSecretsServiceUntrusted) {
+          if (const {
+            'not_running',
+            tomSecretsServiceUntrusted,
+            tomSecretsServiceKeyChanged,
+            'service_impostor',
+          }.contains(e.kind)) {
             rethrow;
           }
         }
@@ -244,6 +311,35 @@ final class TsmContext {
         'tsm: ${tomSecretsUntrustedAdvice(details['reason'] as String?)}',
       );
     }
+    if (kind == tomSecretsServiceKeyChanged) {
+      io.err.writeln('tsm: $tomSecretsKeyChangedAdvice');
+    }
     return TsmExit.of(kind);
   }
+}
+
+/// The identity primitives of the service executable's helper mode,
+/// started when first asked.
+final class _HelperCrypto implements TomSecretsIdentityCrypto {
+  _HelperCrypto(this._context);
+
+  final TsmContext _context;
+
+  @override
+  Future<bool> verify({
+    required Uint8List publicKey,
+    required Uint8List message,
+    required Uint8List signature,
+    required Uint8List context,
+  }) => _context._identityHelper.verify(
+    publicKey: publicKey,
+    message: message,
+    signature: signature,
+    context: context,
+  );
+
+  @override
+  Future<({Uint8List ciphertext, Uint8List sharedSecret})> encapsulate(
+    Uint8List publicKey,
+  ) => _context._identityHelper.encapsulate(publicKey);
 }

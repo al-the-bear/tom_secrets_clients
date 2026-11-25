@@ -125,11 +125,35 @@ void main() {
       await _gone(demo);
     });
 
+    // As the command line does it: the pin file, and the identity
+    // primitives of the service executable's helper mode.
+    demo.commandLineIdentity = true;
+    final pins = TomSecretsPinFile(
+      File(tomSecretsPinFile(environment: demo.environment)),
+    );
+    expect(await pins.all(), isEmpty);
     var r = await tsm(['start', '--unlock', '--service', serviceExe]);
     expect(r.code, 0, reason: '$r');
-    expect(r.text, 'started\nunlocked\n');
+    // First contact: tsm pinned the key the process it started said.
+    final pin = (await pins.all()).singleWhere((p) => p.runtime != null);
+    expect(pin.source, TomSecretsPinSource.start);
+    expect(pin.runtime, demo.runtimeDirectory);
+    expect(
+      r.text,
+      'started\nidentity ${pin.words}\nunlocked\nidentity ${pin.words}\n',
+    );
+    if (!Platform.isWindows) {
+      expect(pins.file.statSync().mode & 0x1ff, 0x180, reason: '0600');
+    }
     r = await tsm(['start', '--service', serviceExe]);
     expect(r.text, 'already running\n');
+    r = await tsm(['trust', '--service', serviceExe]);
+    expect(r.text, contains('identity ${pin.words}\n'));
+    expect(r.text, endsWith('pinned\n'));
+    // After the unlock the device record's key is pinned for the host.
+    expect([
+      for (final p in await pins.all()) (p.host, p.runtime, p.words),
+    ], contains(('demo-host', null, pin.words)));
     r = await tsm(['status']);
     expect(r.text, contains('service  running, unlocked'));
 
@@ -296,6 +320,8 @@ void main() {
       link,
     ]);
     expect(r.code, 0, reason: '$r');
+    // The identity of the service it started, as it pinned it.
+    final identity = 'identity ${(await demo.pins.all()).first.words}\n';
     expect(
       r.text,
       'paired with mbp; it gave:\n'
@@ -303,7 +329,9 @@ void main() {
       'set up (${demo.bootstrapPath})\n'
       'approval link on $link\n'
       'started\n'
-      'unlocked\n',
+      '$identity'
+      'unlocked\n'
+      '$identity',
     );
     final given = await window.result;
     expect(given.receiver, 'bigbeast');
@@ -408,6 +436,7 @@ void main() {
       'keyfile',
     ]);
     expect(r.code, 0, reason: '$r');
+    final identity = 'identity ${(await demo.pins.all()).first.words}\n';
     expect(r.err, contains('pairing through github:$slug as bigbeast'));
     expect(
       r.text,
@@ -416,7 +445,9 @@ void main() {
       '  a GitHub token for $slug\n'
       'set up (${demo.bootstrapPath})\n'
       'started\n'
-      'unlocked\n',
+      '$identity'
+      'unlocked\n'
+      '$identity',
     );
     expect((await window.result).receiver, 'bigbeast');
     // The token never went on a command line: only in the handover line.

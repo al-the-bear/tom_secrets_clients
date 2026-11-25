@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.16
+
+- The service's identity key (`tom_secrets_client` 0.2.25, protocol.md
+  6.1): every admin command checks that the service answering holds the
+  key pinned for it, before it sends the admin key's proof or a master
+  password, and a claim's password is sealed to that service. The pins are
+  in the file `tsm` shares with the app (`~/.config/tsm/services`;
+  `TSM_CONFIG_DIR`).
+- `tsm start` pins the key the started service says and prints its words
+  (`identity …`); `tsm unlock` and `tsm status` print them; an unlock pins
+  the keys of the other devices' services from the primary's device
+  records.
+- `tsm trust [<words | fingerprint | key file>]`, `--list`, `--remove
+  [--host]`: shows what the service presents, pins it when it presents the
+  identity given, lists and removes pins.
+- A service not pinned ends the command with `service_untrusted`, reason
+  `unpinned` (exit code 12), showing its words; another key than the
+  pinned one with `service_key_changed` (exit code 13). Neither is asked a
+  password.
+- The signature check and the encapsulation run in the service
+  executable's helper mode (`tom_secrets_service` 0.26.0), so tsm links no
+  post-quantum code; without a service executable (beside tsm, or
+  `TSM_SERVICE`) an admin command says so.
+
 ## 0.2.15
 
 - Admin commands check who answers before they send anything
