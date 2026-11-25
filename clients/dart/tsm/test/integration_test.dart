@@ -21,6 +21,7 @@ import 'dart:isolate';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
+import 'package:tom_core_storage/io.dart' show TomDesktopSecretStore;
 import 'package:tom_core_storage/settings.dart' show TomInMemorySecretStore;
 import 'package:tom_github_api/testing.dart' show FakeGitHubServer;
 import 'package:tom_secrets_client/admin.dart';
@@ -365,6 +366,15 @@ void main() {
   test('tsm pair through a GitHub relay (part-relay): the real service\'s '
       'pairing mode reaches the repository with this machine\'s own token '
       'from --token-env; the machine set up, started and unlocked', () async {
+    // The pairing mode keeps this machine's token for the repository in
+    // the OS keychain, which a session without one (a server over SSH)
+    // lacks: a machine there is set up without a token of its own.
+    if (!await TomDesktopSecretStore(
+      service: tomSecretsKeychainService,
+    ).isAvailable()) {
+      markTestSkipped('no keychain answers in this session');
+      return;
+    }
     final self = tomSecretsIdentityOf(tomSecretsProcessInfo(pid)!);
     final beside = Link('${File(serviceExe).parent.path}/tsm');
     if (!beside.existsSync()) beside.createSync(self.exe);

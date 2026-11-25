@@ -27,7 +27,7 @@ dev_dependencies:
   # Tests run tsm against the real service in-process and as a built binary,
   # with demo vaults (dev dependencies are not linked: the licence boundary
   # keeps tsm off the core and the KDBX layer).
-  tom_secrets_service: ^0.26.1
+  tom_secrets_service: ^0.26.2
   # The fake GitHub server the relay test pairs through.
   tom_github_api: ^1.5.0
   tom_secrets_core: ^0.2.38

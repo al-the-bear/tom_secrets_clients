@@ -246,6 +246,9 @@ const approvedSessions = <String, List<Step>>{
   ],
 };
 
+/// The service version a transcript shows.
+const transcriptServiceVersion = '0.26.2';
+
 /// The words a transcript shows for the demo service's identity.
 const transcriptWords = 'harbor-violet-cedar-lantern-maple-orbit-pebble-quill';
 
@@ -297,6 +300,18 @@ String normalize(String text, Map<String, String> paths, DateTime today) {
     out = out.replaceAll(p, paths[p]!);
   }
   out = out.replaceAll(RegExp(r'\bg-[0-9a-f]{16}\b'), transcriptGrantId);
+  // The service's version is the one the tests resolve: the guide shows
+  // one that stands for it.
+  out = out.replaceAllMapped(
+    RegExp(r'(lock mode \w+, version )\d+\.\d+\.\d+'),
+    (m) => '${m[1]}$transcriptServiceVersion',
+  );
+  // The platform of the demo installation is the guide's, whatever the
+  // tests run on.
+  out = out.replaceAll(
+    RegExp(r'\bplatform=(macos|linux|windows)\b'),
+    'platform=linux',
+  );
   // The identity key is made anew for every demo installation.
   out = out
       .replaceAllMapped(

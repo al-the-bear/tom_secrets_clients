@@ -150,15 +150,21 @@ void main() {
   late _Service service;
   late TomSecretsMemoryPins pins;
 
+  // The endpoint here is a Unix socket in a scratch folder, whose access
+  // list Windows' check of the files would refuse.
+  final TomSecretsEndpointInspector inspector = Platform.isWindows
+      ? const PassingInspector()
+      : const TomSecretsSystemEndpointInspector();
+
   TomSecretsServiceTrust trust({bool firstUse = false}) =>
       TomSecretsServiceTrust(
-        // The endpoint here is a Unix socket in a scratch folder, whose
-        // access list Windows' check of the files would refuse.
-        inspector: Platform.isWindows
-            ? const PassingInspector()
-            : const TomSecretsSystemEndpointInspector(),
+        inspector: inspector,
         identity: fakeIdentityTrust(pins: pins, firstUse: firstUse),
       );
+
+  /// A check that names no identity check of its own.
+  TomSecretsServiceTrust unnamed() =>
+      TomSecretsServiceTrust(inspector: inspector);
 
   Future<TomSecretsAdminException> refused(Future<Object?> f) async {
     try {
@@ -358,7 +364,11 @@ void main() {
       expect(tomSecretsUntrustedAdvice('no_identity'), contains('older'));
 
       final none = await refused(
-        TomSecretsAdminClient.claim(runtime, password: _password),
+        TomSecretsAdminClient.claim(
+          runtime,
+          password: _password,
+          trust: unnamed(),
+        ),
       );
       expect(none.kind, tomSecretsServiceUntrusted);
       expect(none.details['reason'], 'unpinned');
@@ -407,6 +417,7 @@ void main() {
       final admin = await TomSecretsAdminClient.connect(
         runtime,
         service.adminKey,
+        trust: unnamed(),
       );
       addTearDown(admin.close);
       // Pinned as it presented itself: only for a caller that says so.

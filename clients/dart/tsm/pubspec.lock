@@ -821,10 +821,10 @@ packages:
     dependency: "direct dev"
     description:
       name: tom_secrets_service
-      sha256: "699d0215da6075d593b244d20b55aa19041fbf8204c8f4071798a946679a5412"
+      sha256: "2f862a3908c02ac0b845b53630fbcf071d3eb64631e124c6caaf881096a05c50"
       url: "https://pub.dev"
     source: hosted
-    version: "0.26.1"
+    version: "0.26.2"
   typed_data:
     dependency: transitive
     description:

@@ -258,7 +258,7 @@ Errors:
 <!-- transcript get-errors -->
 ```text
 $ tsm get team/Api/Missing
-tsm: not_found: no entry for team/Api/Missing with host=demo-host, platform=macos, env=default
+tsm: not_found: no entry for team/Api/Missing with host=demo-host, platform=linux, env=default
 [exit code 6]
 $ tsm get demo.logo
 tsm: not_found: team/Logo has no field Password
@@ -443,7 +443,7 @@ tsm status [--json]
 <!-- transcript status -->
 ```text
 $ tsm status
-service  running, unlocked, lock mode b, version 0.26.1
+service  running, unlocked, lock mode b, version 0.26.2
 identity harbor-violet-cedar-lantern-maple-orbit-pebble-quill
 agent    /run/user/1000/tsm/agent.sock  (SSH_AUTH_SOCK or IdentityAgent for ssh)
 store    primary  current  file  fetched just now
