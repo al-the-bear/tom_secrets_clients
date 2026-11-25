@@ -217,8 +217,8 @@ port files with the port each yields.
 
 A reference names a secret: an entry and one of its fields, optionally with
 dimension values. Every component that handles references — the service, the
-client libraries, `tsm`, the editor, the `tom_core_secrets` provider — parses
-and formats them by this section. A client never resolves a reference; it
+client libraries, `tsm`, the editor, the Tom servers' provider
+(`tom_secrets_provider`) — parses and formats them by this section. A client never resolves a reference; it
 sends it and the service answers.
 
 ### 4.1 Grammar
@@ -276,7 +276,7 @@ A reserved character inside a group name, title, field or value is written
 as `%` and the two hex digits of each of its UTF-8 bytes: `/` `%2F`, `#`
 `%23`, `[` `%5B`, `]` `%5D`, `,` `%2C`, `:` `%3A`, `%` `%25`. Percent-encoding
 rather than a backslash keeps a reference splittable at its last `#` by
-`tom_core_secrets`. Any other character may also be escaped; the canonical
+`tom_core_server`'s secret references. Any other character may also be escaped; the canonical
 form (4.5) escapes only what it must.
 
 ### 4.4 Reserved prefixes
