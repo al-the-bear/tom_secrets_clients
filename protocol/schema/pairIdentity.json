@@ -63,6 +63,10 @@
       "description": "[C] A link id: 8-128 of A-Z a-z 0-9 _ - (128 random bits in base64url when made).",
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{8,128}$"
+    },
+    "serviceKey": {
+      "description": "The service's public identity key (section 6.1).",
+      "$ref": "common.json#/$defs/base64"
     }
   },
   "x-tsm": {

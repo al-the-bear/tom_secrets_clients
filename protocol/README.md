@@ -38,7 +38,7 @@ disagree with the document, the document wins.
 | --- | --- |
 | [`protocol.md`](protocol.md) | the protocol document |
 | [`schema/`](schema/) | one JSON Schema (draft 2020-12) per message, `<op>.json`, and `common.json` with the shared definitions; each schema's `x-tsm` names its endpoint, direction and phase |
-| [`vectors/`](vectors/) | the test vectors: `frames.json`, `references.json`, `hmac.json`, `discovery.json`, `signatures.json`, `approval_codes.json`, `link_handshake.json`, `bundles.json` |
+| [`vectors/`](vectors/) | the test vectors: `frames.json`, `references.json`, `hmac.json`, `discovery.json`, `signatures.json`, `approval_codes.json`, `link_handshake.json`, `bundles.json`, `identity_words.json` (the words of a service identity key) |
 | [`tool/tsm_protocol.py`](tool/tsm_protocol.py) | the reference implementation of the computable parts: the reference grammar, framing, the admin challenge's MAC, discovery, and the signed bytes, key ids, approval codes and tokens (standard library only) |
 | [`tool/gen_schemas.py`](tool/gen_schemas.py) | writes `schema/` |
 | [`tool/gen_vectors.py`](tool/gen_vectors.py) | writes `frames.json`, `references.json`, `hmac.json`, `discovery.json` and `approval_codes.json` |

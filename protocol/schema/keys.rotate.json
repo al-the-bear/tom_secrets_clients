@@ -20,6 +20,9 @@
     },
     "link": {
       "type": "boolean"
+    },
+    "identity": {
+      "type": "boolean"
     }
   },
   "x-tsm": {

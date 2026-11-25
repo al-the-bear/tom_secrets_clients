@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.25
+
+- The service's identity key (protocol.md 6.1): `connect`, `claim` and
+  `checkService` run the identity exchange before they send an `auth` or a
+  `claim`. The service signs the admin's nonce, its own nonce and start,
+  and a one-time key; the signature is checked and the key compared with
+  the pins (`TomSecretsServiceTrust.identity`, a `TomSecretsIdentityTrust`:
+  the pins and the primitives). A service that is not pinned is
+  `service_untrusted` (reason `unpinned`, with its words), one older than
+  the identity key `no_identity`; another key than the pinned one is the
+  new kind `service_key_changed`. A key the pinned one signed its way to
+  takes the pin's place. Without an identity check an admin connection is
+  refused: no service is trusted unchecked.
+- `claim` seals the master password (and key file) to the one-time key the
+  service signed (`tomSecretsSealClaim`, protocol.md 6.2); it is never sent
+  in the clear.
+- The pins: `TomSecretsServicePins` (`TomSecretsPinFile`, the file the app
+  and `tsm` share, `tomSecretsPinFile()`; `TomSecretsMemoryPins`),
+  `tomSecretsPinDevices` (the keys the primary's device records name),
+  `tomSecretsIdentityWords` and `tomSecretsIdentityFingerprint`,
+  `TomSecretsAdminClient.presentedIdentity` and `identity`.
+- `TomSecretsStarted.identity`: the identity key the started service wrote
+  on its standard output, which the starter pins.
+- `TomSecretsIdentityCrypto`: the two primitives an admin needs (verify,
+  encapsulate), so that this package links no post-quantum code;
+  `TomSecretsIdentityHelper` runs them in the service executable's helper
+  mode.
+
 ## 0.2.24
 
 - Large vaults (protocol.md 2.7): `TomSecretsAdminClient.request` takes

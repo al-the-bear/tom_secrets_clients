@@ -20,6 +20,7 @@ import '../../tom_secrets_client.dart';
 import 'admin_auth.dart';
 import 'chunked.dart';
 import 'runtime.dart';
+import 'service_identity.dart';
 import 'service_trust.dart';
 import 'unlock_bundle.dart';
 
@@ -62,6 +63,8 @@ final class TomSecretsAdminClient {
     final admin = await _open(runtime, trust);
     final challenge = await admin._next();
     admin._takeFeatures(challenge);
+    // Who it is, by its pinned key, before the proof of the admin key.
+    await admin._identify(challenge, runtime, trust);
     final serviceNonce = base64.decode(challenge['serviceNonce']! as String);
     final start = challenge['serviceStart']! as int;
     final adminNonce = tomSecretsRandomBytes();
@@ -105,12 +108,12 @@ final class TomSecretsAdminClient {
     return admin;
   }
 
-  /// Takes the service over with the master password (`claim`): the service
-  /// cannot prove it holds a key here, so [trust] is all that stands
-  /// between the password and whatever answers: the claim is sent only to
-  /// an endpoint that is this user's service (`service_untrusted`
-  /// otherwise, nothing sent). Answers the connection and the new admin
-  /// key.
+  /// Takes the service over with the master password (`claim`). The claim
+  /// is sent only to an endpoint that is this user's service
+  /// (`service_untrusted` otherwise) and whose identity key is the one
+  /// pinned (`service_key_changed` otherwise), and the password is sealed
+  /// to the one-time key that service signed (protocol.md 6.2): nothing
+  /// else reads it. Answers the connection and the new admin key.
   static Future<(TomSecretsAdminClient, Uint8List)> claim(
     TomSecretsRuntime runtime, {
     required String password,
@@ -120,14 +123,27 @@ final class TomSecretsAdminClient {
   }) async {
     final admin = await _open(runtime, trust);
     // The challenge, unanswerable without the key; its features count.
-    admin._takeFeatures(await admin._next());
-    admin._send({
-      'op': 'claim',
-      'password': password,
-      'keyFile': ?(keyFile == null ? null : base64.encode(keyFile)),
-      'client': client,
-      'features': _features,
-    });
+    final challenge = await admin._next();
+    admin._takeFeatures(challenge);
+    final identity = await admin._identify(challenge, runtime, trust);
+    final crypto = trust.identityTrust!.crypto;
+    final sealed = await crypto.encapsulate(identity.oneTimeKey);
+    try {
+      admin._send({
+        'op': 'claim',
+        'sealed': await tomSecretsSealClaim(
+          sharedSecret: sealed.sharedSecret,
+          kemCiphertext: sealed.ciphertext,
+          transcript: identity.transcript,
+          password: password,
+          keyFile: keyFile,
+        ),
+        'client': client,
+        'features': _features,
+      });
+    } finally {
+      sealed.sharedSecret.fillRange(0, sealed.sharedSecret.length, 0);
+    }
     final answer = await admin._next();
     admin._throwIfError(answer);
     admin._listen();
@@ -142,13 +158,175 @@ final class TomSecretsAdminClient {
       );
 
   /// Checks that the admin endpoint of [runtime] is this user's service
-  /// ([trust]) and sends nothing: what an admin does before it asks the
-  /// user for the master password of a `claim`. Throws `not_running` or
-  /// `service_untrusted`.
-  static Future<void> checkService(
+  /// and that its identity key is the one pinned ([trust]); sends nothing
+  /// secret: what an admin does before it asks the user for the master
+  /// password of a `claim`. Answers the service's identity. Throws
+  /// `not_running`, `service_untrusted` or `service_key_changed`.
+  static Future<TomSecretsServiceIdentity> checkService(
     TomSecretsRuntime runtime, {
     TomSecretsServiceTrust trust = const TomSecretsServiceTrust(),
-  }) async => (await _connectChecked(runtime, trust)).destroy();
+  }) async {
+    final admin = await _open(runtime, trust);
+    try {
+      final challenge = await admin._next();
+      return await admin._identify(challenge, runtime, trust);
+    } finally {
+      await admin.close();
+    }
+  }
+
+  /// The identity the service on [runtime] presents, its signature
+  /// checked, whatever is pinned: what `tsm trust` compares with the words
+  /// the user gives. The endpoint's files and process are checked as
+  /// always ([trust]). Throws `not_running` or `service_untrusted`.
+  static Future<TomSecretsServiceIdentity> presentedIdentity(
+    TomSecretsRuntime runtime, {
+    TomSecretsServiceTrust trust = const TomSecretsServiceTrust(),
+  }) async {
+    final admin = await _open(runtime, trust);
+    try {
+      final challenge = await admin._next();
+      return await admin._identify(challenge, runtime, trust, judge: false);
+    } finally {
+      await admin.close();
+    }
+  }
+
+  /// The service's identity as this connection checked it.
+  TomSecretsServiceIdentity? get identity => _identity;
+  TomSecretsServiceIdentity? _identity;
+
+  /// The identity exchange (protocol.md 6.1): the service signs this
+  /// admin's nonce, its own nonce and start, and a one-time key; the
+  /// signature is checked, and with [judge] the key against the pins.
+  Future<TomSecretsServiceIdentity> _identify(
+    Map<String, Object?> challenge,
+    TomSecretsRuntime runtime,
+    TomSecretsServiceTrust trust, {
+    bool judge = true,
+  }) async {
+    Never untrusted(String reason, String message, [Map<String, Object?>? d]) {
+      unawaited(close());
+      throw TomSecretsAdminException(
+        tomSecretsServiceUntrusted,
+        message,
+        details: {'reason': reason, ...?d},
+      );
+    }
+
+    final identityTrust = trust.identityTrust;
+    if (identityTrust == null) {
+      untrusted(
+        'unpinned',
+        'this program has no means to check the service\'s identity key',
+      );
+    }
+    final features = challenge['features'];
+    if (features is! List || !features.contains(tomSecretsIdentityFeature)) {
+      untrusted(
+        'no_identity',
+        'the service has no identity key (it is older than this program)',
+      );
+    }
+    final clientNonce = tomSecretsRandomBytes();
+    _send({'op': 'identify', 'clientNonce': base64.encode(clientNonce)});
+    final answer = await _next();
+    _throwIfError(answer);
+    final Uint8List publicKey, oneTimeKey, signature;
+    final changes = <TomSecretsIdentityChange>[];
+    try {
+      publicKey = base64.decode(answer['publicKey']! as String);
+      oneTimeKey = base64.decode(answer['oneTimeKey']! as String);
+      signature = base64.decode(answer['signature']! as String);
+      for (final c in answer['changes'] as List? ?? const []) {
+        final change = TomSecretsIdentityChange.fromJson(c);
+        if (change != null) changes.add(change);
+      }
+    } on Object {
+      untrusted('peer_user', 'the service\'s identity cannot be read');
+    }
+    final transcript = tomSecretsIdentityMessage(
+      clientNonce: clientNonce,
+      serviceNonce: base64.decode(challenge['serviceNonce']! as String),
+      serviceStart: challenge['serviceStart']! as int,
+      oneTimeKey: oneTimeKey,
+    );
+    final crypto = identityTrust.crypto;
+    if (publicKey.length != tomSecretsIdentityKeyLength ||
+        oneTimeKey.length != tomSecretsOneTimeKeyLength ||
+        !await crypto.verify(
+          publicKey: publicKey,
+          message: transcript,
+          signature: signature,
+          context: tomSecretsIdentityContext,
+        )) {
+      await close();
+      throw TomSecretsAdminException(
+        'service_impostor',
+        'the service could not prove it holds its identity key',
+      );
+    }
+    final presented = TomSecretsServiceIdentity(
+      publicKey: publicKey,
+      oneTimeKey: oneTimeKey,
+      transcript: transcript,
+    );
+    _identity = presented;
+    if (!judge) return presented;
+    final pins = identityTrust.pins;
+    final pinned = await tomSecretsPinsFor(
+      pins,
+      identityTrust.host,
+      runtime.directory,
+    );
+    final verdict = await tomSecretsJudgeIdentity(
+      pinned: pinned,
+      presented: publicKey,
+      changes: changes,
+      crypto: crypto,
+    );
+    final words = presented.words;
+    switch (verdict) {
+      case TomSecretsPinVerdict.pinned:
+        break;
+      case TomSecretsPinVerdict.rotated:
+        // The pinned key signed its way to this one: it takes its place.
+        await pins.pin(
+          identityTrust.host,
+          pinned.first.runtime,
+          publicKey,
+          TomSecretsPinSource.rotation,
+        );
+      case TomSecretsPinVerdict.unpinned:
+        if (identityTrust.pinOnFirstUse) {
+          await pins.pin(
+            identityTrust.host,
+            runtime.directory,
+            publicKey,
+            TomSecretsPinSource.trust,
+          );
+          break;
+        }
+        untrusted(
+          'unpinned',
+          'this service is not known here yet; its identity is: $words',
+          {
+            'words': words,
+            'fingerprint': tomSecretsIdentityFingerprint(publicKey),
+            'key': base64.encode(publicKey),
+          },
+        );
+      case TomSecretsPinVerdict.changed:
+        await close();
+        throw TomSecretsAdminException(
+          tomSecretsServiceKeyChanged,
+          'the service\'s identity key changed: pinned '
+          '${pinned.first.words}, presented $words',
+          details: {'pinned': pinned.first.words, 'presented': words},
+        );
+    }
+    return presented;
+  }
 
   static Future<TomSecretsAdminClient> _open(
     TomSecretsRuntime runtime,

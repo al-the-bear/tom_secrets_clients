@@ -16,6 +16,8 @@ import 'package:test/test.dart';
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 
+import 'support/fake_identity.dart';
+
 /// The endpoint here is TCP on every OS, which only Windows can measure:
 /// the check of who answers (service_trust_test.dart) is handed facts that
 /// pass.
@@ -37,7 +39,11 @@ final class _Passing implements TomSecretsEndpointInspector {
   TomSecretsEndpointFacts withPeer(TomSecretsEndpointFacts f, Socket s) => f;
 }
 
-const _trusted = TomSecretsServiceTrust(inspector: _Passing());
+final _trusted = TomSecretsServiceTrust(
+  inspector: const _Passing(),
+  // The identity exchange, answered by a stand-in and pinned as presented.
+  identity: fakeIdentityTrust(firstUse: true),
+);
 
 /// An admin endpoint that authenticates [adminKey] and hands every request
 /// after that to [onRequest]; [features] are offered in the challenge.
@@ -79,9 +85,10 @@ final class _Endpoint {
           'serviceNonce': base64.encode(serviceNonce),
           'serviceStart': start,
           'protocol': 1,
-          'features': features,
+          'features': [...features, tomSecretsIdentityFeature],
         }),
       );
+      final identity = FakeIdentityKey();
       socket.listen((bytes) {
         for (final frame in reader.add(bytes)) {
           e.frameSizes.add(frame.payload.length);
@@ -93,6 +100,20 @@ final class _Endpoint {
             if (TomSecretsChunkAssembler.isChunked(m)) m = chunks.begin(m);
           }
           if (m == null) continue;
+          if (m['op'] == 'identify') {
+            socket.add(
+              tomSecretsJsonFrame(
+                fakeIdentityAnswer(
+                  key: identity,
+                  oneTime: FakeOneTimeKey(),
+                  identify: m,
+                  serviceNonce: serviceNonce,
+                  serviceStart: start,
+                ),
+              ),
+            );
+            continue;
+          }
           if (m['op'] == 'auth') {
             e.auth = m;
             socket.add(

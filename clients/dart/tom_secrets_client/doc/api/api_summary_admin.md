@@ -10,6 +10,7 @@
   - [TomSecretsAdminClient](#tomsecretsadminclient)
   - [TomSecretsAdminException](#tomsecretsadminexception)
   - [TomSecretsServiceTrust](#tomsecretsservicetrust)
+  - [The service's identity](#the-services-identity)
   - [TomSecretsEndpointFacts](#tomsecretsendpointfacts)
   - [TomSecretsServicePeer](#tomsecretsservicepeer)
   - [TomSecretsEndpointInspector](#tomsecretsendpointinspector)
@@ -65,6 +66,15 @@ app's distribution. A program that only reads secrets needs none of it.
 Object
 ├── TomSecretsAdminClient
 ├── TomSecretsServiceTrust
+├── TomSecretsIdentityTrust
+├── TomSecretsServiceIdentity
+├── TomSecretsServicePin
+├── TomSecretsIdentityChange
+├── TomSecretsIdentityCrypto (interface)
+│   └── TomSecretsIdentityHelper
+├── TomSecretsServicePins (interface)
+│   ├── TomSecretsPinFile
+│   └── TomSecretsMemoryPins
 ├── TomSecretsEndpointFacts
 ├── TomSecretsServicePeer
 ├── TomSecretsEndpointInspector (interface)
@@ -103,9 +113,10 @@ An authenticated admin connection: requests by id and the pushed events.
 
 | Method | Return Type | Description |
 | --- | --- | --- |
-| `connect(TomSecretsRuntime runtime, List<int> adminKey, {Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<TomSecretsAdminClient>` | Connects to the admin endpoint and runs the mutual challenge; throws `service_untrusted` (before anything is sent) when `trust` finds the endpoint is not this user's service, `service_impostor` when the service's proof is wrong, `denied` when the service refuses the key, `not_running` when no service answers |
-| `claim(TomSecretsRuntime runtime, {required String password, List<int>? keyFile, Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<(TomSecretsAdminClient, Uint8List)>` | Takes the service over with the master password; answers the connection and the new admin key. The service cannot prove it holds a key here: the claim is sent only to an endpoint `trust` accepts (`service_untrusted` otherwise, nothing sent) |
-| `checkService(TomSecretsRuntime runtime, {TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<void>` | Checks that the admin endpoint is this user's service and sends nothing: what an admin does before it asks for the master password of a `claim`. Throws `not_running` or `service_untrusted` |
+| `connect(TomSecretsRuntime runtime, List<int> adminKey, {Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<TomSecretsAdminClient>` | Connects to the admin endpoint, runs the identity exchange and the mutual challenge; throws `service_untrusted` (before anything is sent) when `trust` finds the endpoint is not this user's service or has no pin for it, `service_key_changed` when it presents another identity key than the pinned one, `service_impostor` when the service's proof is wrong, `denied` when the service refuses the key, `not_running` when no service answers |
+| `claim(TomSecretsRuntime runtime, {required String password, List<int>? keyFile, Map<String, Object?> client = const {'name': 'tsm'}, TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<(TomSecretsAdminClient, Uint8List)>` | Takes the service over with the master password, sealed to the one-time key the pinned service signed; answers the connection and the new admin key. The claim is sent only to an endpoint `trust` accepts (`service_untrusted` or `service_key_changed` otherwise, nothing sent) |
+| `checkService(TomSecretsRuntime runtime, {TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<TomSecretsServiceIdentity>` | Checks that the admin endpoint is this user's service and that its identity key is the one pinned; sends nothing secret: what an admin does before it asks for the master password of a `claim`. Throws `not_running`, `service_untrusted` or `service_key_changed` |
+| `presentedIdentity(TomSecretsRuntime runtime, {TomSecretsServiceTrust trust = const TomSecretsServiceTrust()})` | `Future<TomSecretsServiceIdentity>` | The identity the service presents, its signature checked, whatever is pinned: what `tsm trust` compares with the words the user gives |
 
 #### Properties
 
@@ -170,6 +181,7 @@ const TomSecretsServiceTrust({
   Set<String>? executables,
   TomSecretsEndpointInspector inspector =
       const TomSecretsSystemEndpointInspector(),
+  TomSecretsIdentityTrust? identity,
 })
 ```
 
@@ -180,6 +192,9 @@ const TomSecretsServiceTrust({
 | `executables` | `Set<String>?` | The service executables expected, as real paths; null: `tomSecretsExpectedServiceExecutables()` of this process |
 | `inspector` | `TomSecretsEndpointInspector` | Reads the endpoint |
 | `expected` | `Set<String>` | The executables expected |
+| `identity` | `TomSecretsIdentityTrust?` | What the service's identity key is checked with; null: `fallbackIdentity` |
+| `fallbackIdentity` | `static TomSecretsIdentityTrust?` | The identity check of a process that sets its admin connections up in one place; without either, an admin connection is refused (`unpinned`) |
+| `identityTrust` | `TomSecretsIdentityTrust?` | The identity check that holds |
 
 #### Methods
 
@@ -187,6 +202,45 @@ const TomSecretsServiceTrust({
 | --- | --- | --- |
 | `judgeFiles(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the endpoint's files are not trusted, or null |
 | `judgePeer(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the process answering is not trusted, or null |
+
+---
+
+### The service's identity
+
+The identity key of a service (protocol.md 6.1), its pins and the check.
+
+| Class | What |
+| --- | --- |
+| `TomSecretsIdentityTrust({required pins, required crypto, String? host, bool pinOnFirstUse = false})` | What an admin checks a service's identity with: the `pins`, the primitives `crypto`, the `host` whose service is asked (default this machine's name); `pinOnFirstUse` pins what is met without anyone comparing (a test with its own service only) |
+| `TomSecretsServiceIdentity` | What the service presented, its signature checked: `publicKey`, `oneTimeKey`, `transcript` (the bytes it signed), `words` |
+| `TomSecretsServicePin` | One pinned service: `host`, `runtime` (null: wherever the host's service answers), `key`, `source`, `at`, `words` |
+| `TomSecretsServicePins` | The pins: `all()`, `pin(host, runtime, key, source)` (in place of what was pinned for the two), `remove(host, runtime)` (null: every pin of the host) |
+| `TomSecretsPinFile(File file)` | The pin file the app and `tsm` share: JSON, the user's alone |
+| `TomSecretsMemoryPins()` | Pins kept in memory |
+| `TomSecretsIdentityCrypto` | The two primitives: `verify({publicKey, message, signature, context})` and `encapsulate(publicKey)` |
+| `TomSecretsIdentityHelper(String executable, {environment})` | The primitives run by the service executable's helper mode; `close()` ends it |
+| `TomSecretsIdentityChange` | A statement of a replaced key: `from` signed `to` (`signature`) |
+
+`TomSecretsPinSource`: `start` (the started process said it), `pairing` (a
+pairing or a device record), `trust` (the user compared the words),
+`rotation` (the pinned key signed it). `TomSecretsPinVerdict`: `pinned`,
+`rotated`, `unpinned`, `changed`.
+
+| Function or constant | What |
+| --- | --- |
+| `tomSecretsPinFile({environment, operatingSystem})` | Where the pin file is: `$TSM_CONFIG_DIR/services`, `%APPDATA%\tsm\services` on Windows, else `$XDG_CONFIG_HOME/tsm/services` or `~/.config/tsm/services` |
+| `tomSecretsPinsFor(pins, host, runtime)` | The pins that hold for a service: those of the runtime directory, else the host's |
+| `tomSecretsPinDevices(pins, devices)` | Pins the service keys the device records of `pair.list` name, for their hosts; removes a revoked device's |
+| `tomSecretsJudgeIdentity({pinned, presented, changes, crypto})` | How a presented key stands against the pins |
+| `tomSecretsIdentityFingerprint(publicKey)` | The SHA-256 of a public key, lower-case hex |
+| `tomSecretsIdentityWords(publicKey)` | The fingerprint as eight words of `tomSecretsIdentityWordList` |
+| `tomSecretsIdentityNamedBy(given, publicKey)` | Whether the words or the fingerprint given name the key |
+| `tomSecretsIdentityMessage({clientNonce, serviceNonce, serviceStart, oneTimeKey})` | The bytes the service signs |
+| `tomSecretsSealClaim(…)`, `tomSecretsOpenClaim(…)` | A claim's secrets sealed for, and opened by, the holder of the one-time key (protocol.md 6.2) |
+| `tomSecretsIdentityFeature`, `tomSecretsServiceKeyChanged` | The feature `identity`; the error kind `service_key_changed` |
+| `tomSecretsIdentityContext`, `tomSecretsIdentityChangeContext` | The signature contexts |
+| `tomSecretsIdentityKeyLength`, `tomSecretsOneTimeKeyLength`, `tomSecretsIdentityNonceLength` | 1,984, 1,216 and 32 bytes |
+| `tomSecretsKeyChangedAdvice` | What the user does about a changed key |
 
 ---
 
@@ -470,7 +524,7 @@ A new service runs with the admin key.
 #### Constructors
 
 ```dart
-const TomSecretsStarted(Uint8List adminKey)
+const TomSecretsStarted(Uint8List adminKey, {Uint8List? identity})
 ```
 
 #### Properties
@@ -478,6 +532,7 @@ const TomSecretsStarted(Uint8List adminKey)
 | Property | Type | Description |
 | --- | --- | --- |
 | `adminKey` | `Uint8List` | The admin key the starter keeps |
+| `identity` | `Uint8List?` | The service's public identity key, as it wrote it on its standard output: the starter pins it; null from a service older than the identity key |
 
 ---
 

@@ -729,24 +729,91 @@ of the user reads its memory), hides `/proc/<pid>/exe` from its own user.
 For such a peer checks 1 and 2 hold and check 3 cannot be made; a peer whose
 executable can be read must match.
 
-The checks say which user's which program answers. They do not prove the
-service holds a key: that is the challenge (6.1), which a claimant cannot
-run.
+The checks say which user's which program answers. Which service it is,
+the service proves with its identity key (6.1), before the admin sends an
+`auth` or a `claim`.
 
-### 6.1 The challenge
+### 6.1 The identity key and the challenge
 
-The admin endpoint answers nothing before both sides have proven they hold
-the **admin key** (32 random bytes the service got from its starter):
+**The identity key.** Every service has a signing key pair of its own: the
+composite ML-DSA-65 with Ed25519 of RFC 10073 (public key 1,984 bytes: the
+ML-DSA-65 key, then the Ed25519 key). The service makes it at its first
+start and keeps it in its data directory (`service-identity.json`, the
+user's alone); it is the same after every restart and update, and a file
+that cannot be read stops the start. Its **fingerprint** is the SHA-256 of
+the public key, shown in hexadecimal or as eight **words**: one word per
+byte of the fingerprint's first eight, from the list of 256 words in
+`vectors/identity_words.json`, joined by hyphens.
+
+**The pins.** An admin keeps the public keys of the services it knows, each
+for a host and a runtime directory, or for a host wherever its service
+answers. The manager app and `tsm` share one file: `services` in
+`$TSM_CONFIG_DIR`, else `%APPDATA%\tsm` on Windows, else
+`$XDG_CONFIG_HOME/tsm` or `~/.config/tsm`; JSON `{version: 1, services:
+[{host, runtime?, key, source, at}]}`, the user's alone. A key is pinned
+
+- when the admin started the service: the service's `ready` line on its
+  standard output names it (`identity`, base64), through the pipe of the
+  process the admin started (`source` `start`);
+- from the primary vault's device records and from a pairing (9.8), which
+  name each device's service key (`source` `pairing`);
+- when the user compared the words and said so: `tsm trust`, the app's
+  "The words are the same" (`source` `trust`);
+- when the pinned key signed the key that replaced it (`source`
+  `rotation`).
+
+**The exchange.** The admin endpoint answers nothing but this before both
+sides have proven they hold the **admin key** (32 random bytes the service
+got from its starter), or the admin has claimed it (6.2):
 
 1. The service sends `challenge {serviceNonce, serviceStart, protocol,
    service, features}`: 32 random bytes, its start time in milliseconds
    since the epoch, its protocol version, `{version}` and the admin features
-   it offers (`chunked`, 2.7).
-2. The admin answers `auth {adminNonce, mac, client, features}` (the
+   it offers (`chunked`, 2.7; `identity`).
+2. The admin sends `identify {clientNonce}`, 32 random bytes. The service
+   makes a **one-time key** for this connection, an X-Wing key pair
+   (ML-KEM-768 with X25519, public key 1,216 bytes), and answers
+   `identity {publicKey, oneTimeKey, signature, changes?}`: its public
+   identity key, the one-time public key, and the composite signature,
+   with the context `tsm-identity-v1`, over
+   `clientNonce || serviceNonce || serviceStart || oneTimeKey` (the nonces'
+   32 raw bytes each, `serviceStart` as 8 bytes big-endian, the one-time
+   public key's bytes). `changes` are the statements of the keys it
+   replaced, oldest first, at most 8: `{from, to, signature}`, the key
+   `from` having signed the key `to` with the context
+   `tsm-identity-change-v1`.
+3. The admin checks the signature, then the key against its pins:
+   - the pinned key: it goes on;
+   - a key the pinned one leads to through `changes`, each statement
+     checked with the key it leads from: the new key takes the pin's place;
+   - no pin for this service: **`service_untrusted`**, reason `unpinned`,
+     with `details.words`, `details.fingerprint` and `details.key`. Nothing
+     is sent; the user compares the words;
+   - another key than the pinned one: **`service_key_changed`**, with
+     `details.pinned` and `details.presented` (the words). Nothing is sent,
+     and no admin offers a way to go on with it: the pin is removed by
+     hand, and the new key compared like a first one.
+
+   A service that does not offer `identity` (one older than the identity
+   key) is `service_untrusted`, reason `no_identity`. A signature that does
+   not verify is `service_impostor`. An admin with no means to check
+   reports `unpinned` and sends nothing: no service is trusted unchecked.
+4. The admin answers `auth {adminNonce, mac, client, features}` (the
    features it takes of those offered):
    `mac = HMAC-SHA256(adminKey, "tsm-admin-v1" || serviceNonce || adminNonce || serviceStart)`.
-3. The service answers `authed {mac2}`: the same HMAC under the label
+5. The service answers `authed {mac2}`: the same HMAC under the label
    `tsm-service-v1`.
+
+The service answers `identify` only to a program that may administer (its
+measured executable, below), and once per connection.
+
+`tsm` links no post-quantum code: the two operations an admin needs, the
+signature check and the encapsulation of 6.2, are run for it by the service
+executable's helper mode (a first standard-input line `{"identityHelper":
+1}`, then one JSON line per request, `{op: "verify", publicKey, message,
+signature, context}` answered `{valid}`, `{op: "encapsulate", publicKey}`
+answered `{ciphertext, sharedSecret}`, everything in base64). No secret of
+a vault passes the helper.
 
 The MAC input is the label's ASCII bytes, the two nonces' 32 raw bytes each,
 and `serviceStart` as 8 bytes, unsigned, big-endian; no separators.
@@ -761,15 +828,32 @@ key (`denied`, reason `wrong_executable`), before the key is checked.
 
 ### 6.2 Claim
 
-An admin without the admin key sends `claim {password, keyFile?, client,
-features}` instead of `auth`. The service checks the master password (and key file)
-against the primary file it has open, answers `claimed {adminKey}` with a new
-admin key and revokes the old one. A wrong password is `denied` (reason
-`bad_password`), logged, and counts as a failed authentication. The service
-cannot prove it holds a key to a claimant, which shares none with it yet.
-What stands between the master password and whatever answers is 6.0: a
-claim is sent only after the files, the user and the executable passed, and
-an admin runs those checks before it asks the user for the password.
+An admin without the admin key sends `claim {sealed, client, features}`
+instead of `auth`, after the identity exchange of 6.1. The master password
+never crosses the connection in the clear: `sealed` is `{kem, nonce,
+ciphertext}` (base64), where
+
+- `kem` is the X-Wing ciphertext of an encapsulation to the one-time key
+  the service signed (6.1);
+- the key is HKDF-SHA-256 of the shared secret, salted with the SHA-256 of
+  the bytes the service signed, info `tsm-claim-v1`, 32 bytes;
+- `ciphertext` is AES-256-GCM (12-byte `nonce`, the 16-byte tag appended)
+  over the JSON `{password, keyFile?}` (`keyFile` in base64).
+
+So only the process holding the one-time secret key reads the password,
+and the admin knows whose key that is: the pinned service signed it for
+this connection. Something that passes the bytes on reads nothing, and
+something that swaps the one-time key breaks the signature.
+
+The service opens the claim, checks the master password (and key file)
+against the primary file it has open, answers `claimed {adminKey}` with a
+new admin key and revokes the old one. A wrong password is `denied` (reason
+`bad_password`), a claim that does not open `denied` (reason `bad_seal`);
+both are logged and count as failed authentications. A claim without
+`sealed`, or before the identity exchange, is `malformed` (reason
+`unsealed`) and the connection closed. An admin runs the checks of 6.0 and
+the identity exchange before it asks the user for the password
+(`checkService`).
 
 ### 6.3 Requests and answers
 
@@ -784,7 +868,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
 | `lock {id}` | `ok` | lock: clear every secret from memory |
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
-| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}, keyChanged?, reason?}], keepsUnwritten?, offlineCacheRemoved?, admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}], links?[{device, role, state, via?, reason?}], agent?, github?{state, login?}}` | the service's state; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); **[C]** `keyChanged` (with `needs_unlock`, `source` `cache`) marks a store served read-only from a copy under its old key, because another device re-keyed it and its new key is not listed here yet (6.4); a store's `reason` says why an `unavailable` store waits for its remote while no copy of it is held (`offline`, `token_expired`); `keepsUnwritten` (while unlocked) whether a save the remote cannot take waits in memory (6.4); `offlineCacheRemoved` when this start applied the in-memory default to device settings stored before it and deleted their offline cache (the app tells the user once); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `privateFiles` (Linux and macOS: umask 077, every file the service writes 0600), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key), **[B]** `github_app` (key `github-app:<device>`, this device's GitHub App sign-in, from the warning period of the GitHub token before its refresh token runs out unused); **[C]** `member_key` (key `member-key:<the first 16 characters of its fingerprint>`, the user's member key, from 30 days before its rotation age, `memberKeyAgeMonths`, default 24 months, counted from its entry's creation, is over); **[C]** `certificate` and `pgp_key` (keys `certificate:<vault>/<title>` and `pgp-key:<vault>/<title>`, with `vault`, a typed certificate or PGP key entry of an open vault whose Expires is set (a certificate's notAfter, a PGP key's own expiry), from 30 days before it); `tsm status` shows it where no app is attached; **[B]** `agent` is the ssh-agent's endpoint (`{socket}` or `{pipe}`) while it runs; **[B]** `github` is the GitHub App sign-in's `state` (as `github.app`) and the signed-in user's `login`; **[C]** `links` (while unlocked) are the approval links (9.7): `role` `host` for a host this device approves for, `approver` for an approver of this host; `state` `connected`, `waiting` (a relay channel open, the other side not there), `connecting` or `unreachable`; `via` `address` (the VPN or the LAN) or `relay`; `reason` what failed (a relay that refuses the link, e.g. without the instance token, reads as an unreachable link with the relay's reason) |
+| `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, identity{fingerprint, words, since}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}, keyChanged?, reason?}], keepsUnwritten?, offlineCacheRemoved?, admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}], links?[{device, role, state, via?, reason?}], agent?, github?{state, login?}}` | the service's state; `identity` is the service's identity key (6.1): its fingerprint, its words and when it was made; `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); **[C]** `keyChanged` (with `needs_unlock`, `source` `cache`) marks a store served read-only from a copy under its old key, because another device re-keyed it and its new key is not listed here yet (6.4); a store's `reason` says why an `unavailable` store waits for its remote while no copy of it is held (`offline`, `token_expired`); `keepsUnwritten` (while unlocked) whether a save the remote cannot take waits in memory (6.4); `offlineCacheRemoved` when this start applied the in-memory default to device settings stored before it and deleted their offline cache (the app tells the user once); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `privateFiles` (Linux and macOS: umask 077, every file the service writes 0600), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key), **[B]** `github_app` (key `github-app:<device>`, this device's GitHub App sign-in, from the warning period of the GitHub token before its refresh token runs out unused); **[C]** `member_key` (key `member-key:<the first 16 characters of its fingerprint>`, the user's member key, from 30 days before its rotation age, `memberKeyAgeMonths`, default 24 months, counted from its entry's creation, is over); **[C]** `certificate` and `pgp_key` (keys `certificate:<vault>/<title>` and `pgp-key:<vault>/<title>`, with `vault`, a typed certificate or PGP key entry of an open vault whose Expires is set (a certificate's notAfter, a PGP key's own expiry), from 30 days before it); `tsm status` shows it where no app is attached; **[B]** `agent` is the ssh-agent's endpoint (`{socket}` or `{pipe}`) while it runs; **[B]** `github` is the GitHub App sign-in's `state` (as `github.app`) and the signed-in user's `login`; **[C]** `links` (while unlocked) are the approval links (9.7): `role` `host` for a host this device approves for, `approver` for an approver of this host; `state` `connected`, `waiting` (a relay channel open, the other side not there), `connecting` or `unreachable`; `via` `address` (the VPN or the LAN) or `relay`; `reason` what failed (a relay that refuses the link, e.g. without the instance token, reads as an unreachable link with the relay's reason) |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
 | `vaultKeys {id, stores?}` | `vaultKeySet {id, stores[{store, location, served?, keys}], unserved?[{store, location}]}` | the keys of the open vaults, for the app's editing path (6.4); **[B]** a vault the service opened with an OS unlock's bundle carries `keys.compositeKey` (base64) in place of `password` and `keyFile`; **[C]** during a guided rotation's migration period `keys.previousOuterKey` (base64) names the old repository key the `.tsmx` file keeps a slot for, which every write keeps (6.4); `stores` may also name a vault the primary lists that this machine does not serve (`served` false); `unserved` lists those vaults, without keys |
 | `vaultFile {id, store}` | `vaultFileData {id, store, location, revision, served?, bytes}`, or `error` `not_found` (neither an open store nor a vault the primary lists), `needs_unlock` (a vault not served whose listed keys do not open it), `unavailable` (one that cannot be read), `offline` / `token_expired` (`stores`), `unsupported` reason `too_large` | the copy of a store the service holds, for the app's editing path (6.4): an open store, or a vault not served, which the service then reads and holds for editing |
@@ -802,8 +886,8 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | **[C]** `relay.read {id, store, path}` | `relayFile {id, bytes}` (null: not there), or `error` as `relay.revision` | one file below `relay/` (6.4) |
 | **[C]** `relay.create {id, store, path, bytes, message?}` | `ok {id}`, or `error` as `relay.revision`, `denied` (reason `exists`: the file is there already), `malformed` (a file over 1 MiB) | create one file below `relay/` in one commit, once (6.4); `message` is the commit message |
 | **[C]** `relay.deleteFolder {id, store, folder}` / `relay.deleteFile {id, store, path}` | `ok {id}`, or `error` as `relay.revision` | delete a folder below `relay/` with its files in one commit, or one file; nothing there: nothing done (6.4) |
-| `pair.identity {id, relay?}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?, linkRelay?, linkId?}` | this device's public keys for a pairing (9.8); **[C]** with `relay` (a relay server, `tsm:<url>`) they name it as `linkRelay` with a fresh `linkId`: the approval link may go through it; accepted only from the manager app's executable |
-| `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[]}, link?{relay, linkId}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself, a `link` that is no relay server and link id) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); **[C]** `link` is the relay link both sides agreed on (9.8), kept with the host and the approver, a channel per direction; accepted only from the manager app's executable |
+| `pair.identity {id, relay?}` | `pairIdentity {id, device, approverKey{ed25519, mlDsa65}, linkKey{x25519, mlKem768}, linkAddress?, linkRelay?, linkId?, serviceKey}` | this device's public keys for a pairing (9.8), with `serviceKey`, the service's public identity key (6.1, base64); **[C]** with `relay` (a relay server, `tsm:<url>`) they name it as `linkRelay` with a fresh `linkId`: the approval link may go through it; accepted only from the manager app's executable |
+| `pair.record {id, device, tokenKey, approver?{approverKey, linkKey?}, host?{linkKey, address?}, record?{platform?, keyIds[], serviceKey?}, link?{relay, linkId}}` | `ok`, or `error` `malformed` (reason `pair`: no approver and no host, a token key not 32 bytes, this device itself, a `link` that is no relay server and link id) | keep what a pairing gave (9.8): `approver` records the peer as an approver of this host (its grants and link handshakes are accepted, its approval-code tokens checked with `tokenKey`), `host` records it as a host this device approves for; every key is dated now; a device paired again replaces what was recorded; with `record` the device record goes into the primary (`.tom-secrets/devices`: platform, the time, the device that paired it, the key ids it received, its approver key id and key dates); **[C]** `link` is the relay link both sides agreed on (9.8), kept with the host and the approver, a channel per direction; accepted only from the manager app's executable |
 | **[C]** `relay.token.set {id, relay, token?}` | `ok`, or `error` `malformed` (reason `relay`: no relay server), `unavailable` (reason `no_keychain`, `keychain`) | keep `token` as the instance token of the relay server `relay` (`tsm:<url>`) in the OS keychain, for the approval link through it (9.8); no or an empty token removes it; the links through the relay are opened again; accepted only from the manager app's executable |
 | **[C]** `relay.put {id, relay, members[], bytes}` | `relayPut {id, name}`, or `error` `malformed` (reason `relay`), `unavailable` (reason `relay`, `relay`: the relay refused it, e.g. without the instance token or past its limits, the message saying why) | put the share `bytes` (an `age` package) into the mailbox of each of `members` (member ids) on the relay server `relay`, under one new package name (`<date>-<random>.age`) kept 30 days, with the instance token the keychain keeps for the relay (part-relay: a shared vault whose mailbox relay, `tsm.mailbox-relay`, is a relay server); the recipients read, fetch and delete their items themselves with their member key's proof (the relay's API); accepted only from the manager app's executable |
 | **[C]** `relay.token.list {id, relays[]}` | `relayTokens {id, relays{<relay>: bool}}` | which of `relays` have an instance token kept; a token is never answered; accepted only from the manager app's executable |
@@ -828,7 +912,7 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `audit.query {id, from, to, subject?, ref?}` | `auditRecords {id, records[{time, host, identity, refs, outcome, grantId?, approver?, entries?, ssh?}]}` | the audit log; `outcome` is `allowed`, `denied:<reason>`, an error kind, or for a lookup `matched` / `proposed`; `entries` the UUIDs of the entries decided; **[B]** `ssh` an ssh-agent signature's `{key, keyType, title?, host?, hostNames?, forwarded, purpose, namespace?}` (7.6) |
 | `approvals.list {id}` | `approvalList {id, approvals[]}` | the requests waiting on this host (`tsm approvals`), each as its `approval_needed` event reads without `op`: `approvalId`, `host`, `identity`, `refs`, `resolved`, `approvalCode?`, … (6.5, 7.2) |
 | `keys {id}` | `keyList {id, keys[{kind, key, vault?, expiresAt, daysLeft, reminding, own?}]}` | every key the service knows a due date of (`tsm keys`), reminding or not: the keys of `statusReport.expiring` (same `kind` and `key`) with `reminding` true for those due a reminder now; `own` true marks this device's own approver and link key pairs, which `keys.rotate` rotates |
-| `keys.rotate {id, approver?, link?}` | `keysRotated {id, approverKeyId?, resigned, delivered[], pending[]}`, or `error` `malformed` (reason `keys`: both false), `denied` (reason `wrong_executable`) | rotate this device's own key pairs by hand (part-key-rotation §4; both by default, as an approver device does); accepted only from the manager app's executable. `approver`: a new hybrid approver pair (Ed25519 + ML-DSA-65); every grant and revocation this device signed is signed again with it, in every host's group of the primary vault, and its key-change statement (9.4, signed by the old and the new pair) is written into the group of every host it approves for, where a host the link does not reach takes it at its next refresh (`resigned` counts the objects signed again). `link`: a new approval-link pair; the previous one stays in use for 14 days for the hosts the new key has not reached (this device connects to them with it) and for the approvers that connect here (this device's link answers them under it). Both are then sent to every recorded host with a link address over a session under the keys that host knows (`keychange`, `linkKey`, 9.7): `delivered` names the hosts that took them, `pending` those not reached; the new link key is sent to them again at each refresh, at most every 15 minutes |
+| `keys.rotate {id, approver?, link?, identity?}` | `keysRotated {id, approverKeyId?, resigned, delivered[], pending[], identity?{key, fingerprint, words}}`, or `error` `malformed` (reason `keys`: all false), `denied` (reason `wrong_executable`) | rotate this device's own key pairs by hand (part-key-rotation §4; the approver and the link pair by default, as an approver device does); accepted only from the manager app's executable. `identity` (default false): a new identity key for the service (6.1); the old key signs it, the statement is kept with the key and presented in every identity exchange, so an admin that pinned the old key pins the new one at its next connection, and this device's record in the primary names the new key. `approver`: a new hybrid approver pair (Ed25519 + ML-DSA-65); every grant and revocation this device signed is signed again with it, in every host's group of the primary vault, and its key-change statement (9.4, signed by the old and the new pair) is written into the group of every host it approves for, where a host the link does not reach takes it at its next refresh (`resigned` counts the objects signed again). `link`: a new approval-link pair; the previous one stays in use for 14 days for the hosts the new key has not reached (this device connects to them with it) and for the approvers that connect here (this device's link answers them under it). Both are then sent to every recorded host with a link address over a session under the keys that host knows (`keychange`, `linkKey`, 9.7): `delivered` names the hosts that took them, `pending` those not reached; the new link key is sent to them again at each refresh, at most every 15 minutes |
 | `compact {id, repository, retentionDays?}` | `compacted {id, repository, compacted, oldHead, newHead, kept}`, or `error` `not_found` (no open vault in it), `offline` / `token_expired` (`stores`), `denied` reason `branch_moving`, `malformed` reason `retentionDays` | cut the history of a `github:` vault repository (`owner/name`) now (`tsm compact`): the cut the compaction workflow makes, with the repository's own `.tsm/compaction.yaml` retention, or `retentionDays` instead (0 after a key change, 6.4), pushed by this device; `compacted` false when there was nothing to cut |
 
 ### 6.4 Editing and key material
@@ -1596,13 +1680,18 @@ length, at most 1 MiB, 9.7), so a phase-C relay carries them unchanged.
    `locator`, `primary`, `keyFile`, `repositoryKey`), the shared
    configuration (`configYaml`), tokens pasted for this device
    (`repository`, `token`, `expires`), and the giving device's public keys
-   (`giverKeys`: `approverKey`, `linkKey`, `linkAddress`). Never a private
+   (`giverKeys`: `approverKey`, `linkKey`, `linkAddress`, `serviceKey`).
+   Never a private
    approver or link key, a master password, the allow list or the audit
    log.
 5. A answers `{"op":"done","keys","platform"}` with its own public keys
    (`linkKey`, `approverKey` when it approves, `linkAddress`: where its
    approval link listens, its device setting `approvalLink`, when it has
-   one) and its platform (`macos`, `linux`, `windows`, `ios`, `android`;
+   one, and `serviceKey`: the public identity key, 6.1, of the service a
+   machine being set up will run, made before the pairing and written into
+   its data directory once it is set up; the giving side records it in the
+   device record, `pair.record`'s `record.serviceKey`; a phone names none)
+   and its platform (`macos`, `linux`, `windows`, `ios`, `android`;
    the giving side records it in the device record, `pair.record`'s
    `record.platform`, and leaves out one that is no lower-case name), or
    `{"op":"refused","reason"}` when it cannot take the bundle (a machine
@@ -1684,20 +1773,24 @@ names no relay link and pairs as before.
 An `error` has `kind`, `message` (for people; never a value, a token or a
 key) and optional `details`. Every library maps the kinds to its own error
 type and adds `not_running` (section 3). An admin library adds
-`service_untrusted` (6.0; `details.reason`: `owner`, `mode`, `peer_user`,
-`peer_executable`) and `service_impostor` (a wrong `mac2`, 6.1).
+`service_untrusted` (6.0 and 6.1; `details.reason`: `owner`, `mode`,
+`peer_user`, `peer_executable`, `unpinned` with `details.words`,
+`fingerprint` and `key`, `no_identity`), `service_key_changed` (6.1;
+`details.pinned` and `details.presented`, the words) and `service_impostor`
+(a signature of the identity exchange that does not verify, or a wrong
+`mac2`, 6.1). None of them is a message: no one sends them.
 
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant; **[C]** a passkey request from a client that is neither the browser host nor the passkey plugin, or a `get` / `getMany` / `getFile` / `match` / `propose` from the passkey plugin, 5.8), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant; **[C]** a passkey request from a client that is neither the browser host nor the passkey plugin, or a `get` / `getMany` / `getFile` / `match` / `propose` from the passkey plugin, 5.8), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_seal` (a claim that does not open, 6.2), `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4), `inbox` (an `inbox.read` of a package that is gone, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
 | `offline` | admin only: a `reload` whose fetch failed for a network reason, a `save` that cannot be taken while offline (6.4), or an `unlock` whose primary cannot be fetched while the device keeps no copy of it | `stores`; `reason` `no_copy` (the `unlock`) |
 | `token_expired` | admin only: as `offline`, because GitHub answered 401 or 403 or the token is past its expiry | `stores` |
-| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`; for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4; **[C]** `relay` for a `relay.*` request without a store or a path below `relay/`, or a file over 1 MiB) |
+| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`, `unsealed` (a claim in the clear, 6.2); for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4; **[C]** `relay` for a `relay.*` request without a store or a path below `relay/`, or a file over 1 MiB) |
 | `timeout` | an approval was not answered in time | — |
 | `rate_limited` | the identity is held back (section 11) | `retryAfterMs`; `reason`: `requests` (the token bucket), `connections` (a connection over the caps, answered at its `hello` and closed), `held_back` (three refusals at prompts), `too_many_prompts` |
 | `unsupported` | an unknown `op`, or a protocol the service does not speak; a `token.set` whose token has nowhere to be kept | `op`, or `protocols`; `reason` `no_keychain` |
@@ -1719,7 +1812,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 119 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 121 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -1735,6 +1828,8 @@ defaults):
   and formatting cases.
 - [`vectors/hmac.json`](vectors/hmac.json): the admin challenge's inputs and
   MACs.
+- [`vectors/identity_words.json`](vectors/identity_words.json): the 256
+  words of an identity key's fingerprint (6.1), with examples.
 - [`vectors/discovery.json`](vectors/discovery.json): the runtime directory
   per OS and environment, and port files.
 - [`vectors/signatures.json`](vectors/signatures.json),
@@ -2048,3 +2143,23 @@ part-service) leaves these open; this document fixes them:
     of a hardened service cannot be read by its own user; the user check
     still holds there, and a key the admin pins at pairing closes what is
     left.
+53. Every service has an identity key, and an admin sends an `auth` or a
+    `claim` only to the service whose key it pinned (6.1). The checks of
+    6.0 say whose process answers, not which: on Linux the executable of a
+    hardened service cannot be read, and any process of the user could
+    answer in its place. The key is a signature key, hybrid like every
+    other key of the product, because it must hold for the product's
+    lifetime. It is pinned without a question where there is a channel
+    that is the service's alone (the pipe of the process the admin
+    started, the primary vault's device records, a pairing), and by the
+    words a person compares otherwise; there is no phrase of the user's
+    for the service to show, since what the service shows a process in
+    its place could show too. A changed key stops the admin with no way
+    on: an "enter the password anyway" is the one thing an impostor needs.
+    A claim's master password is sealed to a one-time key the service
+    signed for that connection (6.2), so the password reaches the pinned
+    service and nothing between. The identity exchange precedes `auth`
+    too, so the proof of the admin key is not sent to another service
+    either. `tsm` stays free of post-quantum code (it is a pub.dev package
+    without native build steps): the service executable beside it runs the
+    two public operations.

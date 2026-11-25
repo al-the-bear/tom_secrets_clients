@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/identity.json",
+  "title": "identity",
+  "description": "The service's identity key, this connection's one-time key and the signature over the exchange (section 6.1). Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "publicKey",
+    "oneTimeKey",
+    "signature"
+  ],
+  "properties": {
+    "op": {
+      "const": "identity"
+    },
+    "publicKey": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "oneTimeKey": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "signature": {
+      "$ref": "common.json#/$defs/base64"
+    },
+    "changes": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "description": "A statement of a replaced identity key: `from` signed `to`.",
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "signature"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "common.json#/$defs/base64"
+          },
+          "to": {
+            "$ref": "common.json#/$defs/base64"
+          },
+          "signature": {
+            "$ref": "common.json#/$defs/base64"
+          }
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

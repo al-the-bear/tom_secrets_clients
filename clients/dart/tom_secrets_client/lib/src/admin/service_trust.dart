@@ -30,6 +30,7 @@ import 'package:ffi/ffi.dart';
 import '../discovery.dart';
 import 'distribution.dart';
 import 'runtime.dart';
+import 'service_identity.dart';
 import 'windows_acl.dart';
 
 /// The admin error kind of an endpoint that is not this user's service.
@@ -75,6 +76,15 @@ String tomSecretsUntrustedAdvice(String? reason) => switch (reason) {
     'A process of another user answers where this user\'s service would. '
         'Do not enter the master password. Find out what runs under the '
         'process id named, and start your own service once it is gone.',
+  'unpinned' =>
+    'This program has not met this service before. Compare the words above '
+        'with the ones the service\'s machine shows in the manager app '
+        '(Pairing, the device list) or in `tsm status` there; when they '
+        'are the same, trust it: `tsm trust <the words>`.',
+  'no_identity' =>
+    'The service running is older than this program and cannot prove who '
+        'it is. Stop it (end its process, named in service.json) and start '
+        'the one that came with this program.',
   'peer_executable' =>
     'Something other than the service that belongs to this program '
         'answers. If it is a service you installed elsewhere, name its '
@@ -82,6 +92,15 @@ String tomSecretsUntrustedAdvice(String? reason) => switch (reason) {
         'service again.',
   _ => 'Nothing was sent. Stop whatever answers there and start the service.',
 };
+
+/// What the user can do about a service whose identity key is not the one
+/// pinned (`service_key_changed`).
+const String tomSecretsKeyChangedAdvice =
+    'The service presents another identity key than the one this program '
+    'pinned. Nothing was sent. If you set this service up anew, or moved '
+    'its data directory, remove the old pin (`tsm trust --remove`) and '
+    'compare the new words; if you did not, something else answers in its '
+    'place: do not enter the master password.';
 
 /// A file as the check reads it: its owner's numeric id, its permission
 /// bits and what it is.
@@ -411,7 +430,21 @@ final class TomSecretsServiceTrust {
   const TomSecretsServiceTrust({
     this.executables,
     this.inspector = const TomSecretsSystemEndpointInspector(),
+    this.identity,
   });
+
+  /// What the service's identity key is checked with (protocol.md 6.1):
+  /// the pins and the primitives. Null: [fallbackIdentity].
+  final TomSecretsIdentityTrust? identity;
+
+  /// The identity check of a process that sets its admin connections up in
+  /// one place (the app, `tsm`, a test's set-up), used where a check names
+  /// none. Without either, an admin connection is refused
+  /// (`service_untrusted`, `unpinned`): no service is trusted unchecked.
+  static TomSecretsIdentityTrust? fallbackIdentity;
+
+  /// The identity check that holds.
+  TomSecretsIdentityTrust? get identityTrust => identity ?? fallbackIdentity;
 
   /// The service executables expected, as real paths; null: those of this
   /// process.

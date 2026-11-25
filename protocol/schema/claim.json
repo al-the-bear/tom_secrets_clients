@@ -2,28 +2,42 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/claim.json",
   "title": "claim",
-  "description": "Sent instead of auth by an admin without the key. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "description": "Sent instead of auth by an admin without the key: the master password sealed to the one-time key of the identity exchange (section 6.2). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
   "type": "object",
   "required": [
     "op",
-    "password",
+    "sealed",
     "client"
   ],
   "properties": {
     "op": {
       "const": "claim"
     },
-    "password": {
-      "type": "string"
-    },
-    "keyFile": {
-      "$ref": "common.json#/$defs/base64"
+    "sealed": {
+      "type": "object",
+      "required": [
+        "kem",
+        "nonce",
+        "ciphertext"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kem": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "nonce": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "ciphertext": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
     },
     "client": {
       "$ref": "common.json#/$defs/clientInfo"
     },
     "features": {
-      "description": "The admin features offered (challenge) or taken (auth, claim): `chunked`, chunked members (section 2.7).",
+      "description": "The admin features offered (challenge) or taken (auth, claim): `chunked`, chunked members (section 2.7); `identity`, the identity exchange (section 6.1), offered only.",
       "type": "array",
       "items": {
         "type": "string"

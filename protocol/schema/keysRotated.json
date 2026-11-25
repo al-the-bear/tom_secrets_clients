@@ -36,6 +36,26 @@
       "items": {
         "type": "string"
       }
+    },
+    "identity": {
+      "description": "The service's new identity key (section 6.1).",
+      "type": "object",
+      "required": [
+        "key",
+        "fingerprint",
+        "words"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "words": {
+          "type": "string"
+        }
+      }
     }
   },
   "x-tsm": {

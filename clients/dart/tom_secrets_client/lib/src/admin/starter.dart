@@ -69,11 +69,17 @@ sealed class TomSecretsStartResult {
 
 /// A new service runs with [adminKey].
 final class TomSecretsStarted extends TomSecretsStartResult {
-  /// Started, holding [adminKey].
-  const TomSecretsStarted(this.adminKey);
+  /// Started, holding [adminKey]; the service said its [identity].
+  const TomSecretsStarted(this.adminKey, {this.identity});
 
   /// The admin key the starter keeps (in the keychain, for the app).
   final Uint8List adminKey;
+
+  /// The service's public identity key, as it wrote it on its standard
+  /// output: said by the process this starter started, over a pipe nothing
+  /// else writes to, so the starter pins it (protocol.md 6.1). Null from a
+  /// service older than the identity key.
+  final Uint8List? identity;
 }
 
 /// A service was already running: attach to it (with the key held, or by
@@ -93,6 +99,16 @@ final class TomSecretsStartFailed extends TomSecretsStartResult {
 
   /// What happened (no secret).
   final String message;
+}
+
+Uint8List? _identityOf(Map<Object?, Object?> answer) {
+  final text = answer['identity'];
+  if (text is! String) return null;
+  try {
+    return base64.decode(text);
+  } on FormatException {
+    return null;
+  }
 }
 
 /// Starts the service [executable] (with [arguments]) for [bootstrap],
@@ -152,7 +168,7 @@ Future<TomSecretsStartResult> tomSecretsStartService({
   }
   final answer = decoded;
   return switch (answer['status']) {
-    'ready' => TomSecretsStarted(key),
+    'ready' => TomSecretsStarted(key, identity: _identityOf(answer)),
     'already_running' => const TomSecretsAlreadyStarted(),
     _ => TomSecretsStartFailed(
       '${answer['code'] ?? 'error'}',

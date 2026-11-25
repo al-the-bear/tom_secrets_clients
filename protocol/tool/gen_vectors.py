@@ -164,7 +164,17 @@ FRAMES = [
                        'mac': None, 'client': {'name': 'tom_secrets_app', 'version': '0.1.0',
                                                'language': 'dart'}}),
     ('authed', 'admin', {'op': 'authed', 'mac2': None}),
-    ('claim', 'admin', {'op': 'claim', 'password': 'demo master password',
+    # The identity exchange (section 6.1) and the sealed claim (6.2): demo
+    # bytes of the real lengths, no valid keys or signatures.
+    ('identify', 'admin', {'op': 'identify', 'clientNonce': b64(derive('client nonce'))}),
+    ('identity', 'admin', {'op': 'identity',
+                           'publicKey': b64(derive('demo identity key', 1984)),
+                           'oneTimeKey': b64(derive('demo one-time key', 1216)),
+                           'signature': b64(derive('demo identity signature', 3373))}),
+    ('claim', 'admin', {'op': 'claim',
+                        'sealed': {'kem': b64(derive('demo kem ciphertext', 1120)),
+                                   'nonce': b64(derive('demo claim nonce', 12)),
+                                   'ciphertext': b64(derive('demo sealed claim', 60))},
                         'client': {'name': 'tsm', 'version': '0.1.0', 'language': 'dart'}}),
     ('claimed', 'admin', {'op': 'claimed', 'adminKey': b64(derive('new admin key'))}),
     ('unlock', 'admin', {'op': 'unlock', 'id': 1, 'password': 'demo master password',

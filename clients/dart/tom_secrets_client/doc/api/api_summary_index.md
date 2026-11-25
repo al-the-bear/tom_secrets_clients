@@ -103,6 +103,7 @@ manager app, `tsm` and the service.
 | `TomSecretsBundleException` | A sealed bundle did not open, or is no bundle. | [→](api_summary_admin.md#tomsecretsbundleexception) |
 | `TomSecretsAdminException` | The admin endpoint refused or broke the conversation. | [→](api_summary_admin.md#tomsecretsadminexception) |
 | `TomSecretsServiceTrust` | The check an admin connection runs before it sends anything: the endpoint's files are the user's alone, the process answering runs as the user and is the service expected. | [→](api_summary_admin.md#tomsecretsservicetrust) |
+| `TomSecretsIdentityTrust`, `TomSecretsServicePins`, `TomSecretsPinFile`, `TomSecretsIdentityCrypto`, `TomSecretsIdentityHelper`, `TomSecretsServiceIdentity` | The service's identity key: the pins, the primitives and what a service presented. | [→](api_summary_admin.md#the-services-identity) |
 | `TomSecretsEndpointFacts` | What was measured of an endpoint. | [→](api_summary_admin.md#tomsecretsendpointfacts) |
 | `TomSecretsServicePeer` | The process at the other end of the admin connection. | [→](api_summary_admin.md#tomsecretsservicepeer) |
 | `TomSecretsEndpointInspector` | Reads the facts of an endpoint; `TomSecretsSystemEndpointInspector` is this OS's. | [→](api_summary_admin.md#tomsecretsendpointinspector) |

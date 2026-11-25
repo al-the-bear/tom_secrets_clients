@@ -19,7 +19,7 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/src/admin/windows_acl.dart';
-import 'package:tom_secrets_client/tom_secrets_client.dart';
+import 'support/fake_identity.dart';
 
 const _service = '/opt/tsm/bin/tom_secrets_service';
 
@@ -66,6 +66,16 @@ String? _why(
 )?.reason.wireName;
 
 void main() {
+  // The identity exchange follows the checks tested here: it is answered
+  // by a stand-in, pinned as it presents itself (service_identity_test.dart
+  // tests the pins).
+  setUp(
+    () => TomSecretsServiceTrust.fallbackIdentity = fakeIdentityTrust(
+      firstUse: true,
+    ),
+  );
+  tearDown(() => TomSecretsServiceTrust.fallbackIdentity = null);
+
   group('the decision, with recorded facts', () {
     test('this user\'s directory, socket and service pass', () {
       expect(_why(_posix()), isNull);
@@ -275,31 +285,13 @@ void main() {
 
     /// A challenge, then whatever arrives is recorded.
     Future<void> serve() async {
-      final s = server = await ServerSocket.bind(
-        InternetAddress(runtime.adminSocket, type: InternetAddressType.unix),
-        0,
+      // It answers the identity exchange; whatever follows ends the
+      // connection.
+      server = await fakeIdentityEndpoint(
+        runtime,
+        received: sent,
+        onMessage: (_, socket) => socket.destroy(),
       );
-      Process.runSync('chmod', ['600', runtime.adminSocket]);
-      s.listen((socket) {
-        final reader = TomSecretsFrameReader(
-          maxPayload: tomSecretsMaxRequestPayload,
-        );
-        unawaited(socket.done.catchError((Object _) => socket));
-        socket.add(
-          tomSecretsJsonFrame({
-            'op': 'challenge',
-            'serviceNonce': base64.encode(Uint8List(32)),
-            'serviceStart': 1700000000000,
-            'protocol': 1,
-          }),
-        );
-        socket.listen((bytes) {
-          for (final frame in reader.add(bytes)) {
-            sent.add(tomSecretsDecodePayload(frame.payload));
-          }
-          socket.destroy();
-        }, onError: (Object _) {});
-      });
     }
 
     Future<TomSecretsAdminException> refusedClaim({
@@ -342,11 +334,11 @@ void main() {
     test('this user\'s directory and socket, this process answering: the '
         'claim is sent', () async {
       await serve();
-      // The fake endpoint closes after the first message: the claim got
-      // there.
+      // The fake endpoint closes after the claim: it got there, sealed.
       final e = await refusedClaim();
       expect(e.kind, 'closed');
-      expect(sent.single['op'], 'claim');
+      expect([for (final m in sent) m['op']], ['identify', 'claim']);
+      expect(sent.last.containsKey('password'), isFalse);
     });
 
     test('a directory open to others: mode, nothing sent, not even '
@@ -397,7 +389,8 @@ void main() {
 
     test('another process answers in the service\'s place: '
         'peer_executable for a claim and for an auth, nothing sent; named '
-        'as the service expected, it passes', () async {
+        'as the service expected, it passes this check and is stopped by the '
+        'identity key it does not have', () async {
       // The impostor: a Dart process of this user serving the socket, which
       // prints every message it is sent.
       final script = File('${dir.path}/impostor.dart')
@@ -437,7 +430,8 @@ void main() {
       expect(lines, isEmpty, reason: 'nothing reached the impostor');
 
       // The same process, named as the service this admin expects (what
-      // TSM_SERVICE does): measured as that executable, so the claim goes.
+      // TSM_SERVICE does): measured as that executable, so the admin goes
+      // on to ask who it is, and gets no answer it could check.
       // (The refusal names the executable measured: the Dart VM the `dart`
       // command started, not the command itself.)
       final measured = RegExp(
@@ -445,18 +439,19 @@ void main() {
       ).firstMatch(e.message)!.group(1)!;
       expect(File(measured).existsSync(), isTrue);
       final named = TomSecretsServiceTrust(executables: {measured});
-      final sentOn = await refusedClaim(trust: named);
-      expect(sentOn.kind, 'closed');
-      for (var i = 0; i < 100 && lines.isEmpty; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      }
-      expect(lines.single, contains('"op":"claim"'));
+      // It passes this check; it has no identity key, so it still gets
+      // nothing (protocol.md 6.1).
+      final next = await refusedClaim(trust: named);
+      expect(next.kind, tomSecretsServiceUntrusted);
+      expect(next.details['reason'], 'no_identity');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(lines, isEmpty);
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'Linux: a process that made itself not dumpable (as the service '
       'does) hides its executable from its own user; its user is still '
-      'checked, and the claim goes',
+      'checked, and the missing identity key stops the claim',
       () async {
         final script = File('${dir.path}/hardened.dart')
           ..writeAsStringSync(_impostor);
@@ -488,11 +483,13 @@ void main() {
         expect(peer.user, tomSecretsOwnUser());
         expect(peer.executable, isNull);
         expect(peer.executableHidden, isTrue);
-        expect((await refusedClaim()).kind, 'closed');
-        for (var i = 0; i < 100 && lines.isEmpty; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 100));
-        }
-        expect(lines.single, contains('"op":"claim"'));
+        // The checks of who answers pass; what stops the claim now is that
+        // this process has no identity key (protocol.md 6.1).
+        final next = await refusedClaim();
+        expect(next.kind, tomSecretsServiceUntrusted);
+        expect(next.details['reason'], 'no_identity');
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(lines, isEmpty);
       },
       testOn: 'linux',
       timeout: const Timeout(Duration(minutes: 2)),
@@ -515,12 +512,11 @@ void main() {
 
     test('this process answering in a directory of the user alone passes; '
         'a directory granting others is refused (mode)', () async {
-      final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final got = <Map<String, Object?>>[];
+      final server = await fakeIdentityEndpoint(runtime, received: got);
       addTearDown(server.close);
-      final got = <List<int>>[];
-      server.listen((s) => s.listen(got.add, onError: (Object _) {}));
-      await runtime.writePort(runtime.adminPortFile, server.port);
       await TomSecretsAdminClient.checkService(runtime);
+      got.clear();
 
       final granted = Process.runSync('icacls', [
         dir.path,
@@ -570,9 +566,22 @@ void main() {
           r'\) is (.+), not the service expected',
         ).firstMatch(e.message)!.group(1)!;
         expect(File(measured).existsSync(), isTrue);
-        await TomSecretsAdminClient.checkService(
-          runtime,
-          trust: TomSecretsServiceTrust(executables: {measured.toUpperCase()}),
+        // Named as the service expected, it passes the check of who
+        // answers; it then says nothing an admin could go on with.
+        await expectLater(
+          TomSecretsAdminClient.checkService(
+            runtime,
+            trust: TomSecretsServiceTrust(
+              executables: {measured.toUpperCase()},
+            ),
+          ),
+          throwsA(
+            isA<TomSecretsAdminException>().having(
+              (x) => x.kind,
+              'kind',
+              'closed',
+            ),
+          ),
         );
       },
       timeout: const Timeout(Duration(minutes: 2)),
@@ -626,39 +635,41 @@ void main() {
     expect(FileStat.statSync(real.path).mode % 512, 493, reason: 'not changed');
   }, testOn: '!windows');
 
-  test('checkService sends nothing', () async {
-    final dir = Directory.systemTemp.createTempSync('tsm');
-    addTearDown(() => dir.deleteSync(recursive: true));
-    Process.runSync('chmod', ['700', dir.path]);
-    final runtime = TomSecretsRuntime(
-      dir.path,
-      transport: TomSecretsTransport.unix,
-    );
-    final server = await ServerSocket.bind(
-      InternetAddress(runtime.adminSocket, type: InternetAddressType.unix),
-      0,
-    );
-    addTearDown(server.close);
-    Process.runSync('chmod', ['600', runtime.adminSocket]);
-    final got = <List<int>>[];
-    server.listen((s) => s.listen(got.add, onError: (Object _) {}));
-    await TomSecretsAdminClient.checkService(runtime);
-    Process.runSync('chmod', ['644', runtime.adminSocket]);
-    await expectLater(
-      TomSecretsAdminClient.checkService(runtime),
-      throwsA(
-        isA<TomSecretsAdminException>()
-            .having((x) => x.kind, 'kind', tomSecretsServiceUntrusted)
-            .having((x) => x.details['reason'], 'reason', 'mode'),
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    expect(got, isEmpty);
-    expect(tomSecretsUntrustedAdvice('mode'), contains('chmod 700'));
-    for (final reason in TomSecretsUntrustedReason.values) {
-      expect(tomSecretsUntrustedAdvice(reason.wireName), isNotEmpty);
-    }
-  }, testOn: '!windows');
+  test(
+    'checkService sends no secret: the nonce of the identity exchange, '
+    'and nothing at all to an endpoint whose files are not the user\'s',
+    () async {
+      final dir = Directory.systemTemp.createTempSync('tsm');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      Process.runSync('chmod', ['700', dir.path]);
+      final runtime = TomSecretsRuntime(
+        dir.path,
+        transport: TomSecretsTransport.unix,
+      );
+      final got = <Map<String, Object?>>[];
+      final server = await fakeIdentityEndpoint(runtime, received: got);
+      addTearDown(server.close);
+      await TomSecretsAdminClient.checkService(runtime);
+      expect(got.single.keys, {'op', 'clientNonce'});
+      got.clear();
+      Process.runSync('chmod', ['644', runtime.adminSocket]);
+      await expectLater(
+        TomSecretsAdminClient.checkService(runtime),
+        throwsA(
+          isA<TomSecretsAdminException>()
+              .having((x) => x.kind, 'kind', tomSecretsServiceUntrusted)
+              .having((x) => x.details['reason'], 'reason', 'mode'),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(got, isEmpty);
+      expect(tomSecretsUntrustedAdvice('mode'), contains('chmod 700'));
+      for (final reason in TomSecretsUntrustedReason.values) {
+        expect(tomSecretsUntrustedAdvice(reason.wireName), isNotEmpty);
+      }
+    },
+    testOn: '!windows',
+  );
 }
 
 /// A process that serves [the socket] as the service would: a challenge,
@@ -710,9 +721,12 @@ import 'dart:io';
 void main() async {
   final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
   print(server.port);
-  server.listen((socket) {
+  server.listen((socket) async {
     socket.done.catchError((Object _) => socket);
     socket.listen((_) {}, onError: (Object _) {});
+    // Long enough to be measured, then gone.
+    await Future<void>.delayed(const Duration(seconds: 3));
+    socket.destroy();
   });
 }
 ''';

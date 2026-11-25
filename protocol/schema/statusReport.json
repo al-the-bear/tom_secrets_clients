@@ -51,6 +51,27 @@
         }
       }
     },
+    "identity": {
+      "description": "The service's identity key (section 6.1).",
+      "type": "object",
+      "required": [
+        "fingerprint",
+        "words",
+        "since"
+      ],
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "words": {
+          "type": "string"
+        },
+        "since": {
+          "$ref": "common.json#/$defs/timestamp"
+        }
+      }
+    },
     "stores": {
       "type": "array",
       "items": {

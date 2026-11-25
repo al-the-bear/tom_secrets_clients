@@ -98,6 +98,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "serviceKey": {
+          "$ref": "common.json#/$defs/base64"
         }
       }
     },

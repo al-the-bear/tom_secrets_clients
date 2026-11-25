@@ -37,7 +37,7 @@
       }
     },
     "features": {
-      "description": "The admin features offered (challenge) or taken (auth, claim): `chunked`, chunked members (section 2.7).",
+      "description": "The admin features offered (challenge) or taken (auth, claim): `chunked`, chunked members (section 2.7); `identity`, the identity exchange (section 6.1), offered only.",
       "type": "array",
       "items": {
         "type": "string"

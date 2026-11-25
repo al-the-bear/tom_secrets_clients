@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/identify.json",
+  "title": "identify",
+  "description": "The admin asks the service to prove which service it is, before auth or claim. Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "clientNonce"
+  ],
+  "properties": {
+    "op": {
+      "const": "identify"
+    },
+    "clientNonce": {
+      "$ref": "common.json#/$defs/base64_32"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}

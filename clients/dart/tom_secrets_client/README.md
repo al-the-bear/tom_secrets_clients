@@ -344,8 +344,9 @@ admin.events.listen((event) => print(event['op']));
 key without sending it, and the service's proof is checked before anything
 secret is sent (a wrong one throws `TomSecretsAdminException` of kind
 `service_impostor`). `claim` takes the service over with the master password
-when no admin key is held and answers the connection with a new admin key;
-the service cannot prove it holds a key there.
+when no admin key is held and answers the connection with a new admin key.
+Its password is sealed to a one-time key the service signed, so only that
+service reads it (below).
 
 Before either sends anything, the client checks who answers
 (`TomSecretsServiceTrust`, protocol.md 6.0):
@@ -360,8 +361,31 @@ Before either sends anything, the client checks who answers
 
 A check that fails throws `service_untrusted` with `details.reason`
 (`owner`, `mode`, `peer_user`, `peer_executable`) and nothing was sent;
-`tomSecretsUntrustedAdvice` says what to do. `checkService` runs the check
-alone, so a program asks for the master password only once it passed.
+`tomSecretsUntrustedAdvice` says what to do. `checkService` runs the checks
+alone, so a program asks for the master password only once they passed.
+
+Then **which service it is** (`TomSecretsIdentityTrust`, protocol.md 6.1):
+every service has an identity key, and the client sends an `auth` or a
+`claim` only to the service that proves it holds the key pinned for it.
+
+- The pins are a `TomSecretsServicePins`: `TomSecretsPinFile` over
+  `tomSecretsPinFile()` is the file the app and `tsm` share. A program pins
+  the key of a service it started (`TomSecretsStarted.identity`), the keys
+  the primary's device records name (`tomSecretsPinDevices`), or a key
+  whose words the user compared (`presentedIdentity`,
+  `tomSecretsIdentityWords`).
+- A service without a pin throws `service_untrusted` with reason
+  `unpinned` and `details.words`; another key than the pinned one throws
+  `service_key_changed` (`tomSecretsKeyChangedAdvice`). Nothing was sent.
+- The two primitives (the signature check, the encapsulation a claim is
+  sealed with) are a `TomSecretsIdentityCrypto`, so this package links no
+  post-quantum code: `tom_secrets_core`'s `TomSecretsPqcIdentityCrypto`
+  runs them in process, `TomSecretsIdentityHelper` in the service
+  executable's helper mode.
+- A program sets its check up once
+  (`TomSecretsServiceTrust.fallbackIdentity`) or passes it with each
+  connection (`TomSecretsServiceTrust(identity: …)`); without one, every
+  admin connection is refused.
 
 ```dart
 try {

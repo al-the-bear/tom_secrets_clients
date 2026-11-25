@@ -256,8 +256,22 @@ message('passkeyCreated', 'client', 's2c', 'C', 'The answer to passkeyCreate.',
 # The admin features offered in `challenge` and taken in `auth` / `claim`.
 ADMIN_FEATURES = {
     'description': 'The admin features offered (challenge) or taken (auth, claim): '
-                   '`chunked`, chunked members (section 2.7).',
+                   '`chunked`, chunked members (section 2.7); `identity`, the identity '
+                   'exchange (section 6.1), offered only.',
     'type': 'array', 'items': STR}
+IDENTITY_CHANGE = {
+    'description': 'A statement of a replaced identity key: `from` signed `to`.',
+    'type': 'object', 'required': ['from', 'to', 'signature'],
+    'properties': {'from': ref('base64'), 'to': ref('base64'), 'signature': ref('base64')}}
+message('identify', 'admin', 'a2s', 'A',
+        'The admin asks the service to prove which service it is, before auth or claim.',
+        ['clientNonce'], clientNonce=ref('base64_32'))
+message('identity', 'admin', 's2a', 'A',
+        'The service\'s identity key, this connection\'s one-time key and the signature '
+        'over the exchange (section 6.1).',
+        ['publicKey', 'oneTimeKey', 'signature'], publicKey=ref('base64'),
+        oneTimeKey=ref('base64'), signature=ref('base64'),
+        changes={'type': 'array', 'maxItems': 8, 'items': IDENTITY_CHANGE})
 message('challenge', 'admin', 's2a', 'A', 'The first frame of an admin connection.',
         ['serviceNonce', 'serviceStart', 'protocol', 'service'],
         serviceNonce=ref('base64_32'), serviceStart=ref('epochMs'),
@@ -269,9 +283,15 @@ message('auth', 'admin', 'a2s', 'A', 'The admin proves it holds the admin key.',
         client=ref('clientInfo'), features=ADMIN_FEATURES)
 message('authed', 'admin', 's2a', 'A', 'The service proves it holds the admin key.',
         ['mac2'], mac2=ref('base64_32'))
-message('claim', 'admin', 'a2s', 'A', 'Sent instead of auth by an admin without the key.',
-        ['password', 'client'], password=STR, keyFile=ref('base64'), client=ref('clientInfo'),
-        features=ADMIN_FEATURES)
+message('claim', 'admin', 'a2s', 'A',
+        'Sent instead of auth by an admin without the key: the master password sealed to '
+        'the one-time key of the identity exchange (section 6.2).',
+        ['sealed', 'client'],
+        sealed={'type': 'object', 'required': ['kem', 'nonce', 'ciphertext'],
+                'additionalProperties': False,
+                'properties': {'kem': ref('base64'), 'nonce': ref('base64'),
+                               'ciphertext': ref('base64')}},
+        client=ref('clientInfo'), features=ADMIN_FEATURES)
 message('claimed', 'admin', 's2a', 'A', 'The new admin key after a successful claim.',
         ['adminKey'], adminKey=ref('base64_32'))
 message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing to return.',
@@ -333,6 +353,11 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
         protocol={'type': 'integer', 'minimum': 1},
         service={'type': 'object', 'required': ['version', 'start'],
                  'properties': {'version': STR, 'start': ref('epochMs')}},
+        identity={'description': 'The service\'s identity key (section 6.1).',
+                  'type': 'object', 'required': ['fingerprint', 'words', 'since'],
+                  'properties': {'fingerprint': {'type': 'string',
+                                                 'pattern': '^[0-9a-f]{64}$'},
+                                 'words': STR, 'since': ref('timestamp')}},
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
         keepsUnwritten={'description': 'While unlocked: whether a save the remote cannot take '
@@ -533,7 +558,9 @@ message('pair.identity', 'admin', 'a2s', 'A',
 message('pairIdentity', 'admin', 's2a', 'A', 'The answer to pair.identity.',
         ['id', 'device', 'approverKey', 'linkKey'], id=ref('id'), device=STR,
         approverKey=APPROVER_KEY, linkKey=LINK_KEY, linkAddress=STR,
-        linkRelay=LINK_RELAY, linkId=LINK_ID)
+        linkRelay=LINK_RELAY, linkId=LINK_ID,
+        serviceKey={'description': 'The service\'s public identity key (section 6.1).',
+                    **ref('base64')})
 message('pair.record', 'admin', 'a2s', 'A',
         'Keep what a pairing gave (the manager app only).',
         ['id', 'device', 'tokenKey'], id=ref('id'), device=STR, tokenKey=ref('base64'),
@@ -543,7 +570,8 @@ message('pair.record', 'admin', 'a2s', 'A',
               'properties': {'linkKey': LINK_KEY, 'address': STR}},
         record={'type': 'object',
                 'properties': {'platform': STR,
-                               'keyIds': {'type': 'array', 'items': STR}}},
+                               'keyIds': {'type': 'array', 'items': STR},
+                               'serviceKey': ref('base64')}},
         link={'description': '[C] The relay link both sides of the pairing agreed on '
               '(section 9.8): kept with the host and the approver, a channel per direction.',
               'type': 'object', 'required': ['relay', 'linkId'], 'additionalProperties': False,
@@ -637,11 +665,14 @@ message('keyList', 'admin', 's2a', 'A', 'The answer to keys.', ['id', 'keys'], i
                            'own': BOOL}}})
 message('keys.rotate', 'admin', 'a2s', 'A',
         'Rotate this device\'s own key pairs (the manager app only).',
-        ['id'], id=ref('id'), approver=BOOL, link=BOOL)
+        ['id'], id=ref('id'), approver=BOOL, link=BOOL, identity=BOOL)
 message('keysRotated', 'admin', 's2a', 'A', 'The answer to keys.rotate.',
         ['id', 'resigned', 'delivered', 'pending'], id=ref('id'), approverKeyId=STR,
         resigned=INT0, delivered={'type': 'array', 'items': STR},
-        pending={'type': 'array', 'items': STR})
+        pending={'type': 'array', 'items': STR},
+        identity={'description': 'The service\'s new identity key (section 6.1).',
+                  'type': 'object', 'required': ['key', 'fingerprint', 'words'],
+                  'properties': {'key': ref('base64'), 'fingerprint': STR, 'words': STR}})
 message('compact', 'admin', 'a2s', 'A', 'Cut the history of a vault repository now.',
         ['id', 'repository'], id=ref('id'),
         repository={'type': 'string', 'pattern': '^[^/\\s]+/[^/\\s]+$'},
