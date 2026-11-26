@@ -212,3 +212,46 @@ Future<Uint8List> tomSecretsOpenBundle({
     throw const TomSecretsBundleException('the bundle does not open');
   }
 }
+
+/// The associated-data label of a sealed field of an admin message: the
+/// quick unlock's PIN and token (protocol.md 6.4) travel sealed under the
+/// connection's bundle key like a bundle, the label in place of the vault
+/// name, so a sealed field cannot be moved into another message.
+String tomSecretsSealedFieldLabel(String op, String field) =>
+    'tsm-field:$op.$field';
+
+/// Seals [plaintext] as the field [field] of [op] under [bundleKey]: the
+/// same object as a bundle (`nonce`, `ciphertext`).
+Future<Map<String, String>> tomSecretsSealField({
+  required List<int> bundleKey,
+  required String op,
+  required String field,
+  required int serviceStart,
+  required List<int> plaintext,
+}) => tomSecretsSealBundle(
+  bundleKey: bundleKey,
+  vault: tomSecretsSealedFieldLabel(op, field),
+  serviceStart: serviceStart,
+  plaintext: plaintext,
+);
+
+/// Opens the field [field] of [op] sealed under [bundleKey]; the caller
+/// wipes the bytes. Throws [TomSecretsBundleException] when it does not
+/// open.
+Future<Uint8List> tomSecretsOpenField({
+  required List<int> bundleKey,
+  required String op,
+  required String field,
+  required int serviceStart,
+  required Object? sealed,
+}) async {
+  if (sealed is! Map) {
+    throw const TomSecretsBundleException('no sealed field');
+  }
+  return await tomSecretsOpenBundle(
+    bundleKey: bundleKey,
+    vault: tomSecretsSealedFieldLabel(op, field),
+    serviceStart: serviceStart,
+    bundle: sealed.cast<String, Object?>(),
+  );
+}

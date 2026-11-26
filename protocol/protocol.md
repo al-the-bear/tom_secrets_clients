@@ -866,7 +866,11 @@ that succeeds with nothing to return is answered `ok {id}`; a failure is
 | `unlock {id, password, keyFile?}` | `ok` | open the primary file and the stores it names; without `keyFile` the service takes the primary's key file from the device keychain (`tsm.key-file.<id>`), and a `.tsmx` primary's repository key always comes from there (`tsm.repository-key.<id>`; the ids are the first 16 hex digits of SHA-256 over the vault's or the repository's identity, part-stores); a primary that cannot be fetched while the device keeps no copy of it (the offline cache off) is `offline` / `token_expired` with reason `no_copy`: the app waits for GitHub |
 | **[B]** `unlock {id, vault, bundle{nonce, ciphertext}}` | `ok`, or `error` `denied` (reason `bad_bundle`: the bundle does not open on this connection, which counts as a failed authentication; `bad_password`: it opens, but its composite key no longer opens the vault, which was re-keyed), `not_found` (no such store; while locked: the primary the bundle opened has another name, and the service locks again), `unsupported` (sent on a connection that claimed the service) | open a vault with the key bundle the app read from the OS-gated store (6.4): `vault` is a store's name as `status` lists it; while the service is locked every bundle is taken as the primary's and unlocks the service as `unlock` with the password does; unlocked, a bundle opens the store it names as `unlockStore` does |
 | `unlockStore {id, store, password, keyFile?}` | `ok` | open a store with a password of its own |
-| `lock {id}` | `ok` | lock: clear every secret from memory |
+| `unlock {id, pin{nonce, ciphertext}}` / `unlock {id, quick{nonce, ciphertext}}` | `ok`, or `error` `denied` (reason `bad_pin` with `attemptsLeft`, `pin_wiped` (the fifth wrong PIN wiped the sealed keys), `quick_expired` (the age limit), `no_quick_unlock` (nothing sealed: a restart, "Lock completely"), `bad_token`, `rekeyed` (the keys sealed no longer open the primary), `bad_bundle` (the field does not open on this connection), `wrong_executable` (not the manager app)), `unsupported` (a connection that claimed the service) | the quick unlock (6.4): the PIN or the biometric's token, sealed under the connection's bundle key, opens the primary's keys the service holds sealed in its memory, and unlocks as `unlock` with the password does |
+| `quickUnlock.set {id, pin{nonce, ciphertext}}` | `ok`, or `error` `malformed` (reason `pin`: fewer than 6 characters), `denied` (reason `password_first`: no unlock with the master password in this run, or one older than the age limit; `wrong_executable`), `locked` | seal the primary's keys under the PIN (replacing a PIN set before) and turn the PIN's switch on in the device settings (6.4) |
+| `quickUnlock.token {id}` | `quickToken {id, token{nonce, ciphertext}}` | seal the primary's keys under a new random token and answer it sealed, for the app to keep behind the biometric (6.4); refused like `quickUnlock.set` |
+| `quickUnlock.remove {id, pin?, token?}` | `ok` | forget the PIN (its switch off) and/or the token (6.4) |
+| `lock {id, completely?}` | `ok` | lock: clear every secret from memory; with `completely` the quick unlock ends too |
 | `shutdown {id}` | `ok`, then the connection closes | lock and stop |
 | `status {id}` | `statusReport {id, locked, lockMode, protocol, service{version, start}, identity{fingerprint, words, since, kept}, stores[{name, state, source, fetchedAt?, notPushed, rewritten?{head}, keyChanged?, reason?}], keepsUnwritten?, offlineCacheRemoved?, admins, hardening, expiring?[{kind, key, vault?, expiresAt, daysLeft}], links?[{device, role, state, via?, reason?}], agent?, github?{state, login?}}` | the service's state; `identity` is the service's identity key (6.1): its fingerprint, its words, when it was made and where its secret is kept (`kept`: `keychain` the macOS keychain item that trusts the service's signature, `dpapi` Windows' DPAPI, `system` a Linux system install's directory, `file` the key file); `lockMode` is the service's lock mode (DP-14): `a` never relocks, `b` relocks on idle, `c` (phase B) on idle or screen lock; a store's `state` is `current`, `offline`, `token_expired`, `needs_unlock` or `unavailable`; its `source` is as in 5.2 (`github`, `file` or `cache`); `notPushed` counts its changes not yet written to GitHub; `rewritten` names the head of a branch rewritten without a compaction awaiting `history.resolve` (6.4); **[C]** `keyChanged` (with `needs_unlock`, `source` `cache`) marks a store served read-only from a copy under its old key, because another device re-keyed it and its new key is not listed here yet (6.4); a store's `reason` says why an `unavailable` store waits for its remote while no copy of it is held (`offline`, `token_expired`); `keepsUnwritten` (while unlocked) whether a save the remote cannot take waits in memory (6.4); `offlineCacheRemoved` when this start applied the in-memory default to device settings stored before it and deleted their offline cache (the app tells the user once); `hardening` names the protections achieved at start, each `true` or `false`: `noCoreDumps` (no core file; on Windows the error mode against crash dumps), `notDumpable` (Linux: not dumpable, so no debugger of the same user attaches), `privateFiles` (Linux and macOS: umask 077, every file the service writes 0600), `memoryAccessDenied` (Windows: the process DACL refuses `PROCESS_VM_READ` and `PROCESS_VM_WRITE` to all but SYSTEM); `expiring` lists the keys due for a reminder now (part-key-rotation), each with its `kind`, its `vault` when it has one, `expiresAt` and the whole `daysLeft` (negative once expired): `github_token` (key `github-token:<owner>/<repository>`, from the device setting's warning period, default 14 days, before the expiry GitHub reports for the token, or before the expiry recorded with the token when it was entered while GitHub has reported none), `vault_keys` (key `vault-keys:<vault>`, a vault's key file and repository key, from 30 days before their due date: for a further vault the Expires of its entry in the primary, for the primary its metadata's `tsm.keys-due`), `approver_key` and `link_key` (keys `approver-key:<device>` and `link-key:<device>`, this device's approver and approval-link key pairs and those of the peers it recorded, from 30 days before their rotation age of 24 months is over, counted from their creation, their recording at pairing, a key change or a new link key), **[B]** `github_app` (key `github-app:<device>`, this device's GitHub App sign-in, from the warning period of the GitHub token before its refresh token runs out unused); **[C]** `member_key` (key `member-key:<the first 16 characters of its fingerprint>`, the user's member key, from 30 days before its rotation age, `memberKeyAgeMonths`, default 24 months, counted from its entry's creation, is over); **[C]** `certificate` and `pgp_key` (keys `certificate:<vault>/<title>` and `pgp-key:<vault>/<title>`, with `vault`, a typed certificate or PGP key entry of an open vault whose Expires is set (a certificate's notAfter, a PGP key's own expiry), from 30 days before it); `tsm status` shows it where no app is attached; **[B]** `agent` is the ssh-agent's endpoint (`{socket}` or `{pipe}`) while it runs; **[B]** `github` is the GitHub App sign-in's `state` (as `github.app`) and the signed-in user's `login`; **[C]** `links` (while unlocked) are the approval links (9.7): `role` `host` for a host this device approves for, `approver` for an approver of this host; `state` `connected`, `waiting` (a relay channel open, the other side not there), `connecting` or `unreachable`; `via` `address` (the VPN or the LAN) or `relay`; `reason` what failed (a relay that refuses the link, e.g. without the instance token, reads as an unreachable link with the relay's reason) |
 | `reload {id}` | `ok`, or `error` `offline` / `token_expired` | fetch every store now and reopen those whose file moved; on a failed fetch the stores stay on the copy held or cached, and the error's `stores` names them (`token_expired` when GitHub refused a token, else `offline`) |
@@ -1190,6 +1194,41 @@ in place of the password, and hands it to the app's editing path as
 - vectors: `vectors/bundles.json` (the bundle key, the associated data, two
   sealed bundles, and four that must be refused: another vault, another
   service start, another connection, a changed tag).
+
+**The quick unlock.** After an unlock with the master password (or the
+saved bundle of "Remember the master password", which counts as one) the
+manager app may ask the service to keep the primary's keys sealed in its
+memory, so a PIN or the platform's biometric undoes a later idle or screen
+lock (part-app, Unlocking). `tsm` cannot: every quick-unlock message from an
+admin that is not the manager app is `denied`, reason `wrong_executable`.
+
+- **The slots.** The keys the primary is open with (password or composite
+  key, key file, repository keys) are sealed with AES-256-GCM: under a key
+  from Argon2id (64 MiB, 2 passes, 1 lane) over the PIN with a 32-byte
+  random secret as the salt (`quickUnlock.set`), and under a key from
+  HKDF-SHA256 over a 32-byte random token with the same secret as the salt
+  and `tsm-quick-token-v1` as the info (`quickUnlock.token`, answered
+  sealed). The secret is made at the service's start and exists only in
+  its memory; nothing is written: the device settings keep only the switch
+  `quickUnlockPin`.
+- **The sealed fields.** The PIN and the token cross the admin connection
+  sealed like a bundle (above), under the connection's bundle key, with
+  the associated data `tsm-field:<op>.<field>` (UTF-8) followed by
+  `serviceStart` as 8 bytes big-endian: `unlock.pin`, `unlock.quick`,
+  `quickUnlock.set.pin`, `quickToken.token` (the label of the request,
+  `quickUnlock.token.token`). A field that does not open is `denied`, reason
+  `bad_bundle`, and counts as a failed authentication.
+- **What ends it.** The fifth wrong PIN in a row (`pin_wiped`; a right one
+  resets the count), `lock {completely}`, the end of the process, a primary
+  re-keyed while the service ran (checked at each lock: the keys held are
+  no longer the keys sealed) and the age limit, 7 days after the last
+  unlock with the master password (`quick_expired`); each wipes both slots.
+  A plain `lock` and the idle and screen locks keep them.
+- **The status.** `statusReport.quickUnlock` is `{pin, pinArmed, token,
+  attemptsLeft, until?}`: `pin` the switch (readable while unlocked),
+  `pinArmed` / `token` whether a PIN / the token opens the keys now,
+  `until` when the age limit ends them. After a restart `pin` is true once
+  unlocked and `pinArmed` false: the app asks for the PIN once more.
 
 ### 6.5 Events
 
@@ -1783,14 +1822,14 @@ type and adds `not_running` (section 3). An admin library adds
 | Kind | Meaning | `details` |
 | --- | --- | --- |
 | `locked` | the service is locked and no unlock came in time, or `wait` was `false` | — |
-| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant; **[C]** a passkey request from a client that is neither the browser host nor the passkey plugin, or a `get` / `getMany` / `getFile` / `match` / `propose` from the passkey plugin, 5.8), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_seal` (a claim that does not open, 6.2), `bad_bundle`, `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
+| `denied` | the client may not have this, or a connection is refused | `reason`: `never` (a never grant), `refused` (at the prompt), `no_approver`, `unidentifiable` (the identity could not be measured), `reserved_field` (a passkey field), `not_allowed_op` (`match` / `propose` from a client that is not the browser host or a helper, 5.5, or a `propose` without a grant; **[C]** a passkey request from a client that is neither the browser host nor the passkey plugin, or a `get` / `getMany` / `getFile` / `match` / `propose` from the passkey plugin, 5.8), `system_vault` (a system vault's value asked by the browser host, 5.5), `bad_token` (Windows `hello.token`, or an approval token that matches no waiting request, 9.6), `bad_mac`, `bad_password`, `bad_seal` (a claim that does not open, 6.2), `bad_bundle`, `bad_pin`, `pin_wiped`, `quick_expired`, `no_quick_unlock`, `bad_token`, `rekeyed`, `password_first` (the quick unlock, 6.4), `wrong_executable` (admin), `other_user` (a peer of another OS user), `stale_base` (a `save` of a revision the file has moved past, a re-keyed `save` whose branch moved, or **[C]** a `vault.recipients.set` over a recipients file that moved, 6.4), `history_rewritten` (a `save` to a branch rewritten without a compaction; the app decides, 6.4), `branch_moving` (a `save` whose branch moved during every attempt, or a `vault.move` whose branch moved meanwhile; save again), `target_exists` (a `vault.move` to a place a file is at already, 6.4), `token_refused`, `token_no_access`, `token_read_only` (a `token.set` whose token GitHub refuses, which does not see the repository, or which may not write there, 6.3); **[C]** `exists` (a `relay.create` of a file that is there, 6.4), `not_github` (a `relay.*` request for a store that is not in a GitHub repository, 6.4) |
 | `not_found` | no candidate, or the winning entry lacks the field; for admin requests no store of that name | `dimensions` (the request's values), `entry` (`{store, path, uuid}`, when the field is missing), `field`; **[C]** `reason` `no_recipients` (a `vault.recipients` of a vault without a recipients file, 6.4), `inbox` (an `inbox.read` of a package that is gone, 6.4) |
 | `ambiguous` | several candidates rank equal | `candidates`: `[{store, path, uuid}]`, never values |
 | `needs_unlock` | the store holding the answer could not be reopened since its key changed | `store` |
 | `unavailable` | the store holding the answer could not be fetched and has no offline copy; for `propose`, no app is attached | `store`, `reason` (`no_cache`, `no_app`) |
 | `offline` | admin only: a `reload` whose fetch failed for a network reason, a `save` that cannot be taken while offline (6.4), or an `unlock` whose primary cannot be fetched while the device keeps no copy of it | `stores`; `reason` `no_copy` (the `unlock`) |
 | `token_expired` | admin only: as `offline`, because GitHub answered 401 or 403 or the token is past its expiry | `stores` |
-| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`, `unsealed` (a claim in the clear, 6.2); for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4; **[C]** `relay` for a `relay.*` request without a store or a path below `relay/`, or a file over 1 MiB) |
+| `malformed` | a frame, a reference, a binding or a request cannot be read | `reason` (section 4.6, 4.7, or `duplicate_id`, `frame`, `unsealed` (a claim in the clear, 6.2), `pin` (a quick-unlock PIN of fewer than 6 characters, or one that is not UTF-8, 6.4); for admin requests the member that cannot be read, e.g. `password`, `stores`, and `bytes` for a `save` whose file is no base64 or does not open with the store's keys, 6.4; **[C]** `relay` for a `relay.*` request without a store or a path below `relay/`, or a file over 1 MiB) |
 | `timeout` | an approval was not answered in time | — |
 | `rate_limited` | the identity is held back (section 11) | `retryAfterMs`; `reason`: `requests` (the token bucket), `connections` (a connection over the caps, answered at its `hello` and closed), `held_back` (three refusals at prompts), `too_many_prompts` |
 | `unsupported` | an unknown `op`, or a protocol the service does not speak; a `token.set` whose token has nowhere to be kept | `op`, or `protocols`; `reason` `no_keychain` |
@@ -1812,7 +1851,7 @@ defaults):
 
 ## 12. Schemas, vectors and tools
 
-- [`schema/`](schema/): 121 message schemas, one per `op` (JSON Schema draft
+- [`schema/`](schema/): 125 message schemas, one per `op` (JSON Schema draft
   2020-12, file `<op>.json`), and `common.json` with the shared definitions,
   the signed objects of 9.4 among them. Each schema's `x-tsm` member names
   its endpoint (`link` for the approval link), direction (`a2h` approver to
@@ -2175,3 +2214,15 @@ part-service) leaves these open; this document fixes them:
     service: anyone could ask it. The Windows form needs the whole service
     under an account of its own, a second deployment model, and is not part
     of protocol 1's first release.
+55. The quick unlock keeps the primary's keys sealed in the running
+    service's memory, never on a disk: a PIN is short, so its strength is
+    the attempt limit (5) of a process that holds the only salt, not its
+    length, and a copy of the disk holds nothing to try PINs against. A
+    restart therefore asks for the master password once, which also keeps
+    it remembered, and the PIN once more; the switch that a PIN is on is
+    all the device settings keep. The biometric goes the same way: the app
+    keeps a random token behind it, not the keys, so the biometric releases
+    what the service holds and nothing outlives the service. The PIN is for
+    the apps only; `tsm` keeps the master password, so a session on a
+    server cannot try PINs. The 7-day limit bounds how long a device unlocks
+    without the master password.

@@ -302,15 +302,33 @@ message('ok', 'admin', 's2a', 'A', 'An admin request succeeded and has nothing t
                 'the app reads the file again (section 6.4).', 'const': True},
         pending={'description': 'save only: the remote could not take the file and it waits '
                  'in memory as a change not written (section 6.4).', 'const': True})
+SEALED = {'description': 'Sealed under the connection\'s bundle key like a bundle, the '
+          'associated data naming the message and the field (section 6.4).',
+          'type': 'object', 'required': ['nonce', 'ciphertext'],
+          'properties': {'nonce': ref('base64'), 'ciphertext': ref('base64')}}
 message('unlock', 'admin', 'a2s', 'A', 'Open the primary file and the stores (phase A), or '
-        'a vault with a sealed key bundle (phase B).', ['id'], id=ref('id'),
+        'a vault with a sealed key bundle (phase B), or with the quick unlock\'s sealed PIN or '
+        'token (the manager app only).', ['id'], id=ref('id'),
         password=STR, keyFile=ref('base64'), vault=STR,
         bundle={'type': 'object', 'required': ['nonce', 'ciphertext'],
-                'properties': {'nonce': ref('base64'), 'ciphertext': ref('base64')}})
+                'properties': {'nonce': ref('base64'), 'ciphertext': ref('base64')}},
+        pin={'description': 'The quick unlock\'s PIN (section 6.4).', **SEALED},
+        quick={'description': 'The quick unlock\'s token the biometric releases '
+               '(section 6.4).', **SEALED})
+message('quickUnlock.set', 'admin', 'a2s', 'A', 'Seal the primary\'s keys under a PIN in the '
+        'service\'s memory and turn the PIN\'s switch on (the manager app only).',
+        ['id', 'pin'], id=ref('id'), pin=SEALED)
+message('quickUnlock.token', 'admin', 'a2s', 'A', 'Seal the primary\'s keys under a new token '
+        'for the biometric (the manager app only).', ['id'], id=ref('id'))
+message('quickToken', 'admin', 's2a', 'A', 'The answer to quickUnlock.token: the token, sealed.',
+        ['id', 'token'], id=ref('id'), token=SEALED)
+message('quickUnlock.remove', 'admin', 'a2s', 'A', 'Forget the PIN (its switch off) and/or the '
+        'token (the manager app only).', ['id'], id=ref('id'), pin=BOOL, token=BOOL)
 message('unlockStore', 'admin', 'a2s', 'A', 'Open a store that has its own password.',
         ['id', 'store', 'password'], id=ref('id'), store=ref('storeName'), password=STR,
         keyFile=ref('base64'))
-message('lock', 'admin', 'a2s', 'A', 'Lock: clear every secret from memory.', ['id'], id=ref('id'))
+message('lock', 'admin', 'a2s', 'A', 'Lock: clear every secret from memory.', ['id'], id=ref('id'),
+        completely={'description': 'Also end the quick unlock (section 6.4).', **BOOL})
 message('shutdown', 'admin', 'a2s', 'A', 'Lock and stop the service.', ['id'], id=ref('id'))
 REWRITTEN = {'description': 'The branch was rewritten without a compaction: the head of the '
              'rewritten branch, until the manager app answers with history.resolve (section 6.4).',
@@ -360,6 +378,11 @@ message('statusReport', 'admin', 's2a', 'A', 'The answer to status.',
                                  'words': STR, 'since': ref('timestamp'),
                                  'kept': {'enum': ['keychain', 'dpapi', 'system',
                                                    'file']}}},
+        quickUnlock={'description': 'The quick unlock (section 6.4): never a key or a PIN.',
+                     'type': 'object',
+                     'required': ['pin', 'pinArmed', 'token', 'attemptsLeft'],
+                     'properties': {'pin': BOOL, 'pinArmed': BOOL, 'token': BOOL,
+                                    'attemptsLeft': INT0, 'until': ref('timestamp')}},
         stores={'type': 'array', 'items': STORE_STATUS}, admins=INT0,
         hardening={'type': 'object', 'additionalProperties': BOOL},
         keepsUnwritten={'description': 'While unlocked: whether a save the remote cannot take '

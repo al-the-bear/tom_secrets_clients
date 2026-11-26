@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/quickToken.json",
+  "title": "quickToken",
+  "description": "The answer to quickUnlock.token: the token, sealed. Endpoint: admin; direction: s2a; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id",
+    "token"
+  ],
+  "properties": {
+    "op": {
+      "const": "quickToken"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "token": {
+      "description": "Sealed under the connection's bundle key like a bundle, the associated data naming the message and the field (section 6.4).",
+      "type": "object",
+      "required": [
+        "nonce",
+        "ciphertext"
+      ],
+      "properties": {
+        "nonce": {
+          "$ref": "common.json#/$defs/base64"
+        },
+        "ciphertext": {
+          "$ref": "common.json#/$defs/base64"
+        }
+      }
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "s2a",
+    "phase": "A"
+  }
+}

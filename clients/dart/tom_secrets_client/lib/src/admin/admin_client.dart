@@ -615,6 +615,64 @@ final class TomSecretsAdminClient {
     return answer;
   }
 
+  /// Sends [op] with [fields] and, sealed under this connection's bundle
+  /// key, [sealed] (protocol.md 6.4: the quick unlock's PIN and token); the
+  /// answer's fields named in [open] are opened and answered as bytes, which
+  /// the caller wipes. A connection that claimed the service has no bundle
+  /// key: `unsupported`. The plaintexts are wiped once sealed.
+  Future<Map<String, Object?>> requestSealed(
+    String op, {
+    Map<String, Object?> fields = const {},
+    Map<String, List<int>> sealed = const {},
+    List<String> open = const [],
+  }) async {
+    final key = _bundleKey;
+    if (key == null) {
+      throw TomSecretsAdminException(
+        'unsupported',
+        'a connection that claimed the service cannot send sealed fields',
+      );
+    }
+    final wire = <String, Object?>{...fields};
+    try {
+      for (final MapEntry(key: name, value: plain) in sealed.entries) {
+        wire[name] = await tomSecretsSealField(
+          bundleKey: key,
+          op: op,
+          field: name,
+          serviceStart: serviceStart,
+          plaintext: plain,
+        );
+      }
+    } finally {
+      for (final plain in sealed.values) {
+        if (plain is Uint8List) plain.fillRange(0, plain.length, 0);
+      }
+    }
+    final answer = await request(op, wire);
+    if (open.isEmpty) return answer;
+    final opened = {...answer};
+    for (final name in open) {
+      if (!answer.containsKey(name)) continue;
+      try {
+        opened[name] = await tomSecretsOpenField(
+          bundleKey: key,
+          op: op,
+          field: name,
+          serviceStart: serviceStart,
+          sealed: answer[name],
+        );
+      } on TomSecretsBundleException catch (e) {
+        throw TomSecretsAdminException(
+          'malformed',
+          'the service\'s sealed $name does not open: ${e.message}',
+          details: const {'reason': 'sealed'},
+        );
+      }
+    }
+    return opened;
+  }
+
   /// Unlocks with the master password (and key file).
   Future<void> unlock(String password, {List<int>? keyFile}) =>
       request('unlock', {

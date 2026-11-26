@@ -118,4 +118,50 @@ void main() {
       );
     }
   });
+
+  test('a sealed field opens only as the field of the message it was sealed '
+      'for, under the same key and service start', () async {
+    final key = List<int>.generate(32, (i) => i);
+    final sealed = await tomSecretsSealField(
+      bundleKey: key,
+      op: 'unlock',
+      field: 'pin',
+      serviceStart: 7,
+      plaintext: utf8.encode('correct horse'),
+    );
+    final plain = await tomSecretsOpenField(
+      bundleKey: key,
+      op: 'unlock',
+      field: 'pin',
+      serviceStart: 7,
+      sealed: sealed,
+    );
+    expect(utf8.decode(plain), 'correct horse');
+    for (final (op, field, start) in [
+      ('quickUnlock.set', 'pin', 7),
+      ('unlock', 'quick', 7),
+      ('unlock', 'pin', 8),
+    ]) {
+      await expectLater(
+        tomSecretsOpenField(
+          bundleKey: key,
+          op: op,
+          field: field,
+          serviceStart: start,
+          sealed: sealed,
+        ),
+        throwsA(isA<TomSecretsBundleException>()),
+      );
+    }
+    await expectLater(
+      tomSecretsOpenField(
+        bundleKey: key,
+        op: 'unlock',
+        field: 'pin',
+        serviceStart: 7,
+        sealed: 'not sealed',
+      ),
+      throwsA(isA<TomSecretsBundleException>()),
+    );
+  });
 }

@@ -80,6 +80,34 @@
         }
       }
     },
+    "quickUnlock": {
+      "description": "The quick unlock (section 6.4): never a key or a PIN.",
+      "type": "object",
+      "required": [
+        "pin",
+        "pinArmed",
+        "token",
+        "attemptsLeft"
+      ],
+      "properties": {
+        "pin": {
+          "type": "boolean"
+        },
+        "pinArmed": {
+          "type": "boolean"
+        },
+        "token": {
+          "type": "boolean"
+        },
+        "attemptsLeft": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "until": {
+          "$ref": "common.json#/$defs/timestamp"
+        }
+      }
+    },
     "stores": {
       "type": "array",
       "items": {

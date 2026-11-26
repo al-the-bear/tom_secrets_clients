@@ -424,6 +424,11 @@ After `unlocked`, `unlock` prints the service's identity words. They are
 the words the manager app on your other devices shows for this machine in
 its device list: when you look at them there, they are the same.
 
+`tsm unlock` takes the master password only. A PIN and Touch ID or
+Windows Hello are the manager app's quick unlock: they undo the app's
+locks, never `tsm`'s, and `tsm` cannot send them. `tsm lock` keeps the
+app's quick unlock; the app's "Lock completely" ends it.
+
 Errors: `denied` (`bad_password`, exit 5) after a wrong password;
 `not_running` (exit 3); `service_untrusted` (`unpinned`, exit 12) and
 `service_key_changed` (exit 13), see [`tsm trust`](#tsm-trust).

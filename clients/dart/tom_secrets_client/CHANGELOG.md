@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.28
+
+- Sealed fields of admin messages (protocol.md 6.4, the quick unlock):
+  `TomSecretsAdminClient.requestSealed` seals the PIN or token under the
+  connection's bundle key and opens the answer's sealed fields;
+  `tomSecretsSealField`, `tomSecretsOpenField`,
+  `tomSecretsSealedFieldLabel`.
+
 ## 0.2.27
 
 - The service installed on its own for one user (`tsm install`):

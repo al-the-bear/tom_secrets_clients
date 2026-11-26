@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/al-the-bear/tom_secrets_clients/main/protocol/schema/quickUnlock.remove.json",
+  "title": "quickUnlock.remove",
+  "description": "Forget the PIN (its switch off) and/or the token (the manager app only). Endpoint: admin; direction: a2s; phase A. Unknown members are ignored by the reader (protocol.md section 8).",
+  "type": "object",
+  "required": [
+    "op",
+    "id"
+  ],
+  "properties": {
+    "op": {
+      "const": "quickUnlock.remove"
+    },
+    "id": {
+      "$ref": "common.json#/$defs/id"
+    },
+    "pin": {
+      "type": "boolean"
+    },
+    "token": {
+      "type": "boolean"
+    }
+  },
+  "x-tsm": {
+    "endpoint": "admin",
+    "direction": "a2s",
+    "phase": "A"
+  }
+}
