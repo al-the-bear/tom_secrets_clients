@@ -18,6 +18,7 @@ import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 
 import 'system_install.dart';
+import 'user_install.dart';
 import 'tsm_tool.dart' show tsmVersion;
 import 'tsm_context.dart';
 
@@ -420,6 +421,7 @@ Future<String?> _serviceExecutable(TsmContext c, TsmArgs a) async {
       c.namedService ??
       c.io.environment['TSM_SERVICE'] ??
       c.io.systemInstall()?.serviceExecutable ??
+      c.io.userInstall()?.serviceExecutable ??
       '${c.io.executableDirectory}${Platform.pathSeparator}'
           'tom_secrets_service$exe';
   if (!await File(service).exists()) {
@@ -1346,12 +1348,7 @@ Future<int> tsmKubeCredential(TsmContext c, TsmArgs a) async {
 /// set-group-ID to `tsm-identity`, which alone reaches the identity keys.
 /// Run as root. `--plan` lists the steps and changes nothing.
 Future<int> tsmInstall(TsmContext c, TsmArgs a) async {
-  if (!a.flag('system')) {
-    throw TsmFailure.usage(
-      'tsm install installs the service for every user of this machine: '
-      'give --system',
-    );
-  }
+  if (!a.flag('system')) return _userInstall(c, a);
   _systemInstallPlatform();
   final source =
       a.option('service') ??
@@ -1395,11 +1392,7 @@ Future<int> tsmInstall(TsmContext c, TsmArgs a) async {
 /// the identity keys stay unless `--purge` (a new install then keeps every
 /// user's identity).
 Future<int> tsmUninstall(TsmContext c, TsmArgs a) async {
-  if (!a.flag('system')) {
-    throw TsmFailure.usage(
-      'tsm uninstall removes the system install: give --system',
-    );
-  }
+  if (!a.flag('system')) return _userUninstall(c, a);
   _systemInstallPlatform();
   final link = Link(tomSecretsSystemTsmLink);
   final steps = tsmSystemUninstallPlan(
@@ -1448,6 +1441,94 @@ Future<int> _runSystemSteps(
   final failed = await tsmRunInstallSteps(steps, say: c.io.err.writeln);
   if (failed != null) {
     c.io.err.writeln('tsm: $failed');
+    return TsmExit.of('internal');
+  }
+  c.io.outln(done);
+  return TsmExit.ok;
+}
+
+/// `tsm install [--service EXE] [--app EXE] [--no-login] [--plan]`: the
+/// service installed on its own for this user (tsm_d12), started at login.
+Future<int> _userInstall(TsmContext c, TsmArgs a) async {
+  final env = c.io.environment;
+  final os = Platform.operatingSystem;
+  final exe = Platform.isWindows ? '.exe' : '';
+  final source =
+      a.option('service') ??
+      env['TSM_SERVICE'] ??
+      '${c.io.executableDirectory}${Platform.pathSeparator}'
+          'tom_secrets_service$exe';
+  if (!await File(source).exists()) {
+    c.io.err.writeln('tsm: no service executable at $source');
+    return TsmExit.of('not_found');
+  }
+  final directory = tomSecretsUserInstallDirectory(environment: env);
+  final installed = TomSecretsUserInstall.read(environment: env);
+  final target = TomSecretsUserInstall(
+    directory: directory,
+    version: tsmVersion,
+    installed: c.io.clock().toUtc(),
+    apps: installed?.apps ?? const [],
+  );
+  final link = '${env['HOME']}/.local/bin/tsm';
+  final steps = tsmUserInstallPlan(
+    serviceExecutable: source,
+    target: target,
+    operatingSystem: os,
+    environment: env,
+    login: !a.flag('no-login'),
+    app: a.option('app'),
+    uid: currentUid(),
+    linkFree:
+        Directory('${env['HOME']}/.local/bin').existsSync() &&
+        (Link(link).existsSync() ||
+            FileSystemEntity.typeSync(link, followLinks: false) ==
+                FileSystemEntityType.notFound),
+  );
+  final code = await _runSteps(c, a, steps, done: 'installed in $directory');
+  if (code == TsmExit.ok && !a.flag('plan')) {
+    c.io.outln('it starts at login from there; tsm start starts it now');
+  }
+  return code;
+}
+
+/// `tsm uninstall [--plan]`: removes this user's install and its start at
+/// login. A service started from it keeps running until `tsm stop`.
+Future<int> _userUninstall(TsmContext c, TsmArgs a) async {
+  final env = c.io.environment;
+  final directory = tomSecretsUserInstallDirectory(environment: env);
+  final link = Link('${env['HOME']}/.local/bin/tsm');
+  final steps = tsmUserUninstallPlan(
+    directory: directory,
+    operatingSystem: Platform.operatingSystem,
+    environment: env,
+    uid: currentUid(),
+    linkOurs: link.existsSync() && link.targetSync().startsWith('$directory/'),
+  );
+  return _runSteps(c, a, steps, done: 'uninstalled');
+}
+
+Future<int> _runSteps(
+  TsmContext c,
+  TsmArgs a,
+  List<TsmInstallStep> steps, {
+  required String done,
+}) async {
+  if (a.flag('plan')) {
+    for (final step in steps) {
+      c.io.outln(step.toString());
+    }
+    return TsmExit.ok;
+  }
+  final failed = await tsmRunInstallSteps(steps, say: c.io.err.writeln);
+  if (failed != null) {
+    c.io.err.writeln('tsm: $failed');
+    if (Platform.isWindows) {
+      c.io.err.writeln(
+        'tsm: a running service holds its files: stop it (tsm stop) and run '
+        'this again',
+      );
+    }
     return TsmExit.of('internal');
   }
   c.io.outln(done);

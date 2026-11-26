@@ -343,6 +343,7 @@ final class Demo {
         identity: identity ?? (commandLineIdentity ? null : identityTrust),
         // No system install is taken from the machine the tests run on.
         systemInstall: () => null,
+        userInstall: () => null,
         clock: clock,
       ),
     );

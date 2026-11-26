@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.17';
+const String tsmVersion = '0.2.18';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -357,13 +357,25 @@ final ToolDefinition tsmTool = ToolDefinition(
     ),
     _command(
       'install',
-      'Install the service for every user of this Linux machine (as root): '
-          'root\'s and set-group-ID to tsm-identity, which alone reaches '
-          "the users' identity keys.",
+      'Install the service on its own for you, started at login, so it '
+          'keeps running when the app quits or is updated; with --system, '
+          'for every user of this Linux machine (as root).',
       options: const [
         OptionDefinition.flag(
           name: 'system',
-          description: 'For every user of the machine (the only form).',
+          description:
+              'For every user of this Linux machine (as root): set-group-ID '
+              'to tsm-identity, which alone reaches their identity keys.',
+        ),
+        OptionDefinition.option(
+          name: 'app',
+          description:
+              'A manager app the installed service admits (its executable).',
+          valueName: 'path',
+        ),
+        OptionDefinition.flag(
+          name: 'no-login',
+          description: 'Do not start it at login.',
         ),
         OptionDefinition.option(
           name: 'service',
@@ -378,18 +390,20 @@ final ToolDefinition tsmTool = ToolDefinition(
         ),
       ],
       examples: const [
+        'tsm install',
+        'tsm install --plan',
         'sudo tsm install --system',
-        'tsm install --system --plan',
       ],
     ),
     _command(
       'uninstall',
-      'Remove the system install (as root); the identity keys stay unless '
-          '--purge.',
+      'Remove your install of the service and its start at login; with '
+          '--system the system install (as root), whose identity keys stay '
+          'unless --purge.',
       options: const [
         OptionDefinition.flag(
           name: 'system',
-          description: 'The system install (the only form).',
+          description: 'The system install (as root).',
         ),
         OptionDefinition.flag(
           name: 'purge',
@@ -400,7 +414,7 @@ final ToolDefinition tsmTool = ToolDefinition(
           description: 'List the steps; change nothing.',
         ),
       ],
-      examples: const ['sudo tsm uninstall --system'],
+      examples: const ['tsm uninstall', 'sudo tsm uninstall --system'],
     ),
     _command('lock', 'Lock: drop every secret from memory.'),
     _command('stop', 'Lock and stop the service.'),

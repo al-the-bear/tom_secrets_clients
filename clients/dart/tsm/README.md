@@ -168,14 +168,16 @@ About `run`:
 reachable`, `token expired: enter a new one`) and flags a copy older than
 7 days.
 
-### A shared Linux server: the system install
+### Installing the service
 
 | Command | What it does |
 | --- | --- |
+| `install [--app EXE] [--no-login] [--service EXE] [--plan]` | Installs the service on its own for you (macOS, Linux, Windows): the tools copied into your install folder, started there at login (a LaunchAgent, a systemd user unit, the Run key), so it keeps running when the app quits, is ended or is updated; `--app` names a manager app it admits. |
+| `uninstall [--plan]` | Removes your install and its start at login (on Windows stop the service first). |
 | `install --system [--service EXE] [--plan]` | As root: installs the service for every user, root's and set-group-ID to `tsm-identity`, which alone reaches each user's identity key (`/var/lib/tom-secrets-manager/identity`); `--plan` lists the commands and changes nothing. |
 | `uninstall --system [--purge] [--plan]` | As root: removes it; the identity keys stay unless `--purge`. |
 
-The installed service runs as the user who starts it, drops the group
+The system-installed service runs as the user who starts it, drops the group
 once it has read that user's key, and uses the user's default directories.
 The user's other programs cannot read the key or the service's memory.
 

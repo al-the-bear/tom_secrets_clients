@@ -95,6 +95,7 @@ final class TsmContext {
       environment: io.environment,
       configured: [?namedService],
       systemInstall: io.systemInstall,
+      userInstall: io.userInstall,
     ),
     inspector: io.endpointInspector,
     identity: identityTrust,

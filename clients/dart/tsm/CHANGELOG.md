@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.18
+
+- `tsm install` and `tsm uninstall` for one user (tsm_d12, macOS, Linux,
+  Windows): the tools copied into the user's install folder and the
+  service started from there at login (a LaunchAgent, a systemd user unit,
+  the Run key), so it keeps running when the app quits, is ended or is
+  updated; `--app` names a manager app the installed service admits,
+  `--no-login` skips the start at login, `--plan` lists the steps.
+  `tsm start` starts the installed service first.
+
 ## 0.2.17
 
 - `tsm install --system` and `tsm uninstall --system [--purge]` (tsm_d11,

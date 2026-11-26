@@ -19,12 +19,33 @@ final class TsmInstallStep {
   /// A step running [command].
   const TsmInstallStep(this.what, this.command, {this.optional = false})
     : file = null,
-      content = null;
+      content = null,
+      action = null,
+      shown = null;
 
-  /// A step writing [content] into [file].
+  /// A step writing [content] into [file] (its folder made when missing).
   const TsmInstallStep.write(this.what, this.file, this.content)
     : command = null,
-      optional = false;
+      optional = false,
+      action = null,
+      shown = null;
+
+  /// A step doing [action] in this process, listed as [shown] (a copy or a
+  /// removal where no command line does it, on Windows).
+  const TsmInstallStep.action(
+    this.what,
+    this.shown,
+    this.action, {
+    this.optional = false,
+  }) : command = null,
+       file = null,
+       content = null;
+
+  /// What an action step does, or null.
+  final Future<void> Function()? action;
+
+  /// How an action step is listed.
+  final String? shown;
 
   /// What it does, for the operator.
   final String what;
@@ -43,7 +64,8 @@ final class TsmInstallStep {
   final bool optional;
 
   @override
-  String toString() => command == null ? 'write $file' : command!.join(' ');
+  String toString() =>
+      shown ?? (command == null ? 'write $file' : command!.join(' '));
 }
 
 /// The steps that install the service whose `dart build cli` bundle holds
@@ -191,9 +213,24 @@ Future<String?> tsmRunInstallSteps(
   final exec = run ?? Process.run;
   for (final step in steps) {
     say('  $step');
+    if (step.action != null) {
+      try {
+        await step.action!();
+      } on FileSystemException catch (e) {
+        final why = '${step.what}: ${e.message} ${e.path ?? ''}'.trim();
+        if (step.optional) {
+          say('  (not done: $why)');
+          continue;
+        }
+        return why;
+      }
+      continue;
+    }
     if (step.command == null) {
       try {
-        File(step.file!).writeAsStringSync(step.content!);
+        File(step.file!)
+          ..parent.createSync(recursive: true)
+          ..writeAsStringSync(step.content!);
       } on FileSystemException catch (e) {
         return '${step.what}: ${e.message}';
       }

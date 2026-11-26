@@ -21,7 +21,7 @@ the output; `[exit code N]` marks a command that failed.
 - [The service on a headless host](#the-service-on-a-headless-host)
 - [Approvals from the command line](#approvals-from-the-command-line)
 - [Pairing a headless host](#pairing-a-headless-host)
-- [A shared server: the system install](#a-shared-server-the-system-install)
+- [Installing the service](#installing-the-service)
 - [Keys, GitHub and the history](#keys-github-and-the-history)
 - [Integrations and the helpers](#integrations-and-the-helpers)
 - [Exit codes and troubleshooting](#exit-codes-and-troubleshooting)
@@ -944,19 +944,26 @@ tsm: this machine is set up already (/home/demo/.local/share/tom-secrets-manager
 - `denied` (`wrong_password`) after three wrong master passwords; with
   `--password-stdin` there is no second try.
 
-## A shared server: the system install
+## Installing the service
 
-On a Linux server several people use, an administrator installs the service
-once for every user. The service is then root's and set-group-ID to the
-group `tsm-identity`, and each user's identity key (see
-[`tsm trust`](#tsm-trust)) is kept in a directory only that group reaches.
-Started by a user, the service runs as that user; it reads that user's key
-with the group's rights and drops the group at once. The kernel then keeps
-the user's other processes out of its memory, and the loader ignores
-`LD_PRELOAD` and similar variables, so no other program of the user can
-read the key or pose as the service. Without the system install the key is
-a file in the user's data directory, which the user's other programs can
-read.
+The service comes with `tsm` and the manager app and runs from their
+folder. Installed, it runs from a place of its own, in one of two forms:
+
+- **For you, on its own** (macOS, Linux, Windows): the tools copied into a
+  folder of yours, the service started there at every login. It keeps
+  running when the app quits, is ended or is updated. On Windows this
+  matters most: the app's package ends the processes it started, so a
+  service the app started ends with the app.
+- **For every user of a shared Linux server** (the system install, as
+  root): the service root's and set-group-ID to the group `tsm-identity`,
+  and each user's identity key (see [`tsm trust`](#tsm-trust)) kept in a
+  directory only that group reaches. Started by a user, the service runs as
+  that user; it reads that user's key with the group's rights and drops
+  the group at once. The kernel then keeps the user's other processes out
+  of its memory, and the loader ignores `LD_PRELOAD` and similar
+  variables, so no other program of the user can read the key or pose as
+  the service. Without it the key is a file in the user's data directory,
+  which the user's other programs can read.
 
 The system-installed service uses the user's default directories: the data
 directory `~/.local/share/tom-secrets-manager` and the runtime directory
@@ -966,19 +973,54 @@ not move it.
 
 ### `tsm install`
 
-Installs the service for every user of this Linux machine. Run as root.
+Installs the service: for you, or with `--system` for every user of this
+Linux machine (as root).
 
 ```text
+tsm install [--app EXE] [--no-login] [--service EXE] [--plan]
 tsm install --system [--service EXE] [--plan]
 ```
 
 | Option | Meaning |
 | --- | --- |
-| `--system` | For every user of the machine (the only form). |
+| `--system` | For every user of this Linux machine, as root. |
+| `--app` | A manager app the installed service admits as an admin (its executable); the app names itself when it installs. |
+| `--no-login` | Do not start it at login. |
 | `--service` | The service executable to install (default: `TSM_SERVICE`, else `tom_secrets_service` beside `tsm`). |
 | `--plan` | List the steps; change nothing. |
 
-From the unpacked `tom_secrets_tsm-<version>-linux-<arch>` archive:
+**For you.** From the app's tools folder or the unpacked
+`tom_secrets_tsm-<version>-<platform>` archive:
+
+```sh
+./bin/tsm install
+```
+
+It copies `bin/` and `lib/` into your install folder, records the install
+in its `install.json` and starts the service from there at login:
+
+| Platform | Folder | Started at login by |
+| --- | --- | --- |
+| macOS | `~/Library/Application Support/TomSecretsManagerService` | a LaunchAgent, `com.althebear.tomsecrets.service` |
+| Linux | `~/.local/lib/tom-secrets-manager` | a systemd user unit, `tom-secrets-manager.service` |
+| Windows | `%LOCALAPPDATA%\Programs\TomSecretsManager` | the value `TomSecretsManagerService` of your Run key |
+
+On Linux it also links `~/.local/bin/tsm` to the installed `tsm` (unless
+another file is there). `TSM_INSTALL_DIR` names another folder. The app's
+Settings › This machine › "Run the service on its own" does the same.
+
+From then on `tsm start` and the app start the installed service, and
+both expect it. The service running at the install goes on until it is
+stopped; the installed one starts at the next login or `tsm start`.
+
+- **An update of the app** does nothing to the installed service: it keeps
+  running, and the updated app attaches to it. To bring it up to date,
+  run `tsm install` from the new release (or the app's "Update from this
+  app"), then `tsm stop` and `tsm start`.
+- **To stop it:** `tsm stop`; it starts again at the next login.
+
+**For every user (`--system`).** From the unpacked
+`tom_secrets_tsm-<version>-linux-<arch>` archive:
 
 ```sh
 sudo ./bin/tsm install --system
@@ -1002,7 +1044,7 @@ signed change by itself.
 programs are replaced, the identity keys stay. A user's running service
 keeps its old version until it is stopped and started again.
 
-Limits:
+Limits of the system install:
 
 - The service cannot replace its own key (`keys.rotate` with `identity`
   answers `unsupported`, reason `system_install`). An administrator removes
@@ -1011,27 +1053,34 @@ Limits:
   (`tsm trust`).
 - Root reads every key, as root reads everything on the machine.
 
-Errors: `tsm: run it as root` (exit 5) when not run as root; `unsupported`
-(exit 10) on macOS (there the login keychain keeps the key for the
-service's signature alone) and Windows.
+Errors: `no service executable at …` (exit 6, `not_found`) when there is
+nothing to install; with `--system`, `tsm: run it as root` (exit 5) when
+not run as root and `unsupported` (exit 10) on macOS (there the login
+keychain keeps the key for the service's signature alone) and Windows.
 
 ### `tsm uninstall`
 
-Removes the system install. Run as root.
+Removes your install of the service and its start at login, or with
+`--system` the system install (as root).
 
 ```text
+tsm uninstall [--plan]
 tsm uninstall --system [--purge] [--plan]
 ```
 
 | Option | Meaning |
 | --- | --- |
-| `--system` | The system install (the only form). |
-| `--purge` | Also remove the users' identity keys and the group. |
+| `--system` | The system install, as root. |
+| `--purge` | With `--system`: also remove the users' identity keys and the group. |
 | `--plan` | List the steps; change nothing. |
 
-Without `--purge` the identity keys stay, so a later install keeps every
-user's identity. With it, each user's next service has a new key, which
-their programs must trust again.
+A service started from your install keeps running until `tsm stop`. On
+Windows stop it first: Windows does not delete a program that runs, and
+`tsm` says so. The app then starts the service from its own folder again.
+
+Without `--purge` the system install's identity keys stay, so a later
+install keeps every user's identity. With it, each user's next service has
+a new key, which their programs must trust again.
 
 ## Keys, GitHub and the history
 

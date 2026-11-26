@@ -22,6 +22,7 @@ import 'package:tom_secrets_client/admin.dart'
         TomSecretsIdentityTrust,
         TomSecretsSystemEndpointInspector,
         TomSecretsSystemInstall,
+        TomSecretsUserInstall,
         tomSecretsKeychainService;
 
 /// tsm's input and output.
@@ -39,9 +40,13 @@ final class TsmIo {
     this.endpointInspector = const TomSecretsSystemEndpointInspector(),
     this.identity,
     this.systemInstall = TomSecretsSystemInstall.read,
+    TomSecretsUserInstall? Function()? userInstall,
     DateTime Function()? clock,
     StringSink? messages,
-  }) : clock = clock ?? DateTime.now,
+  }) : userInstall =
+           userInstall ??
+           (() => TomSecretsUserInstall.read(environment: environment)),
+       clock = clock ?? DateTime.now,
        messages = messages ?? err;
 
   /// The process's own: standard output and error, the terminal without
@@ -133,6 +138,10 @@ final class TsmIo {
   /// The system install of this machine (`tsm install --system`), whose
   /// service tsm starts and expects; null where there is none.
   final TomSecretsSystemInstall? Function() systemInstall;
+
+  /// The service installed on its own for this user (`tsm install`), which
+  /// tsm starts and expects; null where there is none.
+  final TomSecretsUserInstall? Function() userInstall;
 
   /// Starts [command] with [environment] added to tsm's own, its standard
   /// streams tsm's, and answers its exit code.

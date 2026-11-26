@@ -127,15 +127,9 @@ void main() {
     expect(told.where((l) => l.contains('not done')), hasLength(1));
   });
 
-  test('install and uninstall ask for --system; the form is Linux\'s; not '
-      'as root, nothing runs', () async {
+  test('the system form is Linux\'s; not as root, nothing runs', () async {
     final demo = await Demo.create();
-    var r = await demo.tsm(['install']);
-    expect(r.code, 2);
-    expect(r.err, contains('--system'));
-    r = await demo.tsm(['uninstall']);
-    expect(r.code, 2);
-    r = await demo.tsm(['install', '--system']);
+    final r = await demo.tsm(['install', '--system']);
     if (Platform.isMacOS) {
       expect(r.code, 10);
       expect(r.err, contains('keychain'));
