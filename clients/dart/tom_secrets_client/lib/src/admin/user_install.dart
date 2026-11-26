@@ -113,7 +113,8 @@ final class TomSecretsUserInstall {
   /// When it was installed.
   final DateTime installed;
 
-  /// The manager apps the installed service admits (their executables).
+  /// The programs the installed service admits as admins (their
+  /// executables): the manager apps, and the `tsm` that installed it.
   final List<String> apps;
 
   /// The OS whose paths these are (default this one's).

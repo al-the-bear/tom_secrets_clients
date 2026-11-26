@@ -316,6 +316,17 @@ final class TsmContext {
     if (kind == tomSecretsServiceKeyChanged) {
       io.err.writeln('tsm: $tomSecretsKeyChangedAdvice');
     }
+    // A service installed on its own admits its own tsm and the programs
+    // its record names (tsm_d12): another copy of tsm is told which to use.
+    if (kind == 'denied' && details['reason'] == 'wrong_executable') {
+      final installed = io.userInstall();
+      if (installed != null) {
+        io.err.writeln(
+          'tsm: the service installed for you admits its own tsm: run '
+          '${installed.tsmExecutable}',
+        );
+      }
+    }
     return TsmExit.of(kind);
   }
 }

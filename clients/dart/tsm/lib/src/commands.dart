@@ -1470,6 +1470,16 @@ Future<int> _userInstall(TsmContext c, TsmArgs a) async {
     installed: c.io.clock().toUtc(),
     apps: installed?.apps ?? const [],
   );
+  // This tsm, unless it is the installed one: the installed service admits
+  // it, so the release's tsm that installed it also unlocks and stops it.
+  final self = '${c.io.executableDirectory}${Platform.pathSeparator}tsm$exe';
+  final installing =
+      File(self).existsSync() &&
+          !File(self).absolute.path.startsWith(
+            '${Directory(directory).absolute.path}${Platform.pathSeparator}',
+          )
+      ? File(self).absolute.path
+      : null;
   final link = '${env['HOME']}/.local/bin/tsm';
   final steps = tsmUserInstallPlan(
     serviceExecutable: source,
@@ -1477,7 +1487,7 @@ Future<int> _userInstall(TsmContext c, TsmArgs a) async {
     operatingSystem: os,
     environment: env,
     login: !a.flag('no-login'),
-    app: a.option('app'),
+    admits: [?a.option('app'), ?installing],
     uid: currentUid(),
     linkFree:
         Directory('${env['HOME']}/.local/bin').existsSync() &&

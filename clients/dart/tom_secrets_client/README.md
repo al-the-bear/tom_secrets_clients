@@ -370,8 +370,8 @@ its record, which counts only when root owns it.
 
 The service installed on its own for one user (`tsm install`) is expected
 too: `TomSecretsUserInstall.read()` finds it in the user's install folder
-(`tomSecretsUserInstallDirectory`), where `install.json` names the manager
-apps it admits.
+(`tomSecretsUserInstallDirectory`), where `install.json` names the programs
+it admits: the manager apps, and the `tsm` that installed it.
 
 Then **which service it is** (`TomSecretsIdentityTrust`, protocol.md 6.1):
 every service has an identity key, and the client sends an `auth` or a

@@ -133,7 +133,8 @@ Future<void> _copyTree(String from, String to) async {
 
 /// The steps that install the tools whose service is [serviceExecutable]
 /// (`<root>/bin/`, `<root>/lib/`) for this user into [target]'s folder,
-/// recording [app] among the apps the installed service admits; with
+/// recording [admits] (a manager app, the `tsm` installing it) among the
+/// programs the installed service admits as admins; with
 /// [login] the start at login. [home], [environment] and [uid] are this
 /// user's; [linkFree]: `~/.local/bin/tsm` (Linux) may be made.
 List<TsmInstallStep> tsmUserInstallPlan({
@@ -142,7 +143,7 @@ List<TsmInstallStep> tsmUserInstallPlan({
   required String operatingSystem,
   required Map<String, String> environment,
   required bool login,
-  String? app,
+  List<String> admits = const [],
   int? uid,
   bool linkFree = false,
 }) {
@@ -154,7 +155,7 @@ List<TsmInstallStep> tsmUserInstallPlan({
   final staged = '$dir.new';
   final old = '$dir.old';
   final hasLib = Directory('$root${sep}lib').existsSync();
-  final record = app == null ? target : target.withApp(app);
+  final record = admits.fold(target, (r, a) => r.withApp(a));
   final home = environment['HOME'] ?? '';
   final tsm = target.tsmExecutable;
   return [
@@ -284,7 +285,16 @@ List<TsmInstallStep> tsmUserUninstallPlan({
   bool linkOurs = false,
 }) {
   final home = environment['HOME'] ?? '';
+  final windows = operatingSystem == 'windows';
   return [
+    // Windows does not delete a program that runs: the folder goes first,
+    // so a removal refused for a running service changes nothing.
+    if (windows)
+      TsmInstallStep.action('remove the tools', 'remove $directory', () async {
+        if (Directory(directory).existsSync()) {
+          Directory(directory).deleteSync(recursive: true);
+        }
+      }),
     ...switch (operatingSystem) {
       'macos' => [
         TsmInstallStep('stop starting it at login', [
@@ -333,14 +343,7 @@ List<TsmInstallStep> tsmUserUninstallPlan({
           ]),
       ],
     },
-    if (operatingSystem == 'windows')
-      TsmInstallStep.action('remove the tools', 'remove $directory', () async {
-        if (Directory(directory).existsSync()) {
-          Directory(directory).deleteSync(recursive: true);
-        }
-      })
-    else
-      TsmInstallStep('remove the tools', ['rm', '-rf', directory]),
+    if (!windows) TsmInstallStep('remove the tools', ['rm', '-rf', directory]),
   ];
 }
 

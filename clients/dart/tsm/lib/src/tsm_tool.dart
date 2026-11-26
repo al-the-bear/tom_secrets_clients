@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.18';
+const String tsmVersion = '0.2.19';
 
 const _json = OptionDefinition.flag(
   name: 'json',

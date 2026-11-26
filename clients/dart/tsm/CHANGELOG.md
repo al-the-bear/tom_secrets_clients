@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.19
+
+- `tsm install` records the `tsm` that runs it among the programs the
+  installed service admits, so `./bin/tsm start --unlock` from the release
+  that installed it works; another copy of `tsm` the installed service
+  refuses is told which `tsm` to run. On Windows `tsm uninstall` removes
+  the folder before the Run value, so a removal refused for a running
+  service changes nothing.
+
 ## 0.2.18
 
 - `tsm install` and `tsm uninstall` for one user (tsm_d12, macOS, Linux,

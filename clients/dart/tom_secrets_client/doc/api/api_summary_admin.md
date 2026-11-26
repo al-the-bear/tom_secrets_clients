@@ -252,7 +252,8 @@ so the service keeps running when the app quits, is ended or is updated.
 | Linux | `~/.local/lib/tom-secrets-manager` |
 
 `TSM_INSTALL_DIR` names another folder. The folder's `install.json` records
-the version, the time and the manager apps the installed service admits.
+the version, the time and the programs the installed service admits as
+admins (the manager apps, and the `tsm` that installed it).
 
 ```dart
 const TomSecretsUserInstall({

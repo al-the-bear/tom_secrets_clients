@@ -997,7 +997,8 @@ tsm install --system [--service EXE] [--plan]
 ```
 
 It copies `bin/` and `lib/` into your install folder, records the install
-in its `install.json` and starts the service from there at login:
+in its `install.json` (with this `tsm` and the `--app` among the programs
+the installed service admits) and starts the service from there at login:
 
 | Platform | Folder | Started at login by |
 | --- | --- | --- |
@@ -1010,7 +1011,9 @@ another file is there). `TSM_INSTALL_DIR` names another folder. The app's
 Settings › This machine › "Run the service on its own" does the same.
 
 From then on `tsm start` and the app start the installed service, and
-both expect it. The service running at the install goes on until it is
+both expect it. It admits its own `tsm`, the `tsm` that installed it and
+the app; another copy of `tsm` is refused (`denied`, reason
+`wrong_executable`) and told to run the installed one. The service running at the install goes on until it is
 stopped; the installed one starts at the next login or `tsm start`.
 
 - **An update of the app** does nothing to the installed service: it keeps

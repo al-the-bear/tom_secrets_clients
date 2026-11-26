@@ -145,7 +145,7 @@ void main() {
         operatingSystem: os,
         environment: const {'HOME': '/home/demo'},
         login: login,
-        app: '/opt/app/tom_secrets_app',
+        admits: ['/opt/app/tom_secrets_app'],
         uid: 501,
       ))
         s.toString(),
@@ -190,7 +190,7 @@ void main() {
       operatingSystem: 'linux',
       environment: const {'HOME': '/home/demo'},
       login: false,
-      app: '/opt/app/tom_secrets_app',
+      admits: ['/opt/app/tom_secrets_app'],
     ).firstWhere((s) => s.file != null);
     expect(record.content, contains('/opt/app/tom_secrets_app'));
 
@@ -215,12 +215,14 @@ void main() {
       remove('macos').first,
       'launchctl bootout gui/501/com.althebear.tomsecrets.service',
     );
-    expect(
-      remove('windows').first,
+    // Windows: the folder first (a running service refuses it), then the
+    // Run value.
+    expect(remove('windows'), [
+      'remove /home/demo/.local/lib/tom-secrets-manager',
       startsWith(
         r'reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v TomSecretsManagerService',
       ),
-    );
+    ]);
   });
 
   test('installed into a scratch folder (without the start at login): the '
@@ -232,6 +234,8 @@ void main() {
     File('${release.path}/bin/tom_secrets_service$ext')
       ..createSync(recursive: true)
       ..writeAsStringSync('demo');
+    // The tsm running the install is beside the service it installs.
+    File('${release.path}/bin/tsm$ext').writeAsStringSync('demo tsm');
     File('${release.path}/lib/libdemo.so')
       ..createSync(recursive: true)
       ..writeAsStringSync('demo');
@@ -244,7 +248,7 @@ void main() {
       '${release.path}/bin/tom_secrets_service$ext',
       '--app',
       '/opt/app/tom_secrets_app',
-    ]);
+    ], executableDirectory: '${release.path}/bin');
     expect(r.code, 0, reason: '$r');
     expect(r.text, contains('installed in $into'));
     final installed = TomSecretsUserInstall.read(
@@ -252,7 +256,12 @@ void main() {
     )!;
     expect(File(installed.serviceExecutable).readAsStringSync(), 'demo');
     expect(File('$into/lib/libdemo.so').existsSync(), isTrue);
-    expect(installed.apps, ['/opt/app/tom_secrets_app']);
+    // The app and the tsm that installed it: the installed service admits
+    // both, so `./bin/tsm start --unlock` from the release works.
+    expect(installed.apps, [
+      '/opt/app/tom_secrets_app',
+      '${release.path}/bin/tsm$ext',
+    ]);
     expect(installed.version, isNotEmpty);
 
     // Installed again: the record keeps the app.
@@ -265,6 +274,7 @@ void main() {
     expect(r.code, 0, reason: '$r');
     expect(TomSecretsUserInstall.read(environment: demo.environment)!.apps, [
       '/opt/app/tom_secrets_app',
+      '${release.path}/bin/tsm$ext',
     ]);
 
     r = await demo.tsm([
