@@ -1013,8 +1013,9 @@ Settings › This machine › "Run the service on its own" does the same.
 From then on `tsm start` and the app start the installed service, and
 both expect it. It admits its own `tsm`, the `tsm` that installed it and
 the app; another copy of `tsm` is refused (`denied`, reason
-`wrong_executable`) and told to run the installed one. The service running at the install goes on until it is
-stopped; the installed one starts at the next login or `tsm start`.
+`wrong_executable`) and told to run the installed one. The service
+running at the install goes on until it is stopped; the installed one
+starts at the next login or `tsm start`.
 
 - **An update of the app** does nothing to the installed service: it keeps
   running, and the updated app attaches to it. To bring it up to date,
