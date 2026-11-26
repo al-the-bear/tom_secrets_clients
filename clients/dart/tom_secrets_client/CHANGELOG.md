@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.27
+
+- The service installed on its own for one user (`tsm install`):
+  `TomSecretsUserInstall`, its folder (`tomSecretsUserInstallDirectory`,
+  `TSM_INSTALL_DIR`) and record `install.json` with the apps the installed
+  service admits. `tomSecretsExpectedServiceExecutables` expects the
+  installed service too (`userInstall`). `tomSecretsSamePackagedApp`: the
+  same packaged Windows app in another version, so an app update stays
+  admitted by a service that keeps running.
+
 ## 0.2.26
 
 - The system install of the service on a shared Linux server

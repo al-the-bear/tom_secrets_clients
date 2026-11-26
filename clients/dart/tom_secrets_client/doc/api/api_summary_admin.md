@@ -11,6 +11,7 @@
   - [TomSecretsAdminException](#tomsecretsadminexception)
   - [TomSecretsServiceTrust](#tomsecretsservicetrust)
   - [TomSecretsSystemInstall](#tomsecretssysteminstall)
+  - [TomSecretsUserInstall](#tomsecretsuserinstall)
   - [The service's identity](#the-services-identity)
   - [TomSecretsEndpointFacts](#tomsecretsendpointfacts)
   - [TomSecretsServicePeer](#tomsecretsservicepeer)
@@ -68,6 +69,7 @@ Object
 ├── TomSecretsAdminClient
 ├── TomSecretsServiceTrust
 ├── TomSecretsSystemInstall
+├── TomSecretsUserInstall
 ├── TomSecretsIdentityTrust
 ├── TomSecretsServiceIdentity
 ├── TomSecretsServicePin
@@ -234,6 +236,48 @@ Constants: `tomSecretsSystemGroup` (`tsm-identity`), `tomSecretsSystemPrefix`
 (`/opt/tom-secrets-manager`), `tomSecretsSystemIdentityDirectory`
 (`/var/lib/tom-secrets-manager/identity`), `tomSecretsSystemRecord`,
 `tomSecretsSystemTsmLink` (`/usr/local/bin/tsm`).
+
+---
+
+### TomSecretsUserInstall
+
+The service installed on its own for one user (`tsm install`): the
+command-line tools copied into a folder of the user's and started at login,
+so the service keeps running when the app quits, is ended or is updated.
+
+| Platform | Folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/TomSecretsManagerService` |
+| Windows | `%LOCALAPPDATA%\Programs\TomSecretsManager` |
+| Linux | `~/.local/lib/tom-secrets-manager` |
+
+`TSM_INSTALL_DIR` names another folder. The folder's `install.json` records
+the version, the time and the manager apps the installed service admits.
+
+```dart
+const TomSecretsUserInstall({
+  required String directory,
+  required String version,
+  required DateTime installed,
+  List<String> apps = const [],
+  String? operatingSystem,
+})
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `read({Map<String, String>? environment, String? operatingSystem})` | `static TomSecretsUserInstall?` | This user's install, or null when its folder holds no service |
+| `serviceExecutable`, `tsmExecutable` | `String` | `<folder>/bin/tom_secrets_service`, `<folder>/bin/tsm` |
+| `recordPath` | `String` | `<folder>/install.json` |
+| `directory`, `version`, `installed`, `apps` | | What the record says |
+| `withApp(String app)` | `TomSecretsUserInstall` | The install with `app` among the apps it admits |
+| `toJson()`, `writeRecord()` | | The record, written into the folder |
+
+Functions: `tomSecretsUserInstallDirectory({environment, operatingSystem})`
+(the folder), `tomSecretsSamePackagedApp(String admitted, String exe)`
+(whether `exe` is the same packaged Windows app as `admitted` in another
+version: an app update stays admitted). Constant:
+`tomSecretsUserInstallRecord` (`install.json`).
 
 ---
 
@@ -981,7 +1025,7 @@ Why an endpoint is not trusted (`details.reason` of `service_untrusted`).
 | `tomSecretsJudgeEndpointFiles` | `TomSecretsUntrusted? tomSecretsJudgeEndpointFiles(TomSecretsEndpointFacts facts, {bool Function(Set<String>) userOnly})` | Why the runtime directory and the admin socket (Windows: the directory's access list) are not this user's alone, or null |
 | `tomSecretsJudgeServicePeer` | `TomSecretsUntrusted? tomSecretsJudgeServicePeer(TomSecretsEndpointFacts facts, {required Set<String> executables})` | Why the process answering is not the service expected, or null; this very process passes, and so does one whose executable the OS hides from its own user |
 | `tomSecretsJudgeFile` | `TomSecretsUntrusted? tomSecretsJudgeFile(String what, TomSecretsFileFacts? file, String type, Object? ownUser)` | Why a file is not the user's alone: not the type expected, another owner, or open to group or others |
-| `tomSecretsExpectedServiceExecutables` | `Set<String> tomSecretsExpectedServiceExecutables({String? ownExecutable, Map<String, String>? environment, Iterable<String> configured, String? operatingSystem, TomSecretsSystemInstall? Function() systemInstall})` | The service executables an admin expects, as real paths: beside it, in its distribution's tools folder, `TSM_SERVICE`, the system install's (`systemInstall`, default `TomSecretsSystemInstall.read`), and those configured |
+| `tomSecretsExpectedServiceExecutables` | `Set<String> tomSecretsExpectedServiceExecutables({String? ownExecutable, Map<String, String>? environment, Iterable<String> configured, String? operatingSystem, TomSecretsSystemInstall? Function() systemInstall, TomSecretsUserInstall? Function() userInstall})` | The service executables an admin expects, as real paths: beside it, in its distribution's tools folder, `TSM_SERVICE`, the system install's (`systemInstall`, default `TomSecretsSystemInstall.read`), the user's own install's (`userInstall`, default `TomSecretsUserInstall.read`), and those configured |
 | `tomSecretsUntrustedAdvice` | `String tomSecretsUntrustedAdvice(String? reason)` | What the user can do about an endpoint refused for that reason |
 | `tomSecretsServicePeerOf` | `TomSecretsServicePeer? tomSecretsServicePeerOf(Socket socket)` | The process at the other end of a connection this process opened |
 | `tomSecretsStatFiles` | `Map<String, TomSecretsFileFacts> tomSecretsStatFiles(List<String> paths)` | Owner, mode and type of each path itself, read with `stat`'s raw mode |

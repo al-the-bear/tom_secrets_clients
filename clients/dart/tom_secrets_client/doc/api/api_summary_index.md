@@ -105,6 +105,7 @@ manager app, `tsm` and the service.
 | `TomSecretsServiceTrust` | The check an admin connection runs before it sends anything: the endpoint's files are the user's alone, the process answering runs as the user and is the service expected. | [→](api_summary_admin.md#tomsecretsservicetrust) |
 | `TomSecretsIdentityTrust`, `TomSecretsServicePins`, `TomSecretsPinFile`, `TomSecretsIdentityCrypto`, `TomSecretsIdentityHelper`, `TomSecretsServiceIdentity` | The service's identity key: the pins, the primitives and what a service presented. | [→](api_summary_admin.md#the-services-identity) |
 | `TomSecretsSystemInstall` | The system install of the service on a shared Linux server: its record. | [→](api_summary_admin.md#tomsecretssysteminstall) |
+| `TomSecretsUserInstall` | The service installed on its own for one user: its folder and record. | [→](api_summary_admin.md#tomsecretsuserinstall) |
 | `TomSecretsEndpointFacts` | What was measured of an endpoint. | [→](api_summary_admin.md#tomsecretsendpointfacts) |
 | `TomSecretsServicePeer` | The process at the other end of the admin connection. | [→](api_summary_admin.md#tomsecretsservicepeer) |
 | `TomSecretsEndpointInspector` | Reads the facts of an endpoint; `TomSecretsSystemEndpointInspector` is this OS's. | [→](api_summary_admin.md#tomsecretsendpointinspector) |

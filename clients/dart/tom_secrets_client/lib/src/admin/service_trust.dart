@@ -31,6 +31,7 @@ import '../discovery.dart';
 import 'distribution.dart';
 import 'runtime.dart';
 import 'system_install.dart';
+import 'user_install.dart';
 import 'service_identity.dart';
 import 'windows_acl.dart';
 
@@ -331,6 +332,7 @@ Set<String> tomSecretsExpectedServiceExecutables({
   String? operatingSystem,
   TomSecretsSystemInstall? Function() systemInstall =
       TomSecretsSystemInstall.read,
+  TomSecretsUserInstall? Function()? userInstall,
 }) {
   final os = operatingSystem ?? Platform.operatingSystem;
   final own = ownExecutable ?? Platform.resolvedExecutable;
@@ -338,6 +340,13 @@ Set<String> tomSecretsExpectedServiceExecutables({
   // The system-installed service (a record root owns), which every user's
   // programs expect beside their own.
   final system = systemInstall();
+  // The service installed on its own for this user (`tsm install`).
+  final user =
+      (userInstall ??
+      () => TomSecretsUserInstall.read(
+        environment: environment,
+        operatingSystem: os,
+      ))();
   return {
     for (final path in [
       ...tomSecretsServiceCandidates(
@@ -346,6 +355,7 @@ Set<String> tomSecretsExpectedServiceExecutables({
       ),
       if (named != null && named.isNotEmpty) named,
       ?system?.serviceExecutable,
+      ?user?.serviceExecutable,
       ...configured,
     ])
       tomSecretsRealExecutable(path),

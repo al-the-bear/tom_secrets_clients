@@ -368,6 +368,11 @@ On a Linux server with a system install (`tsm install --system`), the
 installed service is expected too: `TomSecretsSystemInstall.read()` reads
 its record, which counts only when root owns it.
 
+The service installed on its own for one user (`tsm install`) is expected
+too: `TomSecretsUserInstall.read()` finds it in the user's install folder
+(`tomSecretsUserInstallDirectory`), where `install.json` names the manager
+apps it admits.
+
 Then **which service it is** (`TomSecretsIdentityTrust`, protocol.md 6.1):
 every service has an identity key, and the client sends an `auth` or a
 `claim` only to the service that proves it holds the key pinned for it.
