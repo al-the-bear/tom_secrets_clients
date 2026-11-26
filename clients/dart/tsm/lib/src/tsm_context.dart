@@ -94,6 +94,7 @@ final class TsmContext {
       ownExecutable: '${io.executableDirectory}${Platform.pathSeparator}tsm',
       environment: io.environment,
       configured: [?namedService],
+      systemInstall: io.systemInstall,
     ),
     inspector: io.endpointInspector,
     identity: identityTrust,

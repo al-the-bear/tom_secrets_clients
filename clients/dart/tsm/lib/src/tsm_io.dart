@@ -21,6 +21,7 @@ import 'package:tom_secrets_client/admin.dart'
         TomSecretsEndpointInspector,
         TomSecretsIdentityTrust,
         TomSecretsSystemEndpointInspector,
+        TomSecretsSystemInstall,
         tomSecretsKeychainService;
 
 /// tsm's input and output.
@@ -37,6 +38,7 @@ final class TsmIo {
     required this.runCommand,
     this.endpointInspector = const TomSecretsSystemEndpointInspector(),
     this.identity,
+    this.systemInstall = TomSecretsSystemInstall.read,
     DateTime Function()? clock,
     StringSink? messages,
   }) : clock = clock ?? DateTime.now,
@@ -127,6 +129,10 @@ final class TsmIo {
   /// null (the command line): the pin file tsm shares with the app, and
   /// the primitives of the service executable's helper mode.
   final TomSecretsIdentityTrust? identity;
+
+  /// The system install of this machine (`tsm install --system`), whose
+  /// service tsm starts and expects; null where there is none.
+  final TomSecretsSystemInstall? Function() systemInstall;
 
   /// Starts [command] with [environment] added to tsm's own, its standard
   /// streams tsm's, and answers its exit code.

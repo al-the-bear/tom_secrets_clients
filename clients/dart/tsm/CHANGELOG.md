@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.17
+
+- `tsm install --system` and `tsm uninstall --system [--purge]` (tsm_d11,
+  Linux, as root): the service installed for every user of a shared server,
+  root's and set-group-ID to `tsm-identity`, which alone reaches the users'
+  identity keys; `--plan` lists the commands. The identity keys stay across
+  updates and an uninstall unless `--purge`.
+- `tsm start` and `tsm pair` start the system install's service when there
+  is one (after `--service` and `TSM_SERVICE`), and every admin command
+  expects it.
+
 ## 0.2.16
 
 - The service's identity key (`tom_secrets_client` 0.2.25, protocol.md

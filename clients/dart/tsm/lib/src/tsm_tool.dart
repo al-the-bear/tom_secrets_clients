@@ -19,7 +19,7 @@ import 'tsm_context.dart';
 import 'tsm_io.dart';
 
 /// tsm's version, as its pubspec declares it.
-const String tsmVersion = '0.2.16';
+const String tsmVersion = '0.2.17';
 
 const _json = OptionDefinition.flag(
   name: 'json',
@@ -355,6 +355,53 @@ final ToolDefinition tsmTool = ToolDefinition(
         'tsm trust --remove',
       ],
     ),
+    _command(
+      'install',
+      'Install the service for every user of this Linux machine (as root): '
+          'root\'s and set-group-ID to tsm-identity, which alone reaches '
+          "the users' identity keys.",
+      options: const [
+        OptionDefinition.flag(
+          name: 'system',
+          description: 'For every user of the machine (the only form).',
+        ),
+        OptionDefinition.option(
+          name: 'service',
+          description:
+              'The service executable to install (default: TSM_SERVICE, '
+              'else tom_secrets_service beside tsm).',
+          valueName: 'path',
+        ),
+        OptionDefinition.flag(
+          name: 'plan',
+          description: 'List the steps; change nothing.',
+        ),
+      ],
+      examples: const [
+        'sudo tsm install --system',
+        'tsm install --system --plan',
+      ],
+    ),
+    _command(
+      'uninstall',
+      'Remove the system install (as root); the identity keys stay unless '
+          '--purge.',
+      options: const [
+        OptionDefinition.flag(
+          name: 'system',
+          description: 'The system install (the only form).',
+        ),
+        OptionDefinition.flag(
+          name: 'purge',
+          description: "Also remove the users' identity keys and the group.",
+        ),
+        OptionDefinition.flag(
+          name: 'plan',
+          description: 'List the steps; change nothing.',
+        ),
+      ],
+      examples: const ['sudo tsm uninstall --system'],
+    ),
     _command('lock', 'Lock: drop every secret from memory.'),
     _command('stop', 'Lock and stop the service.'),
     _command('reload', 'Fetch every store now.'),
@@ -470,6 +517,8 @@ const Map<String, _Command> _commands = {
   'reload': tsmReload,
   'status': tsmStatus,
   'trust': tsmTrust,
+  'install': tsmInstall,
+  'uninstall': tsmUninstall,
   'keys': tsmKeys,
   'approvals': tsmApprovals,
   'approve': tsmApprove,

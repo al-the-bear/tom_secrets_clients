@@ -176,6 +176,8 @@ final class Demo {
     File(demo.bootstrapPath).writeAsStringSync(
       'primary: file:${demo.primaryPath}\n'
       'device_key: keyfile\n'
+      // The identity key in its file: no keychain item for a demo.
+      'identity_key: file\n'
       'runtime_dir: ${demo.runtimeDirectory}\n'
       'host: demo-host\n'
       '${adminExecutables.isEmpty ? '' : 'admin_executables:\n${[for (final e in adminExecutables) '  - $e\n'].join()}'}',
@@ -339,6 +341,8 @@ final class Demo {
         runCommand: run ?? (command, env) async => 0,
         endpointInspector: endpointInspector,
         identity: identity ?? (commandLineIdentity ? null : identityTrust),
+        // No system install is taken from the machine the tests run on.
+        systemInstall: () => null,
         clock: clock,
       ),
     );

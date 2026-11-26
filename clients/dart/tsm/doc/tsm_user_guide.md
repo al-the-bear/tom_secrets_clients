@@ -21,6 +21,7 @@ the output; `[exit code N]` marks a command that failed.
 - [The service on a headless host](#the-service-on-a-headless-host)
 - [Approvals from the command line](#approvals-from-the-command-line)
 - [Pairing a headless host](#pairing-a-headless-host)
+- [A shared server: the system install](#a-shared-server-the-system-install)
 - [Keys, GitHub and the history](#keys-github-and-the-history)
 - [Integrations and the helpers](#integrations-and-the-helpers)
 - [Exit codes and troubleshooting](#exit-codes-and-troubleshooting)
@@ -942,6 +943,95 @@ tsm: this machine is set up already (/home/demo/.local/share/tom-secrets-manager
 - A wrong code closes the desktop's window: open a new one there.
 - `denied` (`wrong_password`) after three wrong master passwords; with
   `--password-stdin` there is no second try.
+
+## A shared server: the system install
+
+On a Linux server several people use, an administrator installs the service
+once for every user. The service is then root's and set-group-ID to the
+group `tsm-identity`, and each user's identity key (see
+[`tsm trust`](#tsm-trust)) is kept in a directory only that group reaches.
+Started by a user, the service runs as that user; it reads that user's key
+with the group's rights and drops the group at once. The kernel then keeps
+the user's other processes out of its memory, and the loader ignores
+`LD_PRELOAD` and similar variables, so no other program of the user can
+read the key or pose as the service. Without the system install the key is
+a file in the user's data directory, which the user's other programs can
+read.
+
+The system-installed service uses the user's default directories: the data
+directory `~/.local/share/tom-secrets-manager` and the runtime directory
+`/run/user/<uid>/tsm` (else `/tmp/tsm-<uid>`). `TSM_DATA_DIR`,
+`TSM_RUNTIME_DIR`, `XDG_DATA_HOME` and the bootstrap's `runtime_dir` do
+not move it.
+
+### `tsm install`
+
+Installs the service for every user of this Linux machine. Run as root.
+
+```text
+tsm install --system [--service EXE] [--plan]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--system` | For every user of the machine (the only form). |
+| `--service` | The service executable to install (default: `TSM_SERVICE`, else `tom_secrets_service` beside `tsm`). |
+| `--plan` | List the steps; change nothing. |
+
+From the unpacked `tom_secrets_tsm-<version>-linux-<arch>` archive:
+
+```sh
+sudo ./bin/tsm install --system
+```
+
+It makes the group `tsm-identity` when missing, copies `bin/` and `lib/`
+to `/opt/tom-secrets-manager` (root's), makes the service set-group-ID to
+the group, makes `/var/lib/tom-secrets-manager/identity` the group's alone
+(mode 2770), writes the record `/etc/tom-secrets-manager/system.json`, and
+links `/usr/local/bin/tsm` to the installed `tsm` (unless another file is
+there). `tsm --plan` lists exactly these commands first.
+
+After the install `tsm start` starts the installed service, and every
+user's `tsm` and manager app expect it. A user whose service ran before
+keeps the identity the others pinned: at its first start the installed
+service makes a new key in the group's directory, the old key signs it,
+and the old key file in the data directory is removed. `tsm` follows the
+signed change by itself.
+
+**Updating** is the same command with the new release, as root again: the
+programs are replaced, the identity keys stay. A user's running service
+keeps its old version until it is stopped and started again.
+
+Limits:
+
+- The service cannot replace its own key (`keys.rotate` with `identity`
+  answers `unsupported`, reason `system_install`). An administrator removes
+  the user's `/var/lib/tom-secrets-manager/identity/<uid>.json`; the next
+  start makes a new key, which the user's programs must trust again
+  (`tsm trust`).
+- Root reads every key, as root reads everything on the machine.
+
+Errors: `tsm: run it as root` (exit 5) when not run as root; `unsupported`
+(exit 10) on macOS (there the login keychain keeps the key for the
+service's signature alone) and Windows.
+
+### `tsm uninstall`
+
+Removes the system install. Run as root.
+
+```text
+tsm uninstall --system [--purge] [--plan]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--system` | The system install (the only form). |
+| `--purge` | Also remove the users' identity keys and the group. |
+| `--plan` | List the steps; change nothing. |
+
+Without `--purge` the identity keys stay, so a later install keeps every
+user's identity. With it, each user's next service has a new key, which
+their programs must trust again.
 
 ## Keys, GitHub and the history
 

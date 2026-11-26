@@ -17,6 +17,8 @@ import 'dart:io';
 import 'package:tom_secrets_client/admin.dart';
 import 'package:tom_secrets_client/tom_secrets_client.dart';
 
+import 'system_install.dart';
+import 'tsm_tool.dart' show tsmVersion;
 import 'tsm_context.dart';
 
 /// The options and positional arguments a command was given.
@@ -407,8 +409,9 @@ Future<int> _withAdmin(
 void _json(TsmContext c, Object? value) =>
     c.io.outln(const JsonEncoder.withIndent('  ').convert(value));
 
-/// The service executable: `--service`, else `TSM_SERVICE`, else
-/// `tom_secrets_service` beside tsm; null (told) when it is not there.
+/// The service executable: `--service`, else `TSM_SERVICE`, else the
+/// system install's (`tsm install --system`), else `tom_secrets_service`
+/// beside tsm; null (told) when it is not there.
 Future<String?> _serviceExecutable(TsmContext c, TsmArgs a) async {
   final exe = Platform.isWindows ? '.exe' : '';
   // A service named on the command line is the one expected to answer.
@@ -416,6 +419,7 @@ Future<String?> _serviceExecutable(TsmContext c, TsmArgs a) async {
   final service =
       c.namedService ??
       c.io.environment['TSM_SERVICE'] ??
+      c.io.systemInstall()?.serviceExecutable ??
       '${c.io.executableDirectory}${Platform.pathSeparator}'
           'tom_secrets_service$exe';
   if (!await File(service).exists()) {
@@ -1335,4 +1339,117 @@ Future<int> tsmKubeCredential(TsmContext c, TsmArgs a) async {
     }
     await client.close();
   }
+}
+
+/// `tsm install --system [--service EXE] [--plan]`: installs the service
+/// for every user of this Linux machine (tsm_d11): root's and
+/// set-group-ID to `tsm-identity`, which alone reaches the identity keys.
+/// Run as root. `--plan` lists the steps and changes nothing.
+Future<int> tsmInstall(TsmContext c, TsmArgs a) async {
+  if (!a.flag('system')) {
+    throw TsmFailure.usage(
+      'tsm install installs the service for every user of this machine: '
+      'give --system',
+    );
+  }
+  _systemInstallPlatform();
+  final source =
+      a.option('service') ??
+      c.io.environment['TSM_SERVICE'] ??
+      '${c.io.executableDirectory}/tom_secrets_service';
+  if (!await File(source).exists()) {
+    c.io.err.writeln('tsm: no service executable at $source');
+    return TsmExit.of('not_found');
+  }
+  final bin = File(source).parent.path;
+  final link = Link(tomSecretsSystemTsmLink);
+  final steps = tsmSystemInstallPlan(
+    serviceExecutable: source,
+    version: tsmVersion,
+    now: c.io.clock().toUtc(),
+    groupExists:
+        (await Process.run('getent', [
+          'group',
+          tomSecretsSystemGroup,
+        ])).exitCode ==
+        0,
+    libExists: Directory('${Directory(bin).parent.path}/lib').existsSync(),
+    tsmBeside: File('$bin/tsm').existsSync(),
+    linkFree:
+        link.existsSync() ||
+        FileSystemEntity.typeSync(
+              tomSecretsSystemTsmLink,
+              followLinks: false,
+            ) ==
+            FileSystemEntityType.notFound,
+  );
+  return _runSystemSteps(
+    c,
+    a,
+    steps,
+    done: 'installed in $tomSecretsSystemPrefix',
+  );
+}
+
+/// `tsm uninstall --system [--purge] [--plan]`: removes the system install;
+/// the identity keys stay unless `--purge` (a new install then keeps every
+/// user's identity).
+Future<int> tsmUninstall(TsmContext c, TsmArgs a) async {
+  if (!a.flag('system')) {
+    throw TsmFailure.usage(
+      'tsm uninstall removes the system install: give --system',
+    );
+  }
+  _systemInstallPlatform();
+  final link = Link(tomSecretsSystemTsmLink);
+  final steps = tsmSystemUninstallPlan(
+    purge: a.flag('purge'),
+    linkOurs:
+        link.existsSync() &&
+        link.targetSync().startsWith('$tomSecretsSystemPrefix/'),
+  );
+  return _runSystemSteps(c, a, steps, done: 'uninstalled');
+}
+
+void _systemInstallPlatform() {
+  if (Platform.isMacOS) {
+    throw TsmFailure(
+      TsmExit.of('unsupported'),
+      'there is no system install on macOS: the login keychain keeps the '
+      "service's identity key for its signature alone",
+    );
+  }
+  if (!Platform.isLinux) {
+    throw TsmFailure(
+      TsmExit.of('unsupported'),
+      'the system install is for Linux servers',
+    );
+  }
+}
+
+Future<int> _runSystemSteps(
+  TsmContext c,
+  TsmArgs a,
+  List<TsmInstallStep> steps, {
+  required String done,
+}) async {
+  if (a.flag('plan')) {
+    for (final step in steps) {
+      c.io.outln(step.toString());
+    }
+    return TsmExit.ok;
+  }
+  if (currentUid() != 0) {
+    c.io.err.writeln(
+      'tsm: run it as root (sudo), or give --plan to see the steps',
+    );
+    return TsmExit.of('denied');
+  }
+  final failed = await tsmRunInstallSteps(steps, say: c.io.err.writeln);
+  if (failed != null) {
+    c.io.err.writeln('tsm: $failed');
+    return TsmExit.of('internal');
+  }
+  c.io.outln(done);
+  return TsmExit.ok;
 }

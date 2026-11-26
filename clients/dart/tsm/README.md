@@ -168,6 +168,17 @@ About `run`:
 reachable`, `token expired: enter a new one`) and flags a copy older than
 7 days.
 
+### A shared Linux server: the system install
+
+| Command | What it does |
+| --- | --- |
+| `install --system [--service EXE] [--plan]` | As root: installs the service for every user, root's and set-group-ID to `tsm-identity`, which alone reaches each user's identity key (`/var/lib/tom-secrets-manager/identity`); `--plan` lists the commands and changes nothing. |
+| `uninstall --system [--purge] [--plan]` | As root: removes it; the identity keys stay unless `--purge`. |
+
+The installed service runs as the user who starts it, drops the group
+once it has read that user's key, and uses the user's default directories.
+The user's other programs cannot read the key or the service's memory.
+
 ### Approvals and grants
 
 | Command | What it does |
