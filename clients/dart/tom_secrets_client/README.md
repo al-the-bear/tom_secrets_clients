@@ -364,6 +364,10 @@ A check that fails throws `service_untrusted` with `details.reason`
 `tomSecretsUntrustedAdvice` says what to do. `checkService` runs the checks
 alone, so a program asks for the master password only once they passed.
 
+On a Linux server with a system install (`tsm install --system`), the
+installed service is expected too: `TomSecretsSystemInstall.read()` reads
+its record, which counts only when root owns it.
+
 Then **which service it is** (`TomSecretsIdentityTrust`, protocol.md 6.1):
 every service has an identity key, and the client sends an `auth` or a
 `claim` only to the service that proves it holds the key pinned for it.

@@ -23,4 +23,5 @@ export 'src/admin/runtime.dart';
 export 'src/admin/service_identity.dart';
 export 'src/admin/service_trust.dart';
 export 'src/admin/starter.dart';
+export 'src/admin/system_install.dart';
 export 'src/admin/unlock_bundle.dart';

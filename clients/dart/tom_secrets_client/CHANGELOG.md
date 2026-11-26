@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.26
+
+- The system install of the service on a shared Linux server
+  (`tsm install --system`): `TomSecretsSystemInstall`, its record
+  `/etc/tom-secrets-manager/system.json` (read only when root owns it and
+  no one else may write it), and the paths and the group
+  (`tomSecretsSystemGroup`, `tomSecretsSystemPrefix`,
+  `tomSecretsSystemIdentityDirectory`). `tomSecretsExpectedServiceExecutables`
+  expects the system install's service too (`systemInstall`).
+
 ## 0.2.25
 
 - The service's identity key (protocol.md 6.1): `connect`, `claim` and

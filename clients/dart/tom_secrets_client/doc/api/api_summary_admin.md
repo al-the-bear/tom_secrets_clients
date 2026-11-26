@@ -10,6 +10,7 @@
   - [TomSecretsAdminClient](#tomsecretsadminclient)
   - [TomSecretsAdminException](#tomsecretsadminexception)
   - [TomSecretsServiceTrust](#tomsecretsservicetrust)
+  - [TomSecretsSystemInstall](#tomsecretssysteminstall)
   - [The service's identity](#the-services-identity)
   - [TomSecretsEndpointFacts](#tomsecretsendpointfacts)
   - [TomSecretsServicePeer](#tomsecretsservicepeer)
@@ -66,6 +67,7 @@ app's distribution. A program that only reads secrets needs none of it.
 Object
 ├── TomSecretsAdminClient
 ├── TomSecretsServiceTrust
+├── TomSecretsSystemInstall
 ├── TomSecretsIdentityTrust
 ├── TomSecretsServiceIdentity
 ├── TomSecretsServicePin
@@ -202,6 +204,36 @@ const TomSecretsServiceTrust({
 | --- | --- | --- |
 | `judgeFiles(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the endpoint's files are not trusted, or null |
 | `judgePeer(TomSecretsEndpointFacts facts)` | `TomSecretsUntrusted?` | Why the process answering is not trusted, or null |
+
+---
+
+### TomSecretsSystemInstall
+
+The system install of the service on a shared Linux server (`tsm install
+--system`): its record `/etc/tom-secrets-manager/system.json`.
+
+```dart
+const TomSecretsSystemInstall({
+  required String prefix,
+  required String version,
+  required DateTime installed,
+  String group = tomSecretsSystemGroup,
+  String identityDirectory = tomSecretsSystemIdentityDirectory,
+})
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `read({String path = tomSecretsSystemRecord, bool requireRoot = true})` | `static TomSecretsSystemInstall?` | The record of this machine: Linux only, and only when root owns it and no one else may write it |
+| `fromJson(Object? json)` | `static TomSecretsSystemInstall?` | From the record's JSON |
+| `serviceExecutable`, `tsmExecutable` | `String` | `<prefix>/bin/tom_secrets_service`, `<prefix>/bin/tsm` |
+| `prefix`, `version`, `installed`, `group`, `identityDirectory` | | What the record says |
+| `toJson()` | `Map<String, Object?>` | The record |
+
+Constants: `tomSecretsSystemGroup` (`tsm-identity`), `tomSecretsSystemPrefix`
+(`/opt/tom-secrets-manager`), `tomSecretsSystemIdentityDirectory`
+(`/var/lib/tom-secrets-manager/identity`), `tomSecretsSystemRecord`,
+`tomSecretsSystemTsmLink` (`/usr/local/bin/tsm`).
 
 ---
 
@@ -949,7 +981,7 @@ Why an endpoint is not trusted (`details.reason` of `service_untrusted`).
 | `tomSecretsJudgeEndpointFiles` | `TomSecretsUntrusted? tomSecretsJudgeEndpointFiles(TomSecretsEndpointFacts facts, {bool Function(Set<String>) userOnly})` | Why the runtime directory and the admin socket (Windows: the directory's access list) are not this user's alone, or null |
 | `tomSecretsJudgeServicePeer` | `TomSecretsUntrusted? tomSecretsJudgeServicePeer(TomSecretsEndpointFacts facts, {required Set<String> executables})` | Why the process answering is not the service expected, or null; this very process passes, and so does one whose executable the OS hides from its own user |
 | `tomSecretsJudgeFile` | `TomSecretsUntrusted? tomSecretsJudgeFile(String what, TomSecretsFileFacts? file, String type, Object? ownUser)` | Why a file is not the user's alone: not the type expected, another owner, or open to group or others |
-| `tomSecretsExpectedServiceExecutables` | `Set<String> tomSecretsExpectedServiceExecutables({String? ownExecutable, Map<String, String>? environment, Iterable<String> configured, String? operatingSystem})` | The service executables an admin expects, as real paths: beside it, in its distribution's tools folder, `TSM_SERVICE`, and those configured |
+| `tomSecretsExpectedServiceExecutables` | `Set<String> tomSecretsExpectedServiceExecutables({String? ownExecutable, Map<String, String>? environment, Iterable<String> configured, String? operatingSystem, TomSecretsSystemInstall? Function() systemInstall})` | The service executables an admin expects, as real paths: beside it, in its distribution's tools folder, `TSM_SERVICE`, the system install's (`systemInstall`, default `TomSecretsSystemInstall.read`), and those configured |
 | `tomSecretsUntrustedAdvice` | `String tomSecretsUntrustedAdvice(String? reason)` | What the user can do about an endpoint refused for that reason |
 | `tomSecretsServicePeerOf` | `TomSecretsServicePeer? tomSecretsServicePeerOf(Socket socket)` | The process at the other end of a connection this process opened |
 | `tomSecretsStatFiles` | `Map<String, TomSecretsFileFacts> tomSecretsStatFiles(List<String> paths)` | Owner, mode and type of each path itself, read with `stat`'s raw mode |

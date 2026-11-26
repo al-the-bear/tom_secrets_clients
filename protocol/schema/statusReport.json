@@ -69,6 +69,14 @@
         },
         "since": {
           "$ref": "common.json#/$defs/timestamp"
+        },
+        "kept": {
+          "enum": [
+            "keychain",
+            "dpapi",
+            "system",
+            "file"
+          ]
         }
       }
     },

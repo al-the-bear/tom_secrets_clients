@@ -30,6 +30,7 @@ import 'package:ffi/ffi.dart';
 import '../discovery.dart';
 import 'distribution.dart';
 import 'runtime.dart';
+import 'system_install.dart';
 import 'service_identity.dart';
 import 'windows_acl.dart';
 
@@ -328,10 +329,15 @@ Set<String> tomSecretsExpectedServiceExecutables({
   Map<String, String>? environment,
   Iterable<String> configured = const [],
   String? operatingSystem,
+  TomSecretsSystemInstall? Function() systemInstall =
+      TomSecretsSystemInstall.read,
 }) {
   final os = operatingSystem ?? Platform.operatingSystem;
   final own = ownExecutable ?? Platform.resolvedExecutable;
   final named = (environment ?? Platform.environment)['TSM_SERVICE'];
+  // The system-installed service (a record root owns), which every user's
+  // programs expect beside their own.
+  final system = systemInstall();
   return {
     for (final path in [
       ...tomSecretsServiceCandidates(
@@ -339,6 +345,7 @@ Set<String> tomSecretsExpectedServiceExecutables({
         operatingSystem: os,
       ),
       if (named != null && named.isNotEmpty) named,
+      ?system?.serviceExecutable,
       ...configured,
     ])
       tomSecretsRealExecutable(path),
